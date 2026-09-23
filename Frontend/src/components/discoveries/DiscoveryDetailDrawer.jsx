@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import useIsMobile from "../../hooks/useIsMobile";
 import { discoveryService } from "../../services/discoveryService";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+import { useDiscoveries } from "../../context/DiscoveryContext";
 import DiscoveryTypeIcon from "./DiscoveryTypeIcon";
 import {
     DISCOVERY_TYPE_COLORS,
@@ -21,6 +23,21 @@ import {
     CHECKED_EXPLANATION_TAGS,
     EXPLANATION_OUTCOME_COLORS,
 } from "./discoveryMeta";
+
+// Same subscription/plan-gate codes as Discoveries.jsx's DISCOVERIES_CODE_MESSAGES
+// - this drawer can also be opened straight from the DashboardLayout teaser
+// widget, not just from the Discoveries list page, so it needs its own
+// translation of enforcePlanFeature's 403 codes rather than the generic
+// load_error toast. discovery_not_found (discovery.controller.js's getDiscovery)
+// covers the stale-widget-card case: DiscoveryContext fetches its "published"
+// list once per session, so a Discovery resolved/removed from outside that
+// same session (another tab, a demo data reset, ...) can still be sitting in
+// the widget/hero when the user clicks it.
+const DISCOVERY_DETAIL_CODE_MESSAGES = {
+    subscription_inactive: "discoveries.subscription_inactive",
+    plan_feature_required: "discoveries.plan_feature_required",
+    discovery_not_found: "discoveries.not_found",
+};
 
 const GaugeRing = ({ value, valueLabel, label, color }) => {
     const r = 34;
@@ -432,8 +449,10 @@ TeamExplanationSection.propTypes = {
 const DiscoveryDetailDrawer = ({ open, discoveryId, onClose, onStatusChanged }) => {
     const { t } = useI18n();
     const isMobile = useIsMobile();
+    const { removeLocally } = useDiscoveries();
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState(null);
     const [updatingStatus, setUpdatingStatus] = useState(null);
     const [dismissModalOpen, setDismissModalOpen] = useState(false);
     const [dismissReasonDraft, setDismissReasonDraft] = useState("");
@@ -442,12 +461,21 @@ const DiscoveryDetailDrawer = ({ open, discoveryId, onClose, onStatusChanged }) 
         if (!open || !discoveryId) return;
         setLoading(true);
         setDetail(null);
+        setLoadError(null);
         discoveryService
             .get(discoveryId)
             .then(setDetail)
-            .catch(() => toast.error(t("discoveries.load_error")))
+            .catch((error) => {
+                const message = resolveApiErrorMessage(error, t, DISCOVERY_DETAIL_CODE_MESSAGES, "discoveries.load_error");
+                setLoadError(message);
+                toast.error(message);
+                // The widget/hero's own list only refreshes on mount - if this
+                // one 404s, it's gone server-side, so drop it from that shared
+                // cache now instead of leaving a dead card to click again.
+                if (error?.response?.data?.code === "discovery_not_found") removeLocally(discoveryId);
+            })
             .finally(() => setLoading(false));
-    }, [open, discoveryId, t]);
+    }, [open, discoveryId, t, removeLocally]);
 
     const handleStatusChange = async (status, reason) => {
         setUpdatingStatus(status);
@@ -481,7 +509,7 @@ const DiscoveryDetailDrawer = ({ open, discoveryId, onClose, onStatusChanged }) 
                 </div>
             )}
 
-            {!loading && !detail && <Empty description={t("discoveries.load_error")} />}
+            {!loading && !detail && <Empty description={loadError || t("discoveries.load_error")} />}
 
             {!loading && detail && (
                 <div>

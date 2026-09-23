@@ -19,8 +19,8 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
     const { user } = React.useContext(AuthContext);
     const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
     const { openCount: openDiscoveriesCount } = useDiscoveries();
-    const { plan } = useSubscription();
-    const { t } = useI18n();
+    const { plan, can, loading: planLoading } = useSubscription();
+    const { t, currentLanguage } = useI18n();
     const { isLite } = useTheme();
     const panelRef = useRef(null);
     const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
@@ -111,7 +111,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                         </div>
                     </div>
                     <div className="ohnix-scrollbar-thin min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto">
-                        {teamLoading ? (
+                        {teamLoading || planLoading ? (
                             <div className="space-y-3 p-3">
                                 {Array.from({ length: 6 }).map((_, i) => (
                                     <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
@@ -134,7 +134,9 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                                     ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
                                     showFiscalSetup,
                                     needsFiscalSetup,
-                                    openDiscoveriesCount
+                                    openDiscoveriesCount,
+                                    can,
+                                    currentLanguage
                                 )}
                                 onClick={onClose}
                                 className="border-r-0"

@@ -152,14 +152,41 @@ class SalesQuotationService {
         // sending domain), so this is the only place the real issuer shows.
         const company = quotation.pointOfSale?.account?.company;
         const companyName = company?.legalName || company?.name || "Ohnix";
-        const rows = quotation.details.map((detail) => `<tr><td style="padding:8px;border-bottom:1px solid #dce5e8;">${escapeHtml(detail.product.productName)}</td><td style="padding:8px;border-bottom:1px solid #dce5e8;text-align:center;">${escapeHtml(detail.quantity)}</td><td style="padding:8px;border-bottom:1px solid #dce5e8;text-align:right;">${escapeHtml(Number(detail.lineTotal).toLocaleString())}</td></tr>`).join("");
+        const rows = quotation.details.map((detail) => `<tr><td style="padding:10px 14px;color:#e5e7eb;border-bottom:1px solid #1d2733;">${escapeHtml(detail.product.productName)}</td><td style="padding:10px 14px;color:#9ca3af;text-align:center;border-bottom:1px solid #1d2733;">${escapeHtml(detail.quantity)}</td><td style="padding:10px 14px;color:#e5e7eb;text-align:right;border-bottom:1px solid #1d2733;">${escapeHtml(Number(detail.lineTotal).toLocaleString())}</td></tr>`).join("");
         const publicUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/public/sales-quotations/${quotation.publicToken}`;
+        // Spanish content by default, matching every other transactional
+        // email's default (Ohnix's primary market is Colombia and this
+        // email reaches the ISSUING company's own customer, not an Ohnix
+        // platform user) - same dark-card/teal-accent template as
+        // upgradeRequestNotifications.js, teamNotifications.js, etc. so this
+        // doesn't look like a different product from the rest of Ohnix's mail.
         await transporter.sendMail({
             from: `${companyName} <${process.env.SENDER_EMAIL}>`,
             to: quotation.customer.email,
             replyTo: company?.contactEmail || undefined,
-            subject: `${companyName} - Sales quotation #${quotation.quotationNo}`,
-            html: `<div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:24px;color:#15232a;"><div style="color:#0b9997;font-weight:700;font-size:15px;">${escapeHtml(companyName)}</div><h2>Sales quotation #${escapeHtml(quotation.quotationNo)}</h2><p>Hello ${escapeHtml(quotation.customer.name)}, here is the quotation prepared for you by ${escapeHtml(companyName)}.</p><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="text-align:left;padding:8px;">Product</th><th style="padding:8px;">Qty</th><th style="text-align:right;padding:8px;">Total</th></tr></thead><tbody>${rows}</tbody></table><p style="text-align:right;font-size:20px;font-weight:700;border-top:2px solid #29d8d5;padding-top:12px;">Total: ${escapeHtml(Number(quotation.total).toLocaleString())}</p>${quotation.notes ? `<p style="border-top:1px solid #dce5e8;padding-top:12px;">${escapeHtml(quotation.notes)}</p>` : ""}<p style="margin-top:24px;text-align:center;"><a href="${escapeHtml(publicUrl)}" style="display:inline-block;background:#29d8d5;color:#021314;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none;">View quotation</a></p><p style="margin-top:28px;padding-top:12px;border-top:1px solid #eef2f3;color:#9aa7ad;font-size:11px;">Sent via Ohnix</p></div>`,
+            subject: `${companyName} - Cotización #${quotation.quotationNo}`,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                    <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">${escapeHtml(companyName)}</div>
+                    <h2 style="color:#e5e7eb;margin:0 0 16px;">Cotización #${escapeHtml(quotation.quotationNo)}</h2>
+                    <p style="font-size:15px;color:#e5e7eb;margin:0 0 20px;">Hola <strong>${escapeHtml(quotation.customer.name)}</strong>, ${escapeHtml(companyName)} te comparte la siguiente cotización.</p>
+                    <table style="width:100%;border-collapse:collapse;border:1px solid #1d2733;border-radius:8px;overflow:hidden;">
+                        <thead><tr style="background:#111827;">
+                            <th style="text-align:left;padding:10px 14px;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">Producto</th>
+                            <th style="padding:10px 14px;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">Cant.</th>
+                            <th style="text-align:right;padding:10px 14px;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">Total</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <p style="text-align:right;font-size:20px;font-weight:700;color:#e5e7eb;border-top:2px solid #29D8D5;padding-top:12px;margin-top:16px;">Total: ${escapeHtml(Number(quotation.total).toLocaleString())}</p>
+                    ${quotation.notes ? `<p style="color:#9ca3af;font-size:13px;border-top:1px solid #1d2733;padding-top:12px;margin-top:12px;white-space:pre-wrap;">${escapeHtml(quotation.notes)}</p>` : ""}
+                    <div style="text-align:center;margin:28px 0;">
+                        <a href="${escapeHtml(publicUrl)}" style="display:inline-block;background:#29D8D5;color:#021314;padding:14px 32px;border-radius:10px;font-weight:700;text-decoration:none;font-size:15px;">Ver cotización</a>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">Enviado vía Ohnix · &copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
+                </div>
+            `,
         });
         return prisma.salesQuotation.update({ where: { id: quotationId }, data: { status: "sent", updatedById: userId } });
     }

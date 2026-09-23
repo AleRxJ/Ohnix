@@ -263,6 +263,7 @@ const PurchaseList = ({
                         calculatePurchaseFinancials(purchaseDetails, selectedPurchase.retentions || [], purchasePayments).pendingBalance
                     )}
                     cashAccounts={cashAccounts}
+                    isForeignCurrency={Boolean(selectedPurchase.currency_code && selectedPurchase.currency_code !== "COP")}
                 />
             )}
 

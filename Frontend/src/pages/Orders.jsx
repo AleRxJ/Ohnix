@@ -257,6 +257,7 @@ const Orders = () => {
                     form={paymentForm}
                     pendingBalance={Math.max(0, selectedOrder.total - orderPayments.reduce((sum, p) => sum + p.amount, 0))}
                     cashAccounts={cashAccounts}
+                    isForeignCurrency={Boolean(selectedOrder.currency_code && selectedOrder.currency_code !== "COP")}
                 />
             )}
 

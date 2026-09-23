@@ -20,8 +20,8 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     const { user, logout } = useContext(AuthContext);
     const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
     const { openCount: openDiscoveriesCount } = useDiscoveries();
-    const { plan } = useSubscription();
-    const { t } = useI18n();
+    const { plan, can, loading: planLoading } = useSubscription();
+    const { t, currentLanguage } = useI18n();
     const { isLite } = useTheme();
     const navigate = useNavigate();
     const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
@@ -60,7 +60,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
             <div className="mx-4 mb-4 h-px bg-[var(--ohnix-line-4)]"></div>
 
             <div className="ohnix-scrollbar-thin min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto px-3">
-                {teamLoading ? (
+                {teamLoading || planLoading ? (
                     // Never render the unfiltered menu while permissions are
                     // still resolving - a restricted member briefly seeing
                     // (and then losing) items they can't use was the "menu
@@ -93,7 +93,9 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                             ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
                             showFiscalSetup,
                             needsFiscalSetup,
-                            openDiscoveriesCount
+                            openDiscoveriesCount,
+                            can,
+                            currentLanguage
                         ).map((item) => ({
                             ...item,
                         }))}

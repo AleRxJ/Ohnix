@@ -1518,7 +1518,6 @@ export const createUpgradeRequest = asyncHandler(async (req, res, next) => {
             request,
             user: requester,
             source: "billing",
-            locale: requester?.preferredLanguage || req.headers["accept-language"],
         });
     }
 

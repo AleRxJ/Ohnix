@@ -141,6 +141,7 @@ const ProductionOrders = lazy(() => import("./pages/ProductionOrders"));
 const Payroll = lazy(() => import("./pages/Payroll"));
 const Orders = lazy(() => import("./pages/Orders"));
 const Purchase = lazy(() => import("./pages/Purchase"));
+const Warranties = lazy(() => import("./pages/Warranties"));
 const Quotations = lazy(() => import("./pages/Quotations"));
 const SalesQuotations = lazy(() => import("./pages/SalesQuotations"));
 const PublicSalesQuotation = lazy(() => import("./pages/PublicSalesQuotation"));
@@ -263,6 +264,7 @@ const RequireDiscoveriesAccess = requireModuleAccess("reports");
 const RequireProductsAccess = requireModuleAccess("products");
 const RequireOrdersAccess = requireModuleAccess("orders");
 const RequirePurchasesAccess = requireModuleAccess("purchases");
+const RequireWarrantiesAccess = requireModuleAccess("warranties");
 const RequireCustomersAccess = requireModuleAccess("customers");
 const RequireSuppliersAccess = requireModuleAccess("suppliers");
 const RequireCategoriesAccess = requireModuleAccess("categories");
@@ -399,6 +401,7 @@ function App() {
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
                                 <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />
+                                <Route path="warranties" element={<RequireWarrantiesAccess><Warranties /></RequireWarrantiesAccess>} />
                                 <Route path="quotations" element={<RequirePurchasesAccess><Quotations /></RequirePurchasesAccess>} />
                                 <Route path="sales-quotations" element={<Navigate to="/quotations?type=sales" replace />} />
                                 <Route path="customers" element={<RequireCustomersAccess><Customers /></RequireCustomersAccess>} />

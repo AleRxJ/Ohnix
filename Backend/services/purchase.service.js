@@ -12,6 +12,24 @@ import { buildPurchaseRetentionSnapshots, calculateRetentionReturn } from "./wit
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
+// Fase 4 (multi-moneda) - same convention as order.service.js's matching
+// constant: COP stays the functional currency for accounting/inventory/tax
+// everywhere past resolvePurchaseUnitDetails/this conversion pass.
+const CURRENCY_CODES = ["COP", "USD", "EUR"];
+
+// Converts every detail's unitcost from currencyCode's own units to COP,
+// right after the purchase-unit conversion above (so "3 cajas de 12 a
+// USD 10" resolves to a base-unit COP unitcost the same way a COP purchase
+// already does) - computePurchaseItemTax/creditLocationStockWithCost/
+// accounting never see anything but COP, unchanged from before this phase.
+const applyCurrencyConversion = (details, currencyCode, exchangeRate) => {
+    if (currencyCode === "COP") return details.map((detail) => ({ ...detail, unitcostForeign: null }));
+    return details.map((detail) => {
+        const unitcostForeign = Number(detail.unitcost);
+        return { ...detail, unitcostForeign, unitcost: Number((unitcostForeign * exchangeRate).toFixed(2)) };
+    });
+};
+
 // Fire-and-forget, same pattern as order.service.js's
 // triggerElectronicInvoicingIfCompleted - failure here must never fail the
 // purchase-completion request itself (stock/accounting already committed).
@@ -146,7 +164,7 @@ const findPurchaseByAnyId = async (id) =>
 
 class PurchaseService {
     async createPurchase(purchaseData, userId, userRole, pointOfSaleId) {
-        const { supplier_id, purchase_no, purchase_status, due_date, is_tutorial_data, source_quotation_id, withholding_concept_ids } = purchaseData;
+        const { supplier_id, purchase_no, purchase_status, due_date, is_tutorial_data, source_quotation_id, withholding_concept_ids, currency_code, exchange_rate } = purchaseData;
         let { details } = purchaseData;
 
         if (
@@ -156,6 +174,15 @@ class PurchaseService {
             details.length === 0
         ) {
             throw new ApiError(400, "Invalid purchase data");
+        }
+
+        const currencyCode = currency_code || "COP";
+        if (!CURRENCY_CODES.includes(currencyCode)) {
+            throw new ApiError(400, "currency_code must be COP, USD or EUR", [], "", "purchase_currency_code_invalid");
+        }
+        const exchangeRate = currencyCode === "COP" ? 1 : Number(exchange_rate);
+        if (currencyCode !== "COP" && (!Number.isFinite(exchangeRate) || exchangeRate <= 0)) {
+            throw new ApiError(400, "exchange_rate must be a positive number for a non-COP purchase", [], "", "purchase_exchange_rate_invalid");
         }
 
         const supplier = await findSupplierByAnyId(supplier_id);
@@ -200,7 +227,7 @@ class PurchaseService {
         // either, exactly like it does for every other product reference
         // in this payload.
         const productsById = new Map(products.flatMap((p) => [[p.id, p], ...(p.legacyMongoId ? [[p.legacyMongoId, p]] : [])]));
-        details = resolvePurchaseUnitDetails(details, productsById);
+        details = applyCurrencyConversion(resolvePurchaseUnitDetails(details, productsById), currencyCode, exchangeRate);
 
         for (const d of details) {
             if (!d.quantity || Number(d.quantity) < 1) {
@@ -254,6 +281,8 @@ class PurchaseService {
                         pointOfSaleId,
                         purchaseNo: String(purchase_no).trim(),
                         purchaseStatus: initialStatus,
+                        currencyCode,
+                        exchangeRate,
                         dueDate,
                         isTutorialData: is_tutorial_data === true,
                         createdById: userId,
@@ -306,6 +335,7 @@ class PurchaseService {
                             productId: mappedProduct.id,
                             quantity: Number(detail.quantity),
                             unitcost: Number(detail.unitcost),
+                            unitcostForeign: detail.unitcostForeign,
                             total: Number(detail.quantity) * Number(detail.unitcost),
                             taxTreatmentApplied: itemTax.treatment,
                             taxRateApplied: itemTax.rate,

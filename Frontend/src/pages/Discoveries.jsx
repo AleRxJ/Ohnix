@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
-import { Empty, Spin, Alert } from "antd";
+import { Empty, Spin, Alert, Button } from "antd";
 import { RadarChartOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
@@ -12,6 +12,19 @@ import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
 import { discoveryService } from "../services/discoveryService";
 import { getConnectivityState, subscribeConnectivity } from "../offline/connectivity";
+import { resolveApiErrorMessage } from "../utils/apiError";
+
+// Both are the same "can't get to Discoveries" family as the load_error
+// fallback, but the account can actually act on these (reactivate/upgrade)
+// instead of just retrying a request that will keep failing the same way -
+// see Backend/middleware/pricing.middleware.js's enforcePlanFeature, which
+// 403s with one of these codes even though PLAN_FEATURES already let the
+// page render past the PlanGate check below (that check only looks at plan
+// tier, not subscription status).
+const DISCOVERIES_CODE_MESSAGES = {
+    subscription_inactive: "discoveries.subscription_inactive",
+    plan_feature_required: "discoveries.plan_feature_required",
+};
 
 // "Ohnix encontró algo" as a full page: every Discovery on the account,
 // most important first, opening into DiscoveryDetailDrawer's full
@@ -64,6 +77,7 @@ const Discoveries = () => {
     const [discoveries, setDiscoveries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loaded, setLoaded] = useState(false);
+    const [loadError, setLoadError] = useState(null);
     const [openId, setOpenId] = useState(location.state?.openId || null);
     const [isOffline, setIsOffline] = useState(!getConnectivityState());
 
@@ -71,10 +85,15 @@ const Discoveries = () => {
 
     const load = () => {
         setLoading(true);
+        setLoadError(null);
         discoveryService
             .list({})
             .then(setDiscoveries)
-            .catch(() => toast.error(t("discoveries.load_error")))
+            .catch((error) => {
+                const message = resolveApiErrorMessage(error, t, DISCOVERIES_CODE_MESSAGES, "discoveries.load_error");
+                setLoadError(message);
+                toast.error(message);
+            })
             .finally(() => {
                 setLoading(false);
                 setLoaded(true);
@@ -161,7 +180,21 @@ const Discoveries = () => {
                 </div>
             )}
 
-            {!loading && loaded && filtered.length === 0 && (
+            {!loading && loadError && (
+                <Alert
+                    message={loadError}
+                    type="error"
+                    showIcon
+                    className="no-print mb-4 sm:mb-6"
+                    action={
+                        <Button size="small" danger onClick={load}>
+                            {t("discoveries.retry")}
+                        </Button>
+                    }
+                />
+            )}
+
+            {!loading && loaded && !loadError && filtered.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-[var(--ohnix-line-3)] px-6 py-14">
                     <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -179,7 +212,7 @@ const Discoveries = () => {
                 </div>
             )}
 
-            {!loading && filtered.length > 0 && (
+            {!loading && !loadError && filtered.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {filtered.map((discovery) => (
                         <DiscoveryListCard key={discovery._id} discovery={discovery} onClick={() => setOpenId(discovery._id)} />

@@ -6,6 +6,15 @@ import {
     formatCurrency,
 } from "../utils/currency";
 
+// Per-browser DISPLAY preference only (persisted to localStorage, never sent
+// to the backend) - purely how numbers get FORMATTED app-wide ($/€/₹, decimal
+// grouping). Fase 4 (multi-moneda) added a completely separate concept, the
+// order/purchase's own real transaction currency (Order.currencyCode,
+// Backend/services/order.service.js#createOrder) - an order created in USD
+// still gets its stored COP amounts rendered through whatever currency the
+// VIEWER picked here, unless a component explicitly reads the order's own
+// currency_code/exchange_rate/foreign_total fields instead (see
+// OrderDetailsDrawer.jsx). Never conflate the two.
 const STORAGE_KEY = "ohnix.currencyCode";
 
 const CurrencyContext = createContext(null);

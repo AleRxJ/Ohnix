@@ -145,6 +145,16 @@ export const useOrderOperations = (refreshOrders) => {
                 gst,
                 total,
                 total_products: values.orderItems.length,
+                // Fase 4 (multi-moneda) - the server always recomputes
+                // sub_total/gst/total itself in COP from orderItems (see the
+                // comment above about these being preview-only); it never
+                // trusts what's sent here. currency_code/exchange_rate are
+                // the only fields it actually reads for this - omitted
+                // (undefined) they default to COP/1 server-side, unchanged
+                // from before this phase.
+                ...(values.currency_code && values.currency_code !== "COP"
+                    ? { currency_code: values.currency_code, exchange_rate: values.exchange_rate }
+                    : {}),
                 ...(isTutorialActive && { is_tutorial_data: true }),
             };
 

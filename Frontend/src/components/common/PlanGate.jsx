@@ -2,13 +2,7 @@ import React from "react";
 import { LockOutlined, ArrowRightOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import useI18n from "../../hooks/useI18n";
-import { FEATURE_MINIMUM_PLAN } from "../../hooks/useSubscription";
-
-const PLAN_DISPLAY = {
-    growth:     { es: "Negocio",    en: "Business"  },
-    scale:      { es: "Escala",     en: "Scale"     },
-    enterprise: { es: "Enterprise", en: "Enterprise" },
-};
+import { FEATURE_MINIMUM_PLAN, PLAN_DISPLAY } from "../../hooks/useSubscription";
 
 /**
  * Renders a full-height locked state when a feature is not available on the user's plan.

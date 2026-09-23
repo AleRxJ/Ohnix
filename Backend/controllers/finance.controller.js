@@ -52,6 +52,10 @@ const mapCashMovement = (m) => ({
 const mapPayment = (p) => ({
     _id: p.id,
     amount: Number(p.amount),
+    // Fase 4 (multi-moneda) - non-zero only for a settleInFull payment
+    // against a foreign-currency order/purchase. See
+    // OrderPayment.exchangeRateDifference's schema comment.
+    exchange_rate_difference: Number(p.exchangeRateDifference || 0),
     cash_account: p.cashAccount ? { _id: p.cashAccount.id, name: p.cashAccount.name } : { _id: p.cashAccountId },
     method: p.method,
     reference: p.reference,
@@ -156,7 +160,7 @@ export const listOrderPayments = asyncHandler(async (req, res) => {
 });
 
 export const registerOrderPayment = asyncHandler(async (req, res, next) => {
-    const { amount, cash_account_id, method, reference } = req.body || {};
+    const { amount, cash_account_id, method, reference, settle_in_full } = req.body || {};
     if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const payment = await orderPaymentService.registerOrderPayment({
@@ -167,6 +171,7 @@ export const registerOrderPayment = asyncHandler(async (req, res, next) => {
         cashAccountId: cash_account_id,
         method,
         reference,
+        settleInFull: settle_in_full === true,
     });
     return res.status(201).json(new ApiResponse(201, mapPayment(payment), "Order payment registered successfully"));
 });
@@ -179,7 +184,7 @@ export const listPurchasePayments = asyncHandler(async (req, res) => {
 });
 
 export const registerPurchasePayment = asyncHandler(async (req, res, next) => {
-    const { amount, cash_account_id, method, reference } = req.body || {};
+    const { amount, cash_account_id, method, reference, settle_in_full } = req.body || {};
     if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const payment = await purchasePaymentService.registerPurchasePayment({
@@ -190,6 +195,7 @@ export const registerPurchasePayment = asyncHandler(async (req, res, next) => {
         cashAccountId: cash_account_id,
         method,
         reference,
+        settleInFull: settle_in_full === true,
     });
     return res.status(201).json(new ApiResponse(201, mapPayment(payment), "Purchase payment registered successfully"));
 });

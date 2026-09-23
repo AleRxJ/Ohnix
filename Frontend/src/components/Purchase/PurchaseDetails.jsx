@@ -414,6 +414,11 @@ const PurchaseDetails = ({
                         <Descriptions.Item label={t("purchases.created_at")}>
                             <Text className="text-[var(--ohnix-text-soft)]">{dayjs(purchase.createdAt).format("DD/MM/YYYY HH:mm")}</Text>
                         </Descriptions.Item>
+                        {purchase.currency_code && purchase.currency_code !== "COP" && (
+                            <Descriptions.Item label={t("purchases.currency_code")}>
+                                <Text className="text-[var(--ohnix-text-soft)]">{purchase.currency_code} · {t("purchases.exchange_rate")}: {formatCurrency(purchase.exchange_rate)}</Text>
+                            </Descriptions.Item>
+                        )}
                     </Descriptions>
                 </Card>
             )}
@@ -527,6 +532,14 @@ const PurchaseDetails = ({
                                 key: "method",
                                 render: (v) => v || t("common.na"),
                             },
+                            // Fase 4 (multi-moneda) - see OrderDetailsDrawer.jsx's matching comment.
+                            ...(purchasePayments.some((p) => p.exchange_rate_difference) ? [{
+                                title: t("finance.exchange_rate_difference_label"),
+                                dataIndex: "exchange_rate_difference",
+                                key: "exchange_rate_difference",
+                                align: "right",
+                                render: (v) => v ? <span className={v > 0 ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> : t("common.na"),
+                            }] : []),
                         ];
                         return (
                             <>

@@ -2,15 +2,17 @@ import React, { useEffect, useState } from "react";
 import { Form, Row, Col, Select, InputNumber, Input, DatePicker, Button, Tag, Radio } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
-import { useCurrency } from "../../context/CurrencyContext";
-import { getCurrencyInputProps } from "../../utils/currency";
+import { getCurrencyInputProps, getCurrencyConfig } from "../../utils/currency";
 
 const { Option } = Select;
 
-const PurchaseFormItem = ({ products, onRemove, name, restField, locked, hideRemove, onProductChange, className = "" }) => {
+// currencyCode is the PURCHASE's own transaction currency - see
+// PurchaseForm.jsx's matching comment. Defaults to "COP" so any other
+// caller keeps today's behavior exactly.
+const PurchaseFormItem = ({ products, onRemove, name, restField, locked, hideRemove, onProductChange, className = "", currencyCode = "COP" }) => {
     const form = Form.useFormInstance();
     const { t } = useI18n();
-    const { currency } = useCurrency();
+    const currency = getCurrencyConfig(currencyCode);
     const currencyInputProps = getCurrencyInputProps(currency.code);
 
     const selectedProductId = form.getFieldValue(["details", name, "product_id"]);

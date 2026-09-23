@@ -2,15 +2,19 @@ import React, { useState } from "react";
 import { Form, Row, Col, Select, InputNumber, Button } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
-import { useCurrency } from "../../context/CurrencyContext";
-import { getCurrencyInputProps } from "../../utils/currency";
+import { getCurrencyInputProps, getCurrencyConfig } from "../../utils/currency";
 
 const { Option } = Select;
 
-const OrderFormItems = ({ products, onRemove, name, restField, locked }) => {
+// currencyCode is the ORDER's own transaction currency (see
+// CreateOrderModal.jsx's currency_code field) - unrelated to
+// CurrencyContext/useCurrency's global per-browser display preference.
+// Defaults to "COP" so any other caller that doesn't pass it keeps today's
+// behavior exactly.
+const OrderFormItems = ({ products, onRemove, name, restField, locked, currencyCode = "COP" }) => {
     const form = Form.useFormInstance();
     const { t } = useI18n();
-    const { currency } = useCurrency();
+    const currency = getCurrencyConfig(currencyCode);
     const currencyInputProps = getCurrencyInputProps(currency.code);
 
     const initialProductId = form.getFieldValue(["orderItems", name, "product_id"]);
@@ -28,10 +32,15 @@ const OrderFormItems = ({ products, onRemove, name, restField, locked }) => {
     const handleProductChange = (productId) => {
         const selected = products.find((p) => p._id === productId);
         if (selected) {
-            form.setFieldValue(
-                ["orderItems", name, "unitcost"],
-                selected.selling_price
-            );
+            // selling_price is always COP - only useful as a starting point
+            // when the order itself is COP. A foreign-currency order needs
+            // the actual USD/EUR price typed in by hand (nothing in the
+            // system tracks a per-product foreign price), so this leaves the
+            // field for the cashier to fill instead of pre-filling a COP
+            // number into what's meant to be a USD/EUR input.
+            if (currencyCode === "COP") {
+                form.setFieldValue(["orderItems", name, "unitcost"], selected.selling_price);
+            }
             setAvailableStock(selected.stock);
 
             const currentQty = form.getFieldValue(["orderItems", name, "quantity"]);

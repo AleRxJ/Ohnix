@@ -328,7 +328,13 @@ const buildAlanubeItems = (orderDetails) => orderDetails.map((item) => {
     };
 });
 
-const buildAlanubeTotals = (items) => {
+// Fase 4 (multi-moneda) - `currencyCode` defaults to "COP" (unchanged
+// behavior for every domestic invoice). For a foreign-currency order,
+// DIAN's UBL schema (via Alanube) expects the invoice's own currency here
+// AND a PaymentExchangeRate/TRM block - NOT verified against a real Alanube
+// sandbox run from this environment, same "best-effort, test before a real
+// non-COP invoice" caveat nómina electrónica already carries in this file.
+const buildAlanubeTotals = (items, currencyCode = "COP", exchangeRate) => {
     const grossTotal = toNumber(items.reduce((sum, item) => sum + item.subtotal, 0));
     const taxTotal = toNumber(items.reduce((sum, item) => sum + item.taxAmount, 0));
     return {
@@ -339,7 +345,8 @@ const buildAlanubeTotals = (items) => {
         chargeTotal: 0,
         advanceTotal: 0,
         payableTotal: toNumber(grossTotal + taxTotal),
-        currencyCode: "COP",
+        currencyCode,
+        ...(currencyCode !== "COP" ? { exchangeRate: { calculationRate: toNumber(exchangeRate), date: new Date().toISOString().slice(0, 10) } } : {}),
     };
 };
 
@@ -411,7 +418,7 @@ const buildAlanubePayload = (order, { number }) => {
         company: { id: company.alanubeCompanyId },
         customer: buildAlanubeCustomerPayload(order.customer),
         items,
-        totalAmounts: buildAlanubeTotals(items),
+        totalAmounts: buildAlanubeTotals(items, order.currencyCode, order.exchangeRate),
         payments: buildAlanubePayments(company),
     };
 };
@@ -467,7 +474,7 @@ const buildAlanubeCreditNotePayload = (order, invoice, company, { conceptCode, o
         company: { id: company.alanubeCompanyId },
         customer: buildAlanubeCustomerPayload(order.customer),
         items: lineItems,
-        totalAmounts: buildAlanubeTotals(lineItems),
+        totalAmounts: buildAlanubeTotals(lineItems, order.currencyCode, order.exchangeRate),
         payments: buildAlanubePayments(company),
         note: observation ? [observation] : undefined,
         // "Reference to original invoice with date, documentType, number,
@@ -764,6 +771,17 @@ const buildItcyclePayload = (order) => {
         // "10" = Contado, "30" = Transferencia - same values Alanube's
         // buildAlanubePayments already sends for company.factusPaymentMethodCode.
         paymentMeans: { paymentForm: "1", paymentMethod: order.createdBy.company.factusPaymentMethodCode || "10" },
+        // Fase 4 (multi-moneda) - "COP" for every domestic invoice (unchanged
+        // payload shape). documentCurrencyCode is the standard UBL 2.1 field
+        // name; payment_exchange_rate is a best guess at what itcycle-api-
+        // dian's own dian-kit expects for a non-COP invoice's required TRM -
+        // NOT verified against its real schema from this repo, same caveat as
+        // buildAlanubeTotals above. Test in DIAN sandbox before relying on
+        // this for a real non-COP invoice.
+        documentCurrencyCode: order.currencyCode || "COP",
+        ...(order.currencyCode && order.currencyCode !== "COP"
+            ? { paymentExchangeRate: { calculationRate: toNumber(order.exchangeRate), date: now.toISOString().slice(0, 10) } }
+            : {}),
     };
 };
 

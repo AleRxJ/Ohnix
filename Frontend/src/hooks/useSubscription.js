@@ -92,6 +92,15 @@ export const PLAN_FEATURES = {
     },
 };
 
+// Display name per plan (es/en) — single source of truth for PlanGate's
+// upsell copy and the sidebar's locked-module badges, so both always agree.
+export const PLAN_DISPLAY = {
+    starter:    { es: "Starter",    en: "Starter"   },
+    growth:     { es: "Negocio",    en: "Business"  },
+    scale:      { es: "Escala",     en: "Scale"     },
+    enterprise: { es: "Enterprise", en: "Enterprise" },
+};
+
 // Mirror of Backend TEAM_SEAT_LIMITS (pricing.middleware.js) — null = unlimited.
 export const TEAM_SEAT_LIMITS = {
     starter: 0,

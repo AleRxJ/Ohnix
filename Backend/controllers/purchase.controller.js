@@ -13,6 +13,10 @@ const mapPurchase = (purchase) => ({
     purchase_date: purchase.purchaseDate,
     due_date: purchase.dueDate,
     purchase_status: purchase.purchaseStatus,
+    // Fase 4 (multi-moneda) - every stored/derived total on this purchase
+    // (and getPurchasePendingBalance) is ALWAYS COP regardless of this.
+    currency_code: purchase.currencyCode,
+    exchange_rate: Number(purchase.exchangeRate),
     supplier_id: purchase.supplier
         ? {
               _id: toExternalId(purchase.supplier),
@@ -74,6 +78,7 @@ const mapPurchaseDetail = (detail) => ({
         : null,
     quantity: detail.quantity,
     unitcost: Number(detail.unitcost),
+    unitcost_foreign: detail.unitcostForeign === null || detail.unitcostForeign === undefined ? null : Number(detail.unitcostForeign),
     total: Number(detail.total),
     // Tax-exclusive `total` stays as-is for the existing items table/summary
     // (unchanged rendering) - tax_amount is exposed separately so callers

@@ -20,7 +20,7 @@ export const listDiscoveries = asyncHandler(async (req, res) => {
 
 export const getDiscovery = asyncHandler(async (req, res, next) => {
     const row = await discoveryEngine.getDiscoveryDetail({ accountId: req.user.prismaId, id: req.params.id });
-    if (!row) return next(new ApiError(404, "Discovery not found"));
+    if (!row) return next(new ApiError(404, "Discovery not found", [], "", "discovery_not_found"));
     return res.status(200).json(new ApiResponse(200, row, "Discovery fetched successfully."));
 });
 

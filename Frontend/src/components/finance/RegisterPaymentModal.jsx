@@ -1,4 +1,4 @@
-import { Modal, Form, InputNumber, Select, Input } from "antd";
+import { Modal, Form, InputNumber, Select, Input, Checkbox, Alert } from "antd";
 import { WalletOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -11,10 +11,16 @@ const { Option } = Select;
 // pattern as CreateOrderModal.jsx. `pendingBalance` drives both the helper
 // text and the max-amount validation; the caller decides what "pending"
 // means for its own document (order.total - paid, or purchase total - paid).
-const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, pendingBalance, cashAccounts }) => {
+// `isForeignCurrency` (Fase 4/multi-moneda) unlocks the "liquidar completo"
+// checkbox - only a foreign-currency document can carry a diferencia en
+// cambio (see Backend/services/orderPayment.service.js#registerOrderPayment);
+// for a COP document this prop is simply false and nothing here changes
+// from before that phase.
+const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, pendingBalance, cashAccounts, isForeignCurrency = false }) => {
     const { t } = useI18n();
     const { formatCurrency, currency } = useCurrency();
     const currencyInputProps = getCurrencyInputProps(currency.code);
+    const settleInFull = Form.useWatch("settle_in_full", form);
 
     return (
         <Modal
@@ -41,23 +47,39 @@ const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, p
             </p>
 
             <Form form={form} layout="vertical" onFinish={onSubmit}>
+                {isForeignCurrency && (
+                    <Form.Item name="settle_in_full" valuePropName="checked" className="mb-2">
+                        <Checkbox>{t("finance.settle_in_full_label")}</Checkbox>
+                    </Form.Item>
+                )}
+                {isForeignCurrency && settleInFull && (
+                    <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.settle_in_full_hint")} />
+                )}
                 <Form.Item
                     name="amount"
                     label={t("finance.amount_label")}
                     rules={[
                         { required: true, message: t("validation.required_field") },
                         {
-                            validator: (_, value) =>
-                                value > 0 && value <= pendingBalance
+                            validator: (_, value) => {
+                                if (isForeignCurrency && settleInFull) {
+                                    // The service layer enforces the real
+                                    // sanity bound (variance vs. pending) -
+                                    // this only blocks an obviously-wrong
+                                    // zero/negative entry client-side.
+                                    return value > 0 ? Promise.resolve() : Promise.reject(new Error(t("finance.amount_exceeds_pending")));
+                                }
+                                return value > 0 && value <= pendingBalance
                                     ? Promise.resolve()
-                                    : Promise.reject(new Error(t("finance.amount_exceeds_pending"))),
+                                    : Promise.reject(new Error(t("finance.amount_exceeds_pending")));
+                            },
                         },
                     ]}
                 >
                     <InputNumber
                         className="w-full"
                         min={0.01}
-                        max={pendingBalance}
+                        max={isForeignCurrency && settleInFull ? undefined : pendingBalance}
                         prefix={currency.symbol}
                         formatter={currencyInputProps.formatter}
                         parser={currencyInputProps.parser}

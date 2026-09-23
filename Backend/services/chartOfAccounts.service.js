@@ -55,6 +55,13 @@ const DEFAULT_ACCOUNTS = [
     // expense account rather than reusing 5115 - see
     // accountingPosting.service.js#postTerminationSettlementJournalEntry.
     { code: "5116", name: "Gastos de personal - Indemnizaciones laborales", accountType: "expense" },
+    // Fase 4 (multi-moneda) - only ever posted when a payment against a
+    // foreign-currency Order/Purchase is registered with settleInFull and
+    // the COP amount actually received/paid differs from what was booked at
+    // the document's frozen exchange rate - see accountingPosting.service.js#
+    // postOrderPaymentJournalEntry/postPurchasePaymentJournalEntry.
+    { code: "4210", name: "Ingresos financieros - diferencia en cambio", accountType: "revenue" },
+    { code: "5305", name: "Gastos financieros - diferencia en cambio", accountType: "expense" },
 ];
 
 // Lazily seeds the default chart the first time a tenant needs one - same

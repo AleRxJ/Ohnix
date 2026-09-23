@@ -322,10 +322,10 @@ const getCopy = (locale) => {
         adminSubject: (fromPlan, toPlan) =>
             `[Ohnix] Nueva solicitud de upgrade: ${fromPlan} -> ${toPlan}`,
         adminTitle: "Nueva solicitud de cambio de plan",
-        adminSubtitle: "Un usuario envio una solicitud para cambiar su plan.",
+        adminSubtitle: "Un usuario envió una solicitud para cambiar su plan.",
         userSubject: (decisionLabel) =>
             `[Ohnix] Tu solicitud de upgrade fue ${decisionLabel}`,
-        userTitle: "Actualizacion de solicitud de upgrade",
+        userTitle: "Actualización de solicitud de upgrade",
         userSubtitle: (username, decisionLabel) =>
             `Hola ${username || ""}, tu solicitud fue ${decisionLabel}.`,
         labels: {
@@ -334,8 +334,8 @@ const getCopy = (locale) => {
             user: "Usuario",
             currentPlan: "Plan actual",
             targetPlan: "Plan solicitado",
-            createdAt: "Fecha de creacion",
-            decisionTime: "Fecha de decision",
+            createdAt: "Fecha de creación",
+            decisionTime: "Fecha de decisión",
             reviewedBy: "Revisado por",
             notes: "Notas",
             adminResponse: "Respuesta admin",
@@ -347,7 +347,7 @@ const getCopy = (locale) => {
             greeting: (username) => `Hola ${username || ""},`,
             intro: (decisionLabel) =>
                 `Tu solicitud de cambio de plan fue ${decisionLabel}.`,
-            outro: "Puedes revisar el detalle en la seccion de Facturacion.",
+            outro: "Puedes revisar el detalle en la sección de Facturación.",
         },
         na: "N/A",
     };
@@ -404,7 +404,6 @@ export const notifyAdminsUpgradeRequestCreated = async ({
     request,
     user,
     source = "app",
-    locale,
 }) => {
     try {
         if (!request?.id || !user?.email) {
@@ -430,8 +429,14 @@ export const notifyAdminsUpgradeRequestCreated = async ({
             return;
         }
 
-        const language = resolveLocale(locale);
-        const copy = getCopy(language);
+        // Ohnix's admin team is Spanish-speaking - this is an internal alert,
+        // not a customer-facing email, so it must never follow the
+        // REQUESTING user's own preferredLanguage (an English-browser signup
+        // used to send admins an English alert). Every other admin-only
+        // notification in this codebase (dianTestMatrixNotifications.js,
+        // firmaPassNotifications.js, notifyAdminsNewUserRegistered below)
+        // is hardcoded Spanish for the same reason.
+        const copy = getCopy("es");
         const subject = copy.adminSubject(request.currentPlan, request.targetPlan);
         const createdAt = request.createdAt
             ? new Date(request.createdAt).toLocaleString()

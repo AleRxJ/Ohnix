@@ -43,6 +43,11 @@ export const MODULE_KEYS = [
     // settlements - deny-by-default like finance/accounting, since salary
     // and personal data are the most sensitive records in the account.
     "payroll",
+    // Warranty claims (Garantías): registering/tracking a claim and sending
+    // the customer a manual update needs "edit"; deleting a claim or
+    // touching the notification templates/toggles needs "admin" - see
+    // warranty.routes.js for the exact level per endpoint.
+    "warranties",
 ];
 
 // Modules the UI never shows as an independent toggle - their level always
@@ -78,6 +83,7 @@ export const DEFAULT_MEMBER_ROLE_PERMISSIONS = {
     finance: "none",
     accounting: "none",
     payroll: "none",
+    warranties: "none",
 };
 
 export const OWNER_ROLE_PERMISSIONS = MODULE_KEYS.reduce(
@@ -129,6 +135,7 @@ const MODULE_LABELS_ES = {
     pointsOfSale: "puntos de venta",
     finance: "finanzas",
     accounting: "contabilidad",
+    warranties: "garantías",
 };
 
 export const requireModulePermission = (moduleKey, minLevel = "view") =>

@@ -16,6 +16,13 @@ import { calculateExpectedReturnedTax } from "../utils/orderReturnTax.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
+// Fase 4 (multi-moneda) - COP stays the functional currency everywhere
+// downstream (accounting, inventory costing, tax): a foreign-currency order
+// converts every unit price to COP right here, before computeItemTax/
+// computeOrderTotals ever run, so neither of those functions - nor
+// anything past them - needs to know currency exists at all.
+const CURRENCY_CODES = ["COP", "USD", "EUR"];
+
 const generateInvoiceNo = () => {
     const ts = Date.now().toString(36).toUpperCase();
     const rand = Math.random().toString(36).substring(2, 5).toUpperCase();
@@ -168,10 +175,21 @@ class OrderService {
             channel,
             external_order_id,
             external_connection_id,
+            currency_code,
+            exchange_rate,
         } = orderData;
 
         if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
             throw new ApiError(400, "Invalid order data");
+        }
+
+        const currencyCode = currency_code || "COP";
+        if (!CURRENCY_CODES.includes(currencyCode)) {
+            throw new ApiError(400, "currency_code must be COP, USD or EUR", [], "", "order_currency_code_invalid");
+        }
+        const exchangeRate = currencyCode === "COP" ? 1 : Number(exchange_rate);
+        if (currencyCode !== "COP" && (!Number.isFinite(exchangeRate) || exchangeRate <= 0)) {
+            throw new ApiError(400, "exchange_rate must be a positive number for a non-COP order", [], "", "order_exchange_rate_invalid");
         }
 
         const customer = await findCustomerByAnyId(customer_id);
@@ -255,11 +273,19 @@ class OrderService {
                 variantId = variant.id;
             }
 
+            // `item.unitcost` arrives in currencyCode's own units - converted
+            // to COP right here so computeItemTax/computeOrderTotals (and
+            // everything past them: inventory costing, accounting) never see
+            // anything but a COP amount, exactly like before this phase.
+            const unitcostForeign = currencyCode !== "COP" ? Number(item.unitcost) : null;
+            const unitcostCop = currencyCode !== "COP" ? Number((unitcostForeign * exchangeRate).toFixed(2)) : Number(item.unitcost);
+
             resolvedItems.push({
                 product,
                 variantId,
                 quantity: Number(item.quantity),
-                unitcost: Number(item.unitcost),
+                unitcost: unitcostCop,
+                unitcostForeign,
             });
         }
 
@@ -337,6 +363,14 @@ class OrderService {
                     subTotal,
                     gst,
                     total,
+                    currencyCode,
+                    exchangeRate,
+                    // Derived from the already-rounded COP total via the same
+                    // frozen rate, rather than re-summed from the lines
+                    // independently - guarantees foreignTotal * exchangeRate
+                    // always reconciles to `total` with no rounding drift
+                    // between the two. Display/DIAN-payload only.
+                    foreignTotal: currencyCode !== "COP" ? Number((total / exchangeRate).toFixed(2)) : null,
                     invoiceNo,
                     isTutorialData: is_tutorial_data === true,
                     channel: channel || "ohnix",
@@ -367,6 +401,7 @@ class OrderService {
                         variantId: item.variantId,
                         quantity: item.quantity,
                         unitcost: item.unitcost,
+                        unitcostForeign: item.unitcostForeign,
                         total: item.quantity * item.unitcost,
                         taxTreatmentApplied: itemTax.treatment,
                         taxRateApplied: itemTax.rate,

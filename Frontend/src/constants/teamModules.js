@@ -13,6 +13,7 @@ export const MODULE_KEYS = [
     "finance",
     "accounting",
     "payroll",
+    "warranties",
 ];
 
 // "dashboard" always mirrors "reports" (see COUPLED_MODULES on the backend) -

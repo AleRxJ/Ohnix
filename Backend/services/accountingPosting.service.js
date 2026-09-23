@@ -411,10 +411,22 @@ export const postPurchaseJournalEntry = async (tx, { accountId, createdById, pur
     });
 };
 
+// Fase 4 (multi-moneda): `payment.exchangeRateDifference` is 0 for every COP
+// payment (unchanged behavior - cash moves by `payment.amount`, 1305 clears
+// by that same amount). For a foreign-currency order settled with a
+// different COP amount than what was booked at the invoice's frozen rate
+// (see orderPayment.service.js#registerOrderPayment), 1305 clears by
+// exactly the RECEIVABLE that was cleared (`payment.amount -
+// exchangeRateDifference`), never by the cash amount itself, and the gap
+// goes to 4210 (ganancia) or 5305 (pérdida) - same "credit revenue / debit
+// expense depending on the sign" branching postPurchaseReturnJournalEntry
+// already uses for its own variance.
 export const postOrderPaymentJournalEntry = async (tx, { accountId, createdById, payment, cashAccount, order, thirdParty }) => {
     const coa = await getChartAccountMap(tx, accountId);
     const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
     const costCenterId = await resolveLocationCostCenter(tx, accountId, order.pointOfSaleId);
+    const fxDifference = round2(payment.exchangeRateDifference || 0);
+    const clearedReceivable = round2(payment.amount - fxDifference);
 
     return recordJournalEntry(tx, {
         accountId,
@@ -425,7 +437,9 @@ export const postOrderPaymentJournalEntry = async (tx, { accountId, createdById,
         sourceId: payment.id,
         lines: withCostCenter(withThirdParty([
             { chartAccountId: cashChartAccountId, debit: payment.amount, credit: 0 },
-            { chartAccountId: coa.get("1305").id, debit: 0, credit: payment.amount },
+            { chartAccountId: coa.get("1305").id, debit: 0, credit: clearedReceivable },
+            ...(fxDifference > 0 ? [{ chartAccountId: coa.get("4210").id, debit: 0, credit: fxDifference }] : []),
+            ...(fxDifference < 0 ? [{ chartAccountId: coa.get("5305").id, debit: -fxDifference, credit: 0 }] : []),
         ], thirdParty, coa.get("1305").id), costCenterId),
     });
 };
@@ -434,7 +448,14 @@ export const postPurchasePaymentJournalEntry = async (tx, { accountId, createdBy
     const coa = await getChartAccountMap(tx, accountId);
     const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
     const costCenterId = await resolveLocationCostCenter(tx, accountId, purchase.pointOfSaleId);
+    const fxDifference = round2(payment.exchangeRateDifference || 0);
+    const clearedPayable = round2(payment.amount - fxDifference);
 
+    // Opposite sign meaning from the order side above: here `fxDifference`
+    // is `amount paid - payable booked`, so paying MORE than what was
+    // booked (fxDifference > 0) is a PÉRDIDA (we spent more COP than
+    // expected settling a payable), not a gain - flipped debit/credit vs.
+    // postOrderPaymentJournalEntry's receivable-side branching.
     return recordJournalEntry(tx, {
         accountId,
         createdById,
@@ -443,8 +464,10 @@ export const postPurchasePaymentJournalEntry = async (tx, { accountId, createdBy
         sourceType: "purchase_payment",
         sourceId: payment.id,
         lines: withCostCenter(withThirdParty([
-            { chartAccountId: coa.get("2205").id, debit: payment.amount, credit: 0 },
+            { chartAccountId: coa.get("2205").id, debit: clearedPayable, credit: 0 },
             { chartAccountId: cashChartAccountId, debit: 0, credit: payment.amount },
+            ...(fxDifference > 0 ? [{ chartAccountId: coa.get("5305").id, debit: fxDifference, credit: 0 }] : []),
+            ...(fxDifference < 0 ? [{ chartAccountId: coa.get("4210").id, debit: 0, credit: -fxDifference }] : []),
         ], thirdParty, coa.get("2205").id), costCenterId),
     });
 };

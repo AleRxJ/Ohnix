@@ -287,6 +287,28 @@
   box-shadow: 0 0 10px rgba(41,216,213,.35);
 }
 
+/* Sidebar/mobile-menu nav row for a module the current plan doesn't include
+   (Cotizaciones, Contabilidad, Descubrimientos, Integraciones y API) - a
+   muted "needs upgrade" pill instead of hiding the item outright, so the
+   module stays discoverable but the user knows before clicking that it's
+   locked. See data/index.jsx's LockedPlanBadge. Deliberately neutral/muted
+   (unlike .sidebar-discovery-badge's cyan) since this isn't good news. */
+.sidebar-locked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--ohnix-text-muted);
+  background: var(--ohnix-hover-overlay);
+  border: 1px solid var(--ohnix-line-5);
+}
+
 /* Dashboard hero card for the top live Discovery - see
    components/discoveries/DiscoveryDashboardHero.jsx. The single place on
    the dashboard that gets a radial brand glow + pulsing signal dot, so

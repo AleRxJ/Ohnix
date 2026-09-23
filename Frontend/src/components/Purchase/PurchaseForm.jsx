@@ -10,6 +10,7 @@ import {
     Button,
     Card,
     DatePicker,
+    InputNumber,
 } from "antd";
 import {
     PlusOutlined,
@@ -57,6 +58,8 @@ const PurchaseForm = ({
     const [withholdingConcepts, setWithholdingConcepts] = React.useState([]);
     const { visible: showPointOfSale } = usePointOfSaleFieldVisible();
     const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
+    // Fase 4 (multi-moneda) - see CreateOrderModal.jsx's matching comment.
+    const selectedCurrencyCode = Form.useWatch("currency_code", form) || "COP";
 
     // Suppliers are assigned to a single point of sale at creation (see
     // Backend/services/purchase.service.js's "pertenece a otro punto de
@@ -94,13 +97,16 @@ const PurchaseForm = ({
         const product = products.find((p) => p._id === productId);
         if (!product) return;
 
-        // Auto-fill the unit cost with the product's buying price
         const details = form.getFieldValue("details");
         if (!details) return;
         details[fieldName] = {
             ...details[fieldName],
             product_id: productId,
-            unitcost: product.buying_price,
+            // buying_price is always COP - see OrderFormItems.jsx's matching
+            // comment on why this only auto-fills for a COP purchase.
+            ...(form.getFieldValue("currency_code") !== "USD" && form.getFieldValue("currency_code") !== "EUR"
+                ? { unitcost: product.buying_price }
+                : {}),
         };
         form.setFieldsValue({ details });
     };
@@ -123,6 +129,11 @@ const PurchaseForm = ({
                 }),
             })),
             withholding_concept_ids: values.withholding_concept_ids || [],
+            // Fase 4 (multi-moneda) - omitted (undefined) defaults to
+            // COP/1 server-side, unchanged from before this phase.
+            ...(values.currency_code && values.currency_code !== "COP"
+                ? { currency_code: values.currency_code, exchange_rate: values.exchange_rate }
+                : {}),
             ...(isConvertingQuotation && { source_quotation_id: initialQuotation.id }),
         };
         onSubmit(purchaseData);
@@ -266,6 +277,31 @@ const PurchaseForm = ({
                                 </Select>
                             </Form.Item>
                         </Col>
+                        <Col xs={24} sm={selectedCurrencyCode === "COP" ? 12 : 6}>
+                            <Form.Item
+                                name="currency_code"
+                                label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("purchases.currency_code")}</span>}
+                                initialValue="COP"
+                            >
+                                <Select size="large">
+                                    <Option value="COP">COP</Option>
+                                    <Option value="USD">USD</Option>
+                                    <Option value="EUR">EUR</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        {selectedCurrencyCode !== "COP" && (
+                            <Col xs={24} sm={6}>
+                                <Form.Item
+                                    name="exchange_rate"
+                                    label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("purchases.exchange_rate")}</span>}
+                                    extra={t("purchases.exchange_rate_hint")}
+                                    rules={[{ required: true, message: t("purchases.exchange_rate_required") }]}
+                                >
+                                    <InputNumber className="w-full" size="large" min={0.0001} placeholder="4000" />
+                                </Form.Item>
+                            </Col>
+                        )}
                     </Row>
                     {withholdingConcepts.length > 0 && (
                         <Form.Item
@@ -319,6 +355,7 @@ const PurchaseForm = ({
                                         locked={fieldsLocked}
                                         hideRemove={isConvertingQuotation}
                                         onProductChange={handleProductChange}
+                                        currencyCode={selectedCurrencyCode}
                                     />
                                 ))}
                             </div>

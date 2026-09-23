@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Form, Row, Col, Select, Button, Divider, Card, DatePicker } from "antd";
+import { Modal, Form, Row, Col, Select, Button, Divider, Card, DatePicker, InputNumber } from "antd";
 import { PlusOutlined, ShoppingCartOutlined, FileTextOutlined } from "@ant-design/icons";
 import OrderFormItems from "./OrderFormItems";
 import PointOfSaleField, { usePointOfSaleFieldVisible } from "../common/PointOfSaleField";
@@ -29,6 +29,12 @@ const CreateOrderModal = ({
     const { t } = useI18n();
     const { visible: showPointOfSale } = usePointOfSaleFieldVisible({ salesOnly: true });
     const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
+    // Fase 4 (multi-moneda) - the order's OWN transaction currency, frozen at
+    // creation with its exchange rate (see Backend/services/order.service.js#
+    // createOrder). Deliberately unrelated to CurrencyContext/useCurrency (a
+    // per-browser DISPLAY preference for how numbers are formatted app-wide) -
+    // this is what currency the sale itself actually happened in.
+    const selectedCurrencyCode = Form.useWatch("currency_code", form) || "COP";
 
     // Customers are assigned to a single point of sale at creation (see
     // Backend/services/order.service.js's "pertenece a otro punto de venta"
@@ -173,6 +179,31 @@ const CreateOrderModal = ({
                                 </Select>
                             </Form.Item>
                         </Col>
+                        <Col xs={24} sm={selectedCurrencyCode === "COP" ? 12 : 6}>
+                            <Form.Item
+                                name="currency_code"
+                                label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("orders.currency_code")}</span>}
+                                initialValue="COP"
+                            >
+                                <Select size="large">
+                                    <Option value="COP">COP</Option>
+                                    <Option value="USD">USD</Option>
+                                    <Option value="EUR">EUR</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        {selectedCurrencyCode !== "COP" && (
+                            <Col xs={24} sm={6}>
+                                <Form.Item
+                                    name="exchange_rate"
+                                    label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("orders.exchange_rate")}</span>}
+                                    extra={t("orders.exchange_rate_hint")}
+                                    rules={[{ required: true, message: t("orders.exchange_rate_required") }]}
+                                >
+                                    <InputNumber className="w-full" size="large" min={0.0001} placeholder="4000" />
+                                </Form.Item>
+                            </Col>
+                        )}
                     </Row>
                 </Card>
 
@@ -202,6 +233,7 @@ const CreateOrderModal = ({
                                         name={name}
                                         restField={restField}
                                         locked={isTourCreateStep && name === 0}
+                                        currencyCode={selectedCurrencyCode}
                                     />
                                 ))}
                             </div>

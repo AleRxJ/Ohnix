@@ -147,9 +147,16 @@ db.version(11).stores({
     payrollPeriods: "_id",
 });
 
+// Garantías (warranties). Like Orders, GET /warranties paginates server-side
+// (no "everything" mode) so this is a page-cache write-through, not a full
+// mirror - see useWarranties.js and this file's comment on "orders" above.
+db.version(12).stores({
+    warranties: "_id",
+});
+
 // Mirror tables added as each module is wired for offline support - keep in
 // sync with the list above so account/logout resets actually clear them.
-export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods"];
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods", "warranties"];
 
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 

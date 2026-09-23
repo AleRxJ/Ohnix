@@ -1,6 +1,6 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { Link } from "react-router-dom";
-import { Drawer, Tag, Spin, Button, Table, Divider, Space, Card } from "antd";
+import { Drawer, Tag, Spin, Button, Table, Divider, Space, Card, Select } from "antd";
 import {
     FilePdfOutlined,
     CloseOutlined,
@@ -10,8 +10,10 @@ import {
     WalletOutlined,
     SettingOutlined,
     ArrowRightOutlined,
+    SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import toast from "react-hot-toast";
 import { getStatusColor } from "../../utils/orderHelpers";
 import { getStatusIcon } from "../../data";
 import useI18n from "../../hooks/useI18n";
@@ -22,6 +24,9 @@ import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
 import useIsMobile from "../../hooks/useIsMobile";
 import EmptyState from "../common/EmptyState";
+import { api } from "../../api/api.js";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+import WarrantyForm from "../Warranties/WarrantyForm";
 
 const OrderDetailsDrawer = ({
     visible,
@@ -38,8 +43,12 @@ const OrderDetailsDrawer = ({
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const { user } = useContext(AuthContext);
-    const { team, isOwner } = useTeam();
+    const { team, isOwner, hasPermission } = useTeam();
     const isMobile = useIsMobile();
+    const canRegisterWarranty = hasPermission("warranties", "edit");
+    const [warrantyLineIndex, setWarrantyLineIndex] = useState(0);
+    const [warrantyFormOpen, setWarrantyFormOpen] = useState(false);
+    const [registeringWarranty, setRegisteringWarranty] = useState(false);
     // View-only presence here (no lock) - order status changes happen inline
     // in OrdersTable's row select, not in this read-only details drawer, so
     // there's no single "edit form" moment to soft-lock against.
@@ -48,6 +57,45 @@ const OrderDetailsDrawer = ({
         resourceId: selectedOrder?._id,
         active: visible && Boolean(team) && Boolean(selectedOrder?._id),
     });
+
+    // Section 2/20 of the warranties spec: "Venta → Garantía → Registrar"
+    // straight from the order the merchant is already looking at, instead of
+    // navigating to Warranties and searching for the invoice again. Only
+    // `_id`/`name` travel on the mapped order/customer here (see
+    // order.controller.js#mapOrder) - phone/email show as N/A in this
+    // preview, but createWarranty re-fetches the real Customer/Product
+    // server-side, so the actual snapshot saved is accurate regardless.
+    const warrantyPrefillLine = orderDetails?.[warrantyLineIndex];
+    const warrantyPrefill = selectedOrder && warrantyPrefillLine
+        ? {
+              order: {
+                  order_id: selectedOrder._id,
+                  invoice_no: selectedOrder.invoice_no,
+                  order_date: selectedOrder.order_date,
+                  customer: selectedOrder.customer_id ? { _id: selectedOrder.customer_id._id, name: selectedOrder.customer_id.name } : null,
+              },
+              line: {
+                  order_detail_id: warrantyPrefillLine._id,
+                  quantity: warrantyPrefillLine.quantity,
+                  product: warrantyPrefillLine.product_id,
+                  variant_id: warrantyPrefillLine.variant_id || null,
+              },
+          }
+        : null;
+
+    const handleCreateWarranty = async (payload) => {
+        setRegisteringWarranty(true);
+        try {
+            await api.post("/warranties", payload);
+            toast.success(t("warranties.created_successfully"));
+            return true;
+        } catch (error) {
+            toast.error(resolveApiErrorMessage(error, t) || t("warranties.error_creating"));
+            return false;
+        } finally {
+            setRegisteringWarranty(false);
+        }
+    };
 
     if (!selectedOrder) return null;
 
@@ -81,6 +129,15 @@ const OrderDetailsDrawer = ({
             key: "method",
             render: (v) => v || t("common.na"),
         },
+        // Fase 4 (multi-moneda) - only ever non-zero for a settleInFull
+        // payment against a foreign-currency order.
+        ...(orderPayments.some((p) => p.exchange_rate_difference) ? [{
+            title: t("finance.exchange_rate_difference_label"),
+            dataIndex: "exchange_rate_difference",
+            key: "exchange_rate_difference",
+            align: "right",
+            render: (v) => v ? <span className={v > 0 ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> : t("common.na"),
+        }] : []),
     ];
 
     const columns = [
@@ -281,6 +338,16 @@ const OrderDetailsDrawer = ({
                                 {formatCurrency(selectedOrder.total)}
                             </span>
                         </div>
+                        {selectedOrder.currency_code && selectedOrder.currency_code !== "COP" && (
+                            <div className="flex items-center justify-between pt-1">
+                                <span className="text-xs text-[var(--ohnix-text-dim)]">
+                                    {t("orders.foreign_currency_note", { code: selectedOrder.currency_code, rate: selectedOrder.exchange_rate })}
+                                </span>
+                                <span className="text-xs font-medium text-[var(--ohnix-text-dim)]">
+                                    {selectedOrder.currency_code} {Number(selectedOrder.foreign_total).toFixed(2)}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -447,7 +514,46 @@ const OrderDetailsDrawer = ({
                         )}
                     </div>
                 )}
+
+                {!isCancelled && canRegisterWarranty && orderDetails?.length > 0 && (
+                    <>
+                        <Divider orientation="left" className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("warranties.title")}
+                        </Divider>
+                        <Card className="border-0 shadow-sm">
+                            <Space direction="vertical" size="middle" className="w-full">
+                                {orderDetails.length > 1 && (
+                                    <Select
+                                        className="w-full"
+                                        value={warrantyLineIndex}
+                                        onChange={setWarrantyLineIndex}
+                                        options={orderDetails.map((item, index) => ({
+                                            value: index,
+                                            label: item.product_id?.product_name || t("common.na"),
+                                        }))}
+                                    />
+                                )}
+                                <Button
+                                    icon={<SafetyCertificateOutlined />}
+                                    onClick={() => setWarrantyFormOpen(true)}
+                                    className="w-full"
+                                >
+                                    {t("warranties.register_warranty")}
+                                </Button>
+                            </Space>
+                        </Card>
+                    </>
+                )}
             </div>
+
+            <WarrantyForm
+                open={warrantyFormOpen}
+                onClose={() => setWarrantyFormOpen(false)}
+                onSubmit={handleCreateWarranty}
+                submitting={registeringWarranty}
+                lookupSale={async () => []}
+                prefill={warrantyPrefill}
+            />
         </Drawer>
     );
 };

@@ -6,6 +6,7 @@ import { initSocketServer } from "./live/socketServer.js";
 import lowStockScheduler from "./utils/lowStockScheduler.js";
 import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
 import webhookRetryScheduler from "./utils/webhookRetryScheduler.js";
+import warrantyNotificationRetryScheduler from "./utils/warrantyNotificationRetryScheduler.js";
 import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.js";
 import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
 import fixedAssetDepreciationScheduler from "./utils/fixedAssetDepreciationScheduler.js";
@@ -112,6 +113,8 @@ connectDB()
                 discoveryScheduler.start();
                 console.log("💳 Starting API client billing scheduler...");
                 apiClientBillingScheduler.start();
+                console.log("🛠️ Starting warranty notification retry scheduler...");
+                warrantyNotificationRetryScheduler.start();
             }
         });
     })
@@ -133,6 +136,7 @@ process.on("SIGTERM", () => {
     itcycleKeepAliveScheduler.stop();
     discoveryScheduler.stop();
     apiClientBillingScheduler.stop();
+    warrantyNotificationRetryScheduler.stop();
     process.exit(0);
 });
 
@@ -149,5 +153,6 @@ process.on("SIGINT", () => {
     itcycleKeepAliveScheduler.stop();
     discoveryScheduler.stop();
     apiClientBillingScheduler.stop();
+    warrantyNotificationRetryScheduler.stop();
     process.exit(0);
 });

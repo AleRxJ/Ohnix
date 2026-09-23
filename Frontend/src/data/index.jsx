@@ -24,8 +24,28 @@ import {
     CloudServerOutlined,
     BuildOutlined,
     CalculatorOutlined,
+    LockOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
+import { FEATURE_MINIMUM_PLAN, PLAN_DISPLAY } from "../hooks/useSubscription";
+
+// Small "needs upgrade" pill for menu items gated by subscription plan (not
+// by team role - that's canAccess below). Shown instead of hiding the item
+// outright: the module stays visible for discoverability/upsell (same
+// "vitrina" behavior each page's own <PlanGate> already provides once you
+// click through), but the badge sets the expectation up front instead of
+// letting the user navigate into a paywall with no warning.
+const LockedPlanBadge = ({ featureKey, lang }) => {
+    const planKey = FEATURE_MINIMUM_PLAN[featureKey] ?? "growth";
+    const planLabel = PLAN_DISPLAY[planKey]?.[lang] ?? planKey;
+    const title = lang === "es" ? `Disponible desde el plan ${planLabel}` : `Available from the ${planLabel} plan`;
+    return (
+        <span className="sidebar-locked-badge" title={title}>
+            <LockOutlined style={{ fontSize: 9 }} />
+            {planLabel}
+        </span>
+    );
+};
 
 // canAccess(moduleKey) gates the module-scoped items below for invited team
 // members with restricted roles (see TeamContext's hasPermission) - the
@@ -33,7 +53,12 @@ import { Link } from "react-router-dom";
 // ever hides items for someone acting on someone else's account. Defaults
 // to "always visible" so callers that don't pass it (or aren't inside a
 // team) see the full menu, same as before this existed.
-export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false, needsFiscalSetup = false, openDiscoveriesCount = 0) => {
+//
+// can(featureKey) is the subscription-plan check (useSubscription's `can`),
+// separate from canAccess above - it drives the LockedPlanBadge, never
+// hides the item. Defaults to "always unlocked" so callers that don't pass
+// it (or haven't resolved the plan yet) don't flash a false "locked" badge.
+export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false, needsFiscalSetup = false, openDiscoveriesCount = 0, can = () => true, lang = "es") => {
     const items = [
         {
             key: "dashboard",
@@ -42,16 +67,21 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/dashboard">{t("common.dashboard")}</Link>,
         },
         {
+            key: "quotations",
+            moduleKey: "purchases",
+            icon: <TagsOutlined />,
+            label: (
+                <Link to="/quotations" className="flex items-center justify-between gap-2">
+                    <span>{t("common.quotations_nav")}</span>
+                    {!can("salesQuotations") && <LockedPlanBadge featureKey="salesQuotations" lang={lang} />}
+                </Link>
+            ),
+        },
+        {
             key: "orders",
             moduleKey: "orders",
             icon: <ShoppingCartOutlined />,
             label: <Link to="/orders">{t("common.orders")}</Link>,
-        },
-        {
-            key: "quotations",
-            moduleKey: "purchases",
-            icon: <TagsOutlined />,
-            label: <Link to="/quotations">{t("common.quotations_nav")}</Link>,
         },
         {
             key: "customers",
@@ -66,28 +96,28 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/products">{t("common.products")}</Link>,
         },
         {
-            key: "production-orders",
-            moduleKey: "products",
-            icon: <BuildOutlined />,
-            label: <Link to="/production-orders">{t("common.production_orders_nav")}</Link>,
-        },
-        {
-            key: "payroll",
-            moduleKey: "payroll",
-            icon: <WalletOutlined />,
-            label: <Link to="/payroll">{t("common.payroll_nav")}</Link>,
-        },
-        {
             key: "categories",
             moduleKey: "categories",
             icon: <AppstoreOutlined />,
             label: <Link to="/categories">{t("common.categories")}</Link>,
         },
         {
+            key: "production-orders",
+            moduleKey: "products",
+            icon: <BuildOutlined />,
+            label: <Link to="/production-orders">{t("common.production_orders_nav")}</Link>,
+        },
+        {
             key: "purchases",
             moduleKey: "purchases",
             icon: <ShoppingOutlined />,
             label: <Link to="/purchases">{t("common.purchases")}</Link>,
+        },
+        {
+            key: "warranties",
+            moduleKey: "warranties",
+            icon: <SafetyCertificateOutlined />,
+            label: <Link to="/warranties">{t("common.warranties_nav")}</Link>,
         },
         ...(showSupportDocuments ? [{
             key: "purchase-support-documents",
@@ -102,6 +132,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
         },
         {
+            key: "payroll",
+            moduleKey: "payroll",
+            icon: <WalletOutlined />,
+            label: <Link to="/payroll">{t("common.payroll_nav")}</Link>,
+        },
+        {
             key: "finance",
             moduleKey: "finance",
             icon: <WalletOutlined />,
@@ -111,7 +147,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             key: "accounting",
             moduleKey: "accounting",
             icon: <BookOutlined />,
-            label: <Link to="/accounting">{t("common.accounting_nav")}</Link>,
+            label: (
+                <Link to="/accounting" className="flex items-center justify-between gap-2">
+                    <span>{t("common.accounting_nav")}</span>
+                    {!can("accounting") && <LockedPlanBadge featureKey="accounting" lang={lang} />}
+                </Link>
+            ),
         },
         ...(showElectronicInvoicing ? [{
             key: "electronic-invoices",
@@ -136,8 +177,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: (
                 <Link to="/discoveries" className="flex items-center justify-between gap-2">
                     <span>{t("common.discoveries_nav")}</span>
-                    {openDiscoveriesCount > 0 && (
-                        <span className="sidebar-discovery-badge">{openDiscoveriesCount > 9 ? "9+" : openDiscoveriesCount}</span>
+                    {!can("discoveryEngine") ? (
+                        <LockedPlanBadge featureKey="discoveryEngine" lang={lang} />
+                    ) : (
+                        openDiscoveriesCount > 0 && (
+                            <span className="sidebar-discovery-badge">{openDiscoveriesCount > 9 ? "9+" : openDiscoveriesCount}</span>
+                        )
                     )}
                 </Link>
             ),
@@ -154,7 +199,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             key: "integrations",
             moduleKey: "billing",
             icon: <ApiOutlined />,
-            label: <Link to="/integrations">{t("common.integrations_nav")}</Link>,
+            label: (
+                <Link to="/integrations" className="flex items-center justify-between gap-2">
+                    <span>{t("common.integrations_nav")}</span>
+                    {!can("apiAccess") && <LockedPlanBadge featureKey="apiAccess" lang={lang} />}
+                </Link>
+            ),
         },
         ...(showFiscalSetup ? [{
             key: "fiscal-setup",

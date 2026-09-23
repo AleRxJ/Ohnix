@@ -283,7 +283,6 @@ const registerUser = asyncHandler(async (req, res, next) => {
                     username: createdUser.username,
                 },
                 source: "signup",
-                locale: normalizedPreferredLanguage,
             });
         }
     }

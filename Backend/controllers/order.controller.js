@@ -24,6 +24,12 @@ const mapOrder = (order) => ({
     sub_total: Number(order.subTotal),
     gst: Number(order.gst),
     total: Number(order.total),
+    // Fase 4 (multi-moneda) - sub_total/gst/total above are ALWAYS COP,
+    // regardless of currency_code. foreign_total is display-only (see
+    // Order.foreignTotal's schema comment).
+    currency_code: order.currencyCode,
+    exchange_rate: Number(order.exchangeRate),
+    foreign_total: order.foreignTotal === null || order.foreignTotal === undefined ? null : Number(order.foreignTotal),
     invoice_no: order.invoiceNo,
     created_by: order.createdBy
         ? {
@@ -62,6 +68,7 @@ const mapOrderDetail = (detail) => ({
         : null,
     quantity: detail.quantity,
     unitcost: Number(detail.unitcost),
+    unitcost_foreign: detail.unitcostForeign === null || detail.unitcostForeign === undefined ? null : Number(detail.unitcostForeign),
     total: Number(detail.total),
     return_date: detail.returnDate,
     returned_quantity: detail.returnedQuantity,
@@ -571,6 +578,11 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
             sub_total: Number(order.subTotal),
             gst: Number(order.gst),
             total: Number(order.total),
+            // Fase 4 (multi-moneda) - sub_total/gst/total above are ALWAYS
+            // COP; these are display-only.
+            currency_code: order.currencyCode,
+            exchange_rate: Number(order.exchangeRate),
+            foreign_total: order.foreignTotal === null ? null : Number(order.foreignTotal),
             customer_name: order.customer?.name || "N/A",
             customer_phone: order.customer?.phone || "N/A",
             customer_address: order.customer?.address || "N/A",
@@ -901,6 +913,22 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
                 align: "right",
             });
         summaryY += totalPanelHeight;
+
+        // Fase 4 (multi-moneda) - shown only for a foreign-currency order;
+        // COP invoices render exactly as before this phase.
+        if (orderDetails.currency_code && orderDetails.currency_code !== "COP") {
+            summaryY += 6;
+            doc.fontSize(8.5)
+                .fillColor(mutedColor)
+                .font("Helvetica")
+                .text(
+                    `Moneda: ${orderDetails.currency_code} · TRM: $${orderDetails.exchange_rate.toFixed(2)} · Total en ${orderDetails.currency_code}: ${orderDetails.foreign_total.toFixed(2)}`,
+                    totalsX,
+                    summaryY,
+                    { width: totalsWidth, align: "right" }
+                );
+            summaryY += 14;
+        }
 
         // --- Footer --------------------------------------------------------
         const noteY = summaryY + 40;
