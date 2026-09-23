@@ -288,25 +288,28 @@
 }
 
 /* Sidebar/mobile-menu nav row for a module the current plan doesn't include
-   (Cotizaciones, Contabilidad, Descubrimientos, Integraciones y API) - a
-   muted "needs upgrade" pill instead of hiding the item outright, so the
-   module stays discoverable but the user knows before clicking that it's
-   locked. See data/index.jsx's LockedPlanBadge. Deliberately neutral/muted
-   (unlike .sidebar-discovery-badge's cyan) since this isn't good news. */
+   (Cotizaciones, Contabilidad, Descubrimientos, Integraciones y API) - an
+   icon-only "needs upgrade" indicator instead of hiding the item outright,
+   so the module stays discoverable but the user knows before clicking that
+   it's locked (required plan is in the title tooltip). See
+   data/index.jsx's LockedPlanBadge. Fixed circular footprint, same as
+   .sidebar-discovery-badge, so it can never get clipped by the menu row's
+   overflow the way a text pill did. Amber (not the brand cyan used for
+   "good news" badges) to match the fiscal-setup pulsing dot's existing
+   "needs your attention" color language elsewhere in this sidebar - a
+   translucent amber tint reads consistently on both the dark sidebar and
+   the lighter selected-item highlight, unlike a plain white/gray chip. */
 .sidebar-locked-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
   flex-shrink: 0;
-  padding: 1px 7px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.5;
-  white-space: nowrap;
-  color: var(--ohnix-text-muted);
-  background: var(--ohnix-hover-overlay);
-  border: 1px solid var(--ohnix-line-5);
+  color: #FFCF70;
+  background: rgba(255, 207, 112, 0.14);
+  border: 1px solid rgba(255, 207, 112, 0.35);
 }
 
 /* Dashboard hero card for the top live Discovery - see

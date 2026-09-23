@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal, Progress, Upload } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined, DownloadOutlined, ToolOutlined, RetweetOutlined } from "@ant-design/icons";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined, DownloadOutlined, ToolOutlined, RetweetOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
@@ -9,6 +9,7 @@ import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
 import PlanGate from "../components/common/PlanGate";
 import EmptyState from "../components/common/EmptyState";
+import SectionGuide from "../components/common/SectionGuide";
 import useIsMobile from "../hooks/useIsMobile";
 import { accountingService } from "../services/accountingService";
 import { financeService } from "../services/financeService";
@@ -200,44 +201,9 @@ const exportAccountingExcel = (filename, sheets) => {
 
 const { RangePicker } = DatePicker;
 
-const AccountingSectionGuide = ({ sectionKey, title, summary, steps = [], result, concepts = [] }) => {
-    const { t } = useI18n();
-    const storageKey = `ohnix:accounting-guide:${sectionKey}`;
-    const [openKeys, setOpenKeys] = useState(() => {
-        try { return localStorage.getItem(storageKey) ? [] : ["guide"]; }
-        catch { return ["guide"]; }
-    });
-    const handleChange = (keys) => {
-        const normalized = Array.isArray(keys) ? keys : [keys].filter(Boolean);
-        setOpenKeys(normalized);
-        try { localStorage.setItem(storageKey, "seen"); } catch { /* browser storage may be disabled */ }
-    };
-    return (
-        <div className="accounting-section-guide">
-            <div className="accounting-section-guide__summary">
-                <span className="accounting-section-guide__icon"><BulbOutlined /></span>
-                <div><strong>{title}</strong><p>{summary}</p></div>
-            </div>
-            <Collapse
-                ghost
-                activeKey={openKeys}
-                onChange={handleChange}
-                expandIconPosition="end"
-                items={[{
-                    key: "guide",
-                    label: <span className="accounting-section-guide__toggle"><QuestionCircleOutlined />{t("accounting.guide_how_it_works")}</span>,
-                    children: (
-                        <div className="accounting-section-guide__content">
-                            {steps.length > 0 && <div><span>{t("accounting.guide_what_to_do")}</span><ol>{steps.map((step, index) => <li key={index}>{step}</li>)}</ol></div>}
-                            {result && <div className="accounting-section-guide__result"><span>{t("accounting.guide_result")}</span><p>{result}</p></div>}
-                            {concepts.length > 0 && <div className="accounting-section-guide__concepts"><span>{t("accounting.guide_key_concepts")}</span><div>{concepts.map((concept) => <Tooltip key={concept.label} title={concept.help}><Tag icon={<InfoCircleOutlined />}>{concept.label}</Tag></Tooltip>)}</div></div>}
-                        </div>
-                    ),
-                }]}
-            />
-        </div>
-    );
-};
+const AccountingSectionGuide = ({ sectionKey, ...props }) => (
+    <SectionGuide storageKey={`ohnix:accounting-guide:${sectionKey}`} {...props} />
+);
 
 const ContextLabel = ({ children, help }) => (
     <span className="inline-flex items-center gap-1.5">

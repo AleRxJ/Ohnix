@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
-import { Modal, Form, Select, InputNumber, Input, DatePicker, Button } from "antd";
-import { BuildOutlined } from "@ant-design/icons";
+import { Modal, Form, Select, InputNumber, Input, DatePicker, Button, Tooltip } from "antd";
+import { BuildOutlined, QuestionCircleOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
@@ -9,8 +9,15 @@ import PointOfSaleField from "../common/PointOfSaleField";
 const { Option } = Select;
 const { TextArea } = Input;
 
-const fieldLabel = (text) => (
-    <span className="font-medium text-[var(--ohnix-text-muted)]">{text}</span>
+const fieldLabel = (text, help) => (
+    <span className="inline-flex items-center gap-1.5 font-medium text-[var(--ohnix-text-muted)]">
+        {text}
+        {help && (
+            <Tooltip title={help}>
+                <QuestionCircleOutlined className="text-[var(--ohnix-text-dim)] cursor-help" />
+            </Tooltip>
+        )}
+    </span>
 );
 
 // Drafts a new ProductionOrder - only manufactured products are selectable
@@ -18,7 +25,7 @@ const fieldLabel = (text) => (
 // scales the recipe preview below live, and the batch fields only appear
 // for a product that also tracks lots (see Backend/services/
 // productionOrder.service.js#createProductionOrder).
-const CreateProductionOrderModal = ({ visible, manufacturedProducts, loading, onSubmit, onCancel }) => {
+const CreateProductionOrderModal = ({ visible, manufacturedProducts, setupAction, loading, onSubmit, onCancel }) => {
     const { t } = useI18n();
     const { currency } = useCurrency();
     const currencyInputProps = getCurrencyInputProps(currency.code);
@@ -26,6 +33,12 @@ const CreateProductionOrderModal = ({ visible, manufacturedProducts, loading, on
     const productId = Form.useWatch("product_id", form);
     const quantity = Form.useWatch("quantity", form);
     const selectedProduct = (manufacturedProducts || []).find((p) => p._id === productId);
+    // Same rounding the backend snapshots into each ProductionOrderLine.
+    const recipeLines = (selectedProduct?.recipe_components || []).map((c) => {
+        const required = Math.round(Number(c.quantity) * (Number(quantity) || 0));
+        return { ...c, required, short: required > Number(c.stock || 0) };
+    });
+    const hasShortage = recipeLines.some((c) => c.short);
 
     useEffect(() => {
         if (visible) {
@@ -83,6 +96,19 @@ const CreateProductionOrderModal = ({ visible, manufacturedProducts, loading, on
                 body: { padding: "20px 24px 24px" },
             }}
         >
+            <div className="mb-4 flex items-start gap-2 p-3 rounded-xl bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-xs text-[var(--ohnix-text-muted)]">
+                <InfoCircleOutlined className="text-[#44F3F0] mt-0.5" />
+                <span>{t("products.production_modal_intro")}</span>
+            </div>
+
+            {(manufacturedProducts || []).length === 0 && (
+                <div className="mb-4 p-3 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)]">
+                    <p className="m-0 text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("products.production_setup_title")}</p>
+                    <p className="m-0 mt-1 mb-3 text-xs text-[var(--ohnix-text-muted)]">{t("products.production_setup_body")}</p>
+                    {setupAction}
+                </div>
+            )}
+
             <Form form={form} layout="vertical">
                 <Form.Item
                     name="product_id"
@@ -107,25 +133,38 @@ const CreateProductionOrderModal = ({ visible, manufacturedProducts, loading, on
 
                 {selectedProduct && (
                     <div className="mb-4 p-3 rounded-xl bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)]">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ohnix-text-dim)] mb-2">
-                            {t("products.recipe_preview")}
-                        </p>
+                        <div className="flex items-center justify-between mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--ohnix-text-dim)]">
+                            <span>{t("products.recipe_preview")}</span>
+                            <span className="flex gap-4">
+                                <span className="w-16 text-right">{t("products.recipe_col_required")}</span>
+                                <span className="w-16 text-right">{t("products.recipe_col_available")}</span>
+                            </span>
+                        </div>
                         <div className="space-y-1">
-                            {(selectedProduct.recipe_components || []).map((c) => (
+                            {recipeLines.map((c) => (
                                 <div key={c.product_id} className="flex items-center justify-between text-sm">
                                     <span className="text-[var(--ohnix-text-primary)] truncate">{c.product_name}</span>
-                                    <span className="text-[var(--ohnix-text-muted)] flex-shrink-0 ml-2">
-                                        {Number(c.quantity) * (Number(quantity) || 0)} ({t("products.stock")}: {c.stock})
+                                    <span className="flex gap-4 flex-shrink-0 ml-2">
+                                        <span className="w-16 text-right text-[var(--ohnix-text-primary)]">{c.required}</span>
+                                        <span className={`w-16 text-right ${c.short ? "text-[#fb7185] font-semibold" : "text-[var(--ohnix-text-muted)]"}`}>
+                                            {c.stock}
+                                        </span>
                                     </span>
                                 </div>
                             ))}
                         </div>
+                        {hasShortage && (
+                            <div className="mt-3 flex items-start gap-2 text-xs text-[#fb7185]">
+                                <WarningOutlined className="mt-0.5" />
+                                <span>{t("products.recipe_insufficient_stock_hint")}</span>
+                            </div>
+                        )}
                     </div>
                 )}
 
                 <Form.Item
                     name="quantity"
-                    label={fieldLabel(t("products.quantity_to_produce"))}
+                    label={fieldLabel(t("products.quantity_to_produce"), t("products.production_quantity_help"))}
                     rules={[{ required: true, message: t("orders.enter_quantity_message") }]}
                 >
                     <InputNumber min={1} precision={0} className="w-full auth-ohnix-input" size="large" />
@@ -148,7 +187,7 @@ const CreateProductionOrderModal = ({ visible, manufacturedProducts, loading, on
                     </>
                 )}
 
-                <Form.Item name="labor_cost" label={fieldLabel(t("products.labor_cost"))} initialValue={0}>
+                <Form.Item name="labor_cost" label={fieldLabel(t("products.labor_cost"), t("products.production_labor_help"))} initialValue={0}>
                     <InputNumber
                         min={0}
                         precision={2}
@@ -160,7 +199,7 @@ const CreateProductionOrderModal = ({ visible, manufacturedProducts, loading, on
                     />
                 </Form.Item>
 
-                <Form.Item name="overhead_cost" label={fieldLabel(t("products.overhead_cost"))} initialValue={0}>
+                <Form.Item name="overhead_cost" label={fieldLabel(t("products.overhead_cost"), t("products.production_overhead_help"))} initialValue={0}>
                     <InputNumber
                         min={0}
                         precision={2}
@@ -171,6 +210,8 @@ const CreateProductionOrderModal = ({ visible, manufacturedProducts, loading, on
                         size="large"
                     />
                 </Form.Item>
+
+                <p className="-mt-2 mb-4 text-xs text-[var(--ohnix-text-dim)]">{t("products.production_cost_formula")}</p>
 
                 <Form.Item name="notes" label={fieldLabel(t("products.production_notes_label"))} className="mb-0">
                     <TextArea rows={2} maxLength={280} showCount placeholder={t("products.production_notes_placeholder")} className="auth-ohnix-input" />

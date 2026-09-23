@@ -29,20 +29,25 @@ import {
 import { Link } from "react-router-dom";
 import { FEATURE_MINIMUM_PLAN, PLAN_DISPLAY } from "../hooks/useSubscription";
 
-// Small "needs upgrade" pill for menu items gated by subscription plan (not
-// by team role - that's canAccess below). Shown instead of hiding the item
-// outright: the module stays visible for discoverability/upsell (same
+// Small "needs upgrade" indicator for menu items gated by subscription plan
+// (not by team role - that's canAccess below). Shown instead of hiding the
+// item outright: the module stays visible for discoverability/upsell (same
 // "vitrina" behavior each page's own <PlanGate> already provides once you
 // click through), but the badge sets the expectation up front instead of
-// letting the user navigate into a paywall with no warning.
+// letting the user navigate into a paywall with no warning. Icon-only and
+// fixed-size (mirrors .sidebar-discovery-badge's circular footprint) so it
+// never overflows a long label like "Integraciones y API" - the exact plan
+// name lives in the tooltip, not inline text, since a text pill was getting
+// clipped by the menu row's overflow. Amber, matching the fiscal-setup
+// pulsing dot's existing "needs your attention" language elsewhere in this
+// same sidebar, instead of a generic gray chip with no brand identity.
 const LockedPlanBadge = ({ featureKey, lang }) => {
     const planKey = FEATURE_MINIMUM_PLAN[featureKey] ?? "growth";
     const planLabel = PLAN_DISPLAY[planKey]?.[lang] ?? planKey;
     const title = lang === "es" ? `Disponible desde el plan ${planLabel}` : `Available from the ${planLabel} plan`;
     return (
         <span className="sidebar-locked-badge" title={title}>
-            <LockOutlined style={{ fontSize: 9 }} />
-            {planLabel}
+            <LockOutlined style={{ fontSize: 10 }} />
         </span>
     );
 };
@@ -72,7 +77,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <TagsOutlined />,
             label: (
                 <Link to="/quotations" className="flex items-center justify-between gap-2">
-                    <span>{t("common.quotations_nav")}</span>
+                    <span className="truncate min-w-0 flex-1">{t("common.quotations_nav")}</span>
                     {!can("salesQuotations") && <LockedPlanBadge featureKey="salesQuotations" lang={lang} />}
                 </Link>
             ),
@@ -149,7 +154,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <BookOutlined />,
             label: (
                 <Link to="/accounting" className="flex items-center justify-between gap-2">
-                    <span>{t("common.accounting_nav")}</span>
+                    <span className="truncate min-w-0 flex-1">{t("common.accounting_nav")}</span>
                     {!can("accounting") && <LockedPlanBadge featureKey="accounting" lang={lang} />}
                 </Link>
             ),
@@ -176,7 +181,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             // around it, and the badge is what says so at a glance.
             label: (
                 <Link to="/discoveries" className="flex items-center justify-between gap-2">
-                    <span>{t("common.discoveries_nav")}</span>
+                    <span className="truncate min-w-0 flex-1">{t("common.discoveries_nav")}</span>
                     {!can("discoveryEngine") ? (
                         <LockedPlanBadge featureKey="discoveryEngine" lang={lang} />
                     ) : (
@@ -201,7 +206,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <ApiOutlined />,
             label: (
                 <Link to="/integrations" className="flex items-center justify-between gap-2">
-                    <span>{t("common.integrations_nav")}</span>
+                    <span className="truncate min-w-0 flex-1">{t("common.integrations_nav")}</span>
                     {!can("apiAccess") && <LockedPlanBadge featureKey="apiAccess" lang={lang} />}
                 </Link>
             ),
