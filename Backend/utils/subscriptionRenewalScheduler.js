@@ -9,10 +9,17 @@
 //     (status: "paused") for anything that was never renewed/paid.
 //
 // Grace period avoids penalizing users who renew 1-2 days late.
+//
+// Subscriptions with a stored card and autoRenew on are charged
+// automatically first (runDueAutoRenewals - see
+// services/subscriptionAutoRenew.service.js, which also owns the retry
+// schedule) and get a pre-charge notice instead of the post-expiry
+// "please renew" reminder.
 
 import cron from "node-cron";
 import { prisma } from "../db/prisma.js";
 import { notifyUserRenewalReminder, notifyUserTrialEndingSoon } from "./upgradeRequestNotifications.js";
+import { runDueAutoRenewals, sendUpcomingChargeNotices } from "../services/subscriptionAutoRenew.service.js";
 
 const REMINDER_DAYS_AFTER_EXPIRY = 1;  // send email 1 day after plan expires
 const TRIAL_REMINDER_DAYS_BEFORE = 3;  // send email 3 days before trial ends
@@ -29,6 +36,9 @@ async function sendRenewalReminders() {
         where: {
             status: "active",
             endsAt: { gte: windowStart, lte: windowEnd },
+            // Auto-renewing accounts are being charged/retried instead -
+            // their failure emails already tell them what to do.
+            autoRenew: false,
         },
         include: {
             user: { select: { id: true, email: true, username: true, preferredLanguage: true } },
@@ -98,9 +108,10 @@ async function sendTrialEndingReminders() {
 // Every plan (Starter included) requires payment - there is no free tier to
 // fall back to anymore, so a lapsed subscription is blocked (status: "paused",
 // which pricing.middleware.js's ensureActiveSubscription already gates all
-// product/report/API access on) rather than auto-billed for a renewal (this
-// system has no stored payment method to do that with - every renewal is a
-// manual checkout). `plan` is otherwise left untouched so the user's billing
+// product/report/API access on). Accounts with automatic renewal are paused
+// here too once their charges keep failing past the grace period - their
+// later retries (runDueAutoRenewals) reactivate them on success. `plan` is
+// otherwise left untouched so the user's billing
 // page still shows what they were on when reactivating - EXCEPT for a
 // subscription with a scheduledPlan set (self-service "bajar de plan" - see
 // downgradeMySubscription): that's the one case `plan` DOES change here, on
@@ -190,6 +201,9 @@ class SubscriptionRenewalScheduler {
         this.task = cron.schedule("0 8 * * *", async () => {
             console.log("[renewal-scheduler] Running daily renewal checks...");
             try {
+                // Charges first, so a successful renewal is never reminded or blocked.
+                await runDueAutoRenewals();
+                await sendUpcomingChargeNotices();
                 await sendRenewalReminders();
                 await sendTrialEndingReminders();
                 await blockLapsedSubscriptions();
@@ -210,10 +224,12 @@ class SubscriptionRenewalScheduler {
 
     // Manual trigger for testing
     async runNow() {
+        const autoRenewals = await runDueAutoRenewals();
+        const upcomingChargeNotices = await sendUpcomingChargeNotices();
         const reminders = await sendRenewalReminders();
         const trialReminders = await sendTrialEndingReminders();
         const blocked = await blockLapsedSubscriptions();
-        return { reminders, trialReminders, blocked };
+        return { autoRenewals, upcomingChargeNotices, reminders, trialReminders, blocked };
     }
 }
 

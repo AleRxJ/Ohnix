@@ -399,6 +399,24 @@ export const getReconciliationReport = asyncHandler(async (req, res, next) => {
         movement: row.matchedMovement ? mapCashMovement({ ...row.matchedMovement, cashAccountId: row.cashAccountId, createdById: row.createdById }) : null,
     })), "Reconciliation report fetched successfully"));
 });
+export const unmatchStatementEntry = asyncHandler(async (req, res, next) => {
+    const { cash_account_id, entry_id } = req.body || {};
+    if (!cash_account_id || !entry_id) return next(new ApiError(400, "cash_account_id and entry_id are required.", [], "", "reconciliation_unmatch_fields_required"));
+    const entry = await reconciliationService.unmatchEntry({ accountId: req.user.prismaId, cashAccountId: cash_account_id, entryId: entry_id });
+    return res.status(200).json(new ApiResponse(200, mapStatementEntry(entry), "Entry unmatched successfully"));
+});
+
+export const getReconciliationBalance = asyncHandler(async (req, res, next) => {
+    const { cash_account_id, as_of, statement_balance } = req.query;
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
+    const balance = await reconciliationService.getReconciliationBalance({ accountId: req.user.prismaId, cashAccountId: cash_account_id, asOf: as_of, statementBalance: statement_balance });
+    return res.status(200).json(new ApiResponse(200, balance, "Reconciliation balance fetched successfully"));
+});
+
+export const getGmfAccount = asyncHandler(async (req, res) => {
+    const account = await reconciliationService.getGmfAccount({ accountId: req.user.prismaId });
+    return res.status(200).json(new ApiResponse(200, { _id: account.id, code: account.code, name: account.name, account_type: account.accountType, is_active: account.isActive }, "GMF account fetched successfully"));
+});
 export const allocateOrderPayment = asyncHandler(async (req, res) => {
     const allocation = await paymentAllocationService.allocateReceivable({ accountId: req.user.prismaId, actorId: req.user.actorId, paymentId: req.params.paymentId, documentId: req.params.orderId, amount: req.body?.amount });
     return res.status(201).json(new ApiResponse(201, allocation, "Payment allocated successfully."));

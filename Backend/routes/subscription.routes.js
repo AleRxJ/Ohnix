@@ -11,11 +11,14 @@ import {
     createMyUpgradeCheckoutSession,
     createRenewalCheckout,
     createUpgradeRequest,
+    deleteMyPaymentMethod,
     downgradeMySubscription,
     extendUserSubscriptionAdmin,
     getAdminPayments,
     getAdminSubscriptions,
+    getCardCheckoutParams,
     getCheckoutPaymentMethods,
+    getMyPaymentMethod,
     getEpaycoCheckoutParams,
     getMyUpgradeCheckoutStatus,
     getMyUpgradeRequests,
@@ -28,14 +31,17 @@ import {
     getUserSubscriptionAdmin,
     getUserUsageAdmin,
     pauseMySubscription,
+    payMyRequestWithCard,
     reactivateMySubscription,
     reportEpaycoCheckoutClosed,
     reportEpaycoTransactionReference,
     reverifyAdminPayment,
+    setMyAutoRenew,
     shortenUserSubscriptionAdmin,
     startMyStarterTrial,
     uncancelUserSubscriptionAdmin,
     undoMyDowngrade,
+    updateMyPaymentMethod,
     updateUpgradeRequestAdmin,
     updateUserPlan,
     verifyAndActivateBySession,
@@ -96,6 +102,16 @@ router.route("/me/upgrade-requests/:id/epayco-checkout-closed").post(requireModu
 // lost (e.g. Render cold start). Only ever fills in a lookup key for the
 // existing trusted verification pipeline - see reportEpaycoTransactionReference.
 router.route("/me/upgrade-requests/:id/epayco-reference").post(requireModulePermission("billing", "edit"), reportEpaycoTransactionReference);
+// Card form checkout (Colombia): ePayco-tokenized card, charged server-side
+// and stored for automatic renewal - see subscriptionAutoRenew.service.js.
+router.route("/me/upgrade-requests/:id/card-checkout").get(requireModulePermission("billing", "edit"), getCardCheckoutParams);
+router.route("/me/upgrade-requests/:id/card-pay").post(requireModulePermission("billing", "edit"), blockDuringImpersonation, payMyRequestWithCard);
+// Stored card + automatic renewal settings.
+router.route("/me/payment-method")
+    .get(requireModulePermission("billing", "view"), getMyPaymentMethod)
+    .put(requireModulePermission("billing", "edit"), blockDuringImpersonation, updateMyPaymentMethod)
+    .delete(requireModulePermission("billing", "edit"), blockDuringImpersonation, deleteMyPaymentMethod);
+router.route("/me/auto-renew").patch(requireModulePermission("billing", "edit"), blockDuringImpersonation, setMyAutoRenew);
 // Renewal: creates checkout for the same current plan
 router.route("/me/renew").post(requireModulePermission("billing", "edit"), blockDuringImpersonation, createRenewalCheckout);
 router.route("/me/pause").patch(requireModulePermission("billing", "edit"), blockDuringImpersonation, pauseMySubscription);

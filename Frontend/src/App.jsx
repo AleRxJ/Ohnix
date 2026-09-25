@@ -153,6 +153,7 @@ const Discoveries = lazy(() => import("./pages/Discoveries"));
 const Billing = lazy(() => import("./pages/Billing"));
 const Integrations = lazy(() => import("./pages/Integrations"));
 const Finance = lazy(() => import("./pages/Finance"));
+const BankReconciliation = lazy(() => import("./pages/BankReconciliation"));
 const Accounting = lazy(() => import("./pages/Accounting"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
@@ -163,6 +164,7 @@ const AdminDianTestMatrix = lazy(() => import("./pages/AdminDianTestMatrix"));
 const AdminIncomeTaxConfig = lazy(() => import("./pages/AdminIncomeTaxConfig"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
+const CardCheckout = lazy(() => import("./pages/CardCheckout"));
 const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect"));
 const ElectronicInvoices = lazy(() => import("./pages/ElectronicInvoices"));
 const PurchaseSupportDocuments = lazy(() => import("./pages/PurchaseSupportDocuments"));
@@ -410,6 +412,7 @@ function App() {
                                 <Route path="reports/*" element={<RequireReportsAccess><Reports /></RequireReportsAccess>} />
                                 <Route path="discoveries" element={<RequireDiscoveriesAccess><Discoveries /></RequireDiscoveriesAccess>} />
                                 <Route path="finance" element={<RequireFinanceAccess><Finance /></RequireFinanceAccess>} />
+                                <Route path="finance/reconciliation" element={<RequireFinanceAccess><OfflineGate><BankReconciliation /></OfflineGate></RequireFinanceAccess>} />
                                 <Route path="accounting" element={<RequireAccountingAccess><OfflineGate><Accounting /></OfflineGate></RequireAccountingAccess>} />
                                 <Route path="team" element={<OfflineGate><Team /></OfflineGate>} />
                                 <Route path="billing" element={<RequireBillingAccess><OfflineGate><Billing /></OfflineGate></RequireBillingAccess>} />
@@ -419,6 +422,7 @@ function App() {
                                 <Route path="integrations" element={<RequireBillingAccess><OfflineGate><Integrations /></OfflineGate></RequireBillingAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-checkout" element={<RequireBillingAccess><EpaycoCheckout /></RequireBillingAccess>} />
+                                <Route path="billing/card-checkout" element={<RequireBillingAccess><OfflineGate><CardCheckout /></OfflineGate></RequireBillingAccess>} />
                                 <Route path="billing/epayco-response" element={<RequireBillingAccess><EpaycoResponseRedirect /></RequireBillingAccess>} />
                                 <Route path="admin/management" element={<AdminManagement />} />
                                 <Route path="admin/subscriptions" element={<AdminSubscriptions />} />

@@ -9,7 +9,11 @@ export const reverseJournalEntry = async ({ accountId, actorId, id, reason, entr
     return prisma.$transaction(async (tx) => {
         const original = await tx.journalEntry.findFirst({ where: { id, period: { createdById: accountId } }, include: { lines: true } });
         if (!original) throw new ApiError(404, "Journal entry not found.", [], "", "journal_entry_not_found");
-        if (["period_close", "period_reopen", "period_reclose", "manual_journal_reversal"].includes(original.sourceType)) throw new ApiError(409, "This journal entry cannot be reversed.", [], "", "journal_reversal_not_allowed");
+        // vat_* entries are owned by a VatSettlement row - reversing them here
+        // would desync its status (and a manual_journal_reversal touching
+        // 240805/240810 is counted by getVatReport). Void/pay go through
+        // vatSettlement.service.js instead.
+        if (["period_close", "period_reopen", "period_reclose", "manual_journal_reversal", "vat_settlement", "vat_settlement_void", "vat_payment"].includes(original.sourceType)) throw new ApiError(409, "This journal entry cannot be reversed.", [], "", "journal_reversal_not_allowed");
         const reversal = await recordJournalEntry(tx, { accountId, createdById: actorId, entryDate: date, description: `Reversal: ${original.description || original.sourceType}. ${String(reason).trim()}`, sourceType: "manual_journal_reversal", sourceId: original.id, lines: original.lines.map((line) => ({ chartAccountId: line.chartAccountId, debit: Number(line.credit), credit: Number(line.debit), description: line.description, costCenterId: line.costCenterId, thirdPartyType: line.thirdPartyType, thirdPartyId: line.thirdPartyId, thirdPartyName: line.thirdPartyName, thirdPartyDocument: line.thirdPartyDocument })) });
         return { originalId: original.id, reversalId: reversal.id };
     });

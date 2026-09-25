@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import Stripe from "stripe";
+import { prisma } from "../db/prisma.js";
 import {
+    createEpaycoCardCheckoutSession,
     createEpaycoCheckoutSession,
     isEpaycoConfigured,
 } from "./epayco.service.js";
@@ -47,8 +49,11 @@ const REST_OF_WORLD_CONFIG = {
 const COUNTRY_CONFIG = {
     CO: {
         currency: "cop",
-        // epayco is the first option for CO so it appears first in the UI
-        supportedMethods: ["epayco", "pse", "bancolombia_button", "card"],
+        // card_token (Ohnix's own ePayco-tokenized card form - the card is
+        // saved for automatic renewal) is first so it appears first in the
+        // UI; "epayco" (the widget: PSE, Nequi, cash...) stays for manual
+        // payments that can't be stored.
+        supportedMethods: ["card_token", "epayco", "pse", "bancolombia_button", "card"],
     },
     ...Object.fromEntries(
         EUR_COUNTRY_CODES.map((code) => [code, buildEurCountryConfig(code)])
@@ -386,6 +391,9 @@ export const createUpgradeCheckoutSession = async ({
     if (normalizedPaymentMethod === "epayco") {
         return createEpaycoCheckoutSession({ request, user });
     }
+    if (normalizedPaymentMethod === "card_token") {
+        return createEpaycoCardCheckoutSession({ request, user });
+    }
     // ───────────────────────────────────────────────────────────────────────
 
     const stripePaymentMethodCandidates = getStripeMethodCandidates({
@@ -459,10 +467,26 @@ export const createUpgradeCheckoutSession = async ({
                     .toISOString()
                     .slice(0, 16)}`;
 
+                // A card paid here is saved on a Stripe Customer for
+                // automatic renewal (chargeStripeOffSession) - other
+                // methods (SEPA/Bizum) stay one-off manual payments.
+                const saveCard = candidateMethod === "card";
+                const stripeCustomerId = saveCard
+                    ? await ensureStripeCustomerForUser({ stripe, user })
+                    : null;
+
                 session = await stripe.checkout.sessions.create(
                     {
                         mode: "payment",
-                        customer_email: user.email,
+                        ...(stripeCustomerId
+                            ? {
+                                  customer: stripeCustomerId,
+                                  payment_intent_data: { setup_future_usage: "off_session" },
+                                  custom_text: {
+                                      submit: { message: RECURRING_CONSENT_TEXT_STRIPE },
+                                  },
+                              }
+                            : { customer_email: user.email }),
                         payment_method_types: [candidateMethod],
                         line_items: [
                             {
@@ -493,6 +517,7 @@ export const createUpgradeCheckoutSession = async ({
                             checkoutPaymentMethod: normalizedPaymentMethod,
                             checkoutPaymentMethodResolved: candidateMethod,
                             checkoutCurrencyResolved: candidateCurrency,
+                            saveCardForAutoRenew: saveCard ? "true" : "false",
                         },
                     },
                     { idempotencyKey }
@@ -537,6 +562,139 @@ export const createUpgradeCheckoutSession = async ({
         resolvedCurrency,
     };
 };
+
+// ---------------------------------------------------------------------------
+// Stored-card (auto-renewal) helpers - see subscriptionAutoRenew.service.js
+// ---------------------------------------------------------------------------
+
+const RECURRING_CONSENT_TEXT_STRIPE =
+    "Tu tarjeta quedará guardada y se cobrará automáticamente en cada renovación de tu plan Ohnix hasta que desactives la renovación automática en Facturación. / Your card will be saved and charged automatically at each renewal until you turn off automatic renewal in Billing.";
+
+// One Stripe Customer per Ohnix account, stored on Subscription so repeat
+// checkouts and renewals reuse the same saved card.
+export const ensureStripeCustomerForUser = async ({ stripe = getStripe(), user }) => {
+    if (!stripe) throw new Error("Stripe is not configured");
+    const subscription = await prisma.subscription.findUnique({
+        where: { userId: user.id },
+        select: { stripeCustomerId: true },
+    });
+    if (subscription?.stripeCustomerId) return subscription.stripeCustomerId;
+
+    const customer = await stripe.customers.create(
+        {
+            email: user.email,
+            name: user.username || undefined,
+            metadata: { ohnixUserId: user.id },
+        },
+        { idempotencyKey: `ohnix_customer_${user.id}` }
+    );
+    await prisma.subscription.updateMany({
+        where: { userId: user.id },
+        data: { stripeCustomerId: customer.id },
+    });
+    return customer.id;
+};
+
+export const getStripePaymentMethodSummary = async (paymentMethodId) => {
+    const stripe = getStripe();
+    if (!stripe || !paymentMethodId) return null;
+    const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+    return {
+        id: pm.id,
+        brand: pm.card?.brand || pm.type,
+        last4: pm.card?.last4 || null,
+        expMonth: pm.card?.exp_month || null,
+        expYear: pm.card?.exp_year || null,
+    };
+};
+
+const extractId = (value) => (typeof value === "string" ? value : value?.id || null);
+
+// Resolves the PaymentMethod a completed checkout session left behind: the
+// payment-mode session's PaymentIntent (setup_future_usage) or a setup-mode
+// session's SetupIntent.
+export const getPaymentMethodFromCheckoutSession = async (session) => {
+    const stripe = getStripe();
+    if (!stripe || !session) return null;
+    if (session.mode === "setup" && session.setup_intent) {
+        const intent = await stripe.setupIntents.retrieve(extractId(session.setup_intent));
+        return extractId(intent.payment_method);
+    }
+    if (session.payment_intent) {
+        const intent = await stripe.paymentIntents.retrieve(extractId(session.payment_intent));
+        return extractId(intent.payment_method);
+    }
+    return null;
+};
+
+// "Cambiar tarjeta" for a Stripe customer - Stripe-hosted setup page that
+// validates the new card (including 3DS) without charging it.
+export const createStripeSetupSession = async ({ user }) => {
+    const stripe = getStripe();
+    if (!stripe) throw new Error("Stripe is not configured");
+    const customerId = await ensureStripeCustomerForUser({ stripe, user });
+    const frontendBase = process.env.FRONTEND_URL?.replace(/\/$/, "") || "http://localhost:5173";
+    const session = await stripe.checkout.sessions.create({
+        mode: "setup",
+        customer: customerId,
+        payment_method_types: ["card"],
+        success_url: `${frontendBase}/dashboard/billing?card=updated`,
+        cancel_url: `${frontendBase}/dashboard/billing?card=cancelled`,
+        custom_text: { submit: { message: RECURRING_CONSENT_TEXT_STRIPE } },
+        metadata: { ohnixUserId: user.id, purpose: "auto_renew_card_update" },
+    });
+    return { checkoutUrl: session.url, sessionId: session.id };
+};
+
+// Server-initiated renewal charge against the saved card. Never throws.
+// A card that needs 3DS for this particular charge fails with
+// authentication_required - reported as "requires_action" so the customer
+// gets a link to pay manually instead.
+export const chargeStripeOffSession = async ({
+    customerId,
+    paymentMethodId,
+    amount,
+    currency,
+    description,
+    metadata,
+    idempotencyKey,
+}) => {
+    const stripe = getStripe();
+    if (!stripe) return { success: false, state: "failed", ref: null, message: "Stripe is not configured" };
+    try {
+        const intent = await stripe.paymentIntents.create(
+            {
+                amount,
+                currency,
+                customer: customerId,
+                payment_method: paymentMethodId,
+                off_session: true,
+                confirm: true,
+                description,
+                metadata,
+            },
+            idempotencyKey ? { idempotencyKey } : undefined
+        );
+        const success = intent.status === "succeeded";
+        return {
+            success,
+            state: success ? "approved" : intent.status === "processing" ? "pending" : "failed",
+            ref: intent.id,
+            amount: intent.amount_received || intent.amount,
+            currency: intent.currency,
+            isTest: !intent.livemode,
+            message: success ? null : intent.status,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            state: error?.code === "authentication_required" ? "requires_action" : "failed",
+            ref: error?.raw?.payment_intent?.id || null,
+            message: error?.raw?.message || error?.message || String(error),
+        };
+    }
+};
+
 
 export const parseStripeWebhookEvent = ({ rawBody, signature }) => {
     const stripe = getStripe();

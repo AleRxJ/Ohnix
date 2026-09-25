@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Spin, Table, Popconfirm, Tooltip } from "antd";
-import { AuditOutlined, HistoryOutlined, PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined, RiseOutlined, FallOutlined } from "@ant-design/icons";
+import { AuditOutlined, HistoryOutlined, PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined, RiseOutlined, FallOutlined, FileSearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { financeErrorMessage } from "../utils/financeError";
 import PageHeader from "../components/common/PageHeader";
@@ -25,6 +26,7 @@ const Finance = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const { hasPermission } = useTeam();
+    const navigate = useNavigate();
     const canEdit = hasPermission("finance", "edit");
     const { accounts, loading, submitting, load: reloadAccounts, createAccount, updateAccount, deactivateAccount, transferCash, adjustCash } = useCashAccounts();
     const [pointsOfSale, setPointsOfSale] = useState([]);
@@ -237,6 +239,7 @@ const Finance = () => {
                                             >
                                                 {t("finance.view_movements")}
                                             </Button>
+                                            <Tooltip title={t("finance.reconcile_cta")}><Button icon={<FileSearchOutlined />} onClick={() => navigate(`/finance/reconciliation?account=${record._id}`)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] transition-all duration-200" /></Tooltip>
                                             {canEdit && (
                                                 <Tooltip title={t("finance.adjustment_cta")}><Button icon={<AuditOutlined />} onClick={() => openAdjustment(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] transition-all duration-200" /></Tooltip>
                                             )}

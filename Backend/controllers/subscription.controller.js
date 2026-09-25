@@ -30,6 +30,7 @@ import {
     getSupportedPaymentMethodsByCountry,
     isAutonomousCheckoutConfigured,
     parsePaymentWebhookEvent,
+    createStripeSetupSession,
 } from "../services/payment.service.js";
 import {
     buildEpaycoWidgetParams,
@@ -41,7 +42,17 @@ import {
     isEpaycoTransactionApproved,
     isEpaycoCancelledResponse,
     parseEpaycoTestFlag,
+    getEpaycoPublicTokenizationConfig,
 } from "../services/epayco.service.js";
+import {
+    deleteStoredCard,
+    getPaymentMethodInfo,
+    payRequestWithNewCard,
+    replaceEpaycoCard,
+    saveStripeCardFromCheckoutSession,
+    setAutoRenew,
+    SUPPORTED_DOC_TYPES,
+} from "../services/subscriptionAutoRenew.service.js";
 
 const normalizePaymentLink = (value) => {
     const trimmed = `${value || ""}`.trim();
@@ -100,6 +111,7 @@ export const UPGRADE_REQUEST_SELECT = {
     paidCurrency: true,
     periodStartsAt: true,
     periodEndsAt: true,
+    isAutoCharge: true,
     createdAt: true,
     updatedAt: true,
 };
@@ -227,7 +239,10 @@ const getUsageSnapshot = async (userId, subscription) => {
 // being activated.
 const SUBSCRIPTION_PERIOD_DAYS_BY_CYCLE = { MONTHLY: 30, ANNUAL: 365 };
 
-const closeApprovedRequestAndActivatePlan = async ({
+// `notify: false` is used by automatic renewals (subscriptionAutoRenew.service.js),
+// which send their own receipt email instead of the "request resolved" /
+// "plan activated" pair a checkout gets.
+export const closeApprovedRequestAndActivatePlan = async ({
     requestId,
     actedBy,
     paymentSessionId,
@@ -238,6 +253,7 @@ const closeApprovedRequestAndActivatePlan = async ({
     isTestPayment,
     paidAmount,
     paidCurrency,
+    notify = true,
 }) => {
     const result = await prisma.$transaction(async (tx) => {
         const existing = await tx.planUpgradeRequest.findUnique({
@@ -346,6 +362,11 @@ const closeApprovedRequestAndActivatePlan = async ({
                     endsAt,
                     trialEndsAt: null,
                     billingCycle: existing.billingCycle,
+                    // Any confirmed payment (automatic or manual) settles
+                    // pending auto-renew retries for the period it covers.
+                    renewalAttempts: 0,
+                    nextRenewalAttemptAt: null,
+                    lastRenewalError: null,
                 },
                 create: {
                     userId: existing.userId,
@@ -369,7 +390,7 @@ const closeApprovedRequestAndActivatePlan = async ({
         return null;
     }
 
-    if (result.activated) {
+    if (result.activated && notify) {
         const targetUser = await prisma.user.findUnique({
             where: { id: result.request.userId },
             select: {
@@ -841,6 +862,11 @@ export const getMySubscription = asyncHandler(async (req, res) => {
                 scheduledPlan: subscription.scheduledPlan ?? null,
                 limits: getPlanLimits(effectivePlan),
                 lowStockThreshold: subscription.lowStockThreshold ?? null,
+                autoRenew: subscription.autoRenew ?? false,
+                card: subscription.cardLast4
+                    ? { brand: subscription.cardBrand, last4: subscription.cardLast4 }
+                    : null,
+                renewalAttempts: subscription.renewalAttempts ?? 0,
             },
             "Subscription fetched successfully"
         )
@@ -914,6 +940,9 @@ const setMyStatus = (status, message) =>
                 endsAt: nextEndsAt,
                 // Reactivating always undoes a pending cancel-at-period-end.
                 ...(status === "active" && { cancelAtPeriodEnd: false }),
+                // An explicit pause also stops automatic charges - otherwise
+                // the next retry would charge the card and silently undo it.
+                ...(status === "paused" && { autoRenew: false, nextRenewalAttemptAt: null }),
             },
             select: {
                 plan: true,
@@ -2157,7 +2186,9 @@ export const createMyUpgradeCheckoutSession = asyncHandler(async (req, res, next
         data: {
             paymentProvider: `${checkout.provider}:${checkout.paymentMethod}:${checkout.country}`,
             paymentSessionId: checkout.sessionId,
-            paymentStatus: "pending",
+            // The card form (card_token) charges only when submitted - until
+            // then no payment is in flight, and "pending" would block retries.
+            paymentStatus: checkout.paymentMethod === "card_token" ? "awaiting_checkout" : "pending",
             paymentLink: checkout.checkoutUrl,
         },
     });
@@ -2378,6 +2409,15 @@ export const handlePaymentWebhook = async (req, res) => {
 
         const provider = event?.provider || "stripe";
         const session = event.data?.object;
+
+        // Card saved for automatic renewal: a paid card checkout created
+        // with setup_future_usage, or a "cambiar tarjeta" setup session.
+        // Isolated so a failure here never blocks plan activation below.
+        if (provider === "stripe" && event?.type === "checkout.session.completed") {
+            await saveStripeCardFromCheckoutSession(session).catch((err) =>
+                console.error("[payment-webhook] Could not store card for auto-renewal", err?.message)
+            );
+        }
 
         if (
             event?.type === "checkout.session.completed" ||
@@ -2918,7 +2958,9 @@ export const createRenewalCheckout = asyncHandler(async (req, res, next) => {
         data: {
             paymentProvider: `${checkout.provider}:${checkout.paymentMethod}:${checkout.country}`,
             paymentSessionId: checkout.sessionId,
-            paymentStatus: "pending",
+            // The card form (card_token) charges only when submitted - until
+            // then no payment is in flight, and "pending" would block retries.
+            paymentStatus: checkout.paymentMethod === "card_token" ? "awaiting_checkout" : "pending",
             paymentLink: checkout.checkoutUrl,
         },
     });
@@ -3216,3 +3258,140 @@ export const handleEpaycoResponse = (req, res) => {
         `${frontendBase}/billing/payment-success?requestId=${encodeURIComponent(requestId)}`
     );
 };
+
+// =============================================================================
+// Stored card / automatic renewal (subscriptionAutoRenew.service.js)
+// =============================================================================
+
+const getClientIp = (req) =>
+    `${req.headers["x-forwarded-for"] || ""}`.split(",")[0].trim() || req.ip || undefined;
+
+/**
+ * GET /subscriptions/me/upgrade-requests/:id/card-checkout
+ * What CardCheckout.jsx needs: the amount/plan being paid plus ePayco's
+ * PUBLIC tokenization config (never a secret).
+ */
+export const getCardCheckoutParams = asyncHandler(async (req, res, next) => {
+    const request = await prisma.planUpgradeRequest.findFirst({
+        where: { id: req.params.id, userId: req.user.prismaId },
+        select: UPGRADE_REQUEST_SELECT,
+    });
+    if (!request) return next(new ApiError(404, "Upgrade request not found"));
+    if (request.status !== "approved") {
+        return next(new ApiError(409, "Esta solicitud ya no admite pagos."));
+    }
+    if (!isEpaycoConfigured()) return next(new ApiError(503, "ePayco is not configured."));
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                requestId: request.id,
+                currentPlan: request.currentPlan,
+                targetPlan: request.targetPlan,
+                billingCycle: request.billingCycle,
+                isRenewal: request.currentPlan === request.targetPlan,
+                amount: getEpaycoAmount(request.targetPlan, request.billingCycle),
+                currency: "COP",
+                paymentStatus: request.paymentStatus,
+                docTypes: SUPPORTED_DOC_TYPES,
+                ...getEpaycoPublicTokenizationConfig(),
+            },
+            "Card checkout params"
+        )
+    );
+});
+
+/**
+ * POST /subscriptions/me/upgrade-requests/:id/card-pay
+ * Body: { tokenCard, docType, docNumber, holderName, cardMeta: { brand, last4, expMonth, expYear } }
+ */
+export const payMyRequestWithCard = asyncHandler(async (req, res) => {
+    const { tokenCard, docType, docNumber, holderName, cardMeta } = req.body || {};
+    const result = await payRequestWithNewCard({
+        userId: req.user.prismaId,
+        requestId: req.params.id,
+        tokenCard,
+        docType,
+        docNumber,
+        holderName,
+        cardMeta,
+        ip: getClientIp(req),
+    });
+    return res
+        .status(200)
+        .json(new ApiResponse(200, result, result.status === "paid" ? "Pago aprobado" : "Pago en verificación"));
+});
+
+/** GET /subscriptions/me/payment-method */
+export const getMyPaymentMethod = asyncHandler(async (req, res) => {
+    await ensureUserSubscription(req.user.prismaId);
+    const info = await getPaymentMethodInfo(req.user.prismaId);
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                ...info,
+                canUseEpaycoCard: isEpaycoConfigured(),
+                epayco: isEpaycoConfigured() ? getEpaycoPublicTokenizationConfig() : null,
+                docTypes: SUPPORTED_DOC_TYPES,
+            },
+            "Payment method fetched"
+        )
+    );
+});
+
+/**
+ * PUT /subscriptions/me/payment-method
+ * ePayco: { provider: "epayco", tokenCard, docType, docNumber, holderName, cardMeta }
+ * Stripe: { provider: "stripe" } -> returns { checkoutUrl } of a setup session.
+ */
+export const updateMyPaymentMethod = asyncHandler(async (req, res, next) => {
+    const { provider, tokenCard, docType, docNumber, holderName, cardMeta } = req.body || {};
+
+    if (provider === "stripe") {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.prismaId },
+            select: { id: true, email: true, username: true },
+        });
+        try {
+            const setup = await createStripeSetupSession({ user });
+            return res.status(200).json(new ApiResponse(200, setup, "Setup session created"));
+        } catch (error) {
+            return next(new ApiError(502, error?.message || "No se pudo iniciar el cambio de tarjeta."));
+        }
+    }
+
+    const result = await replaceEpaycoCard({
+        userId: req.user.prismaId,
+        tokenCard,
+        docType,
+        docNumber,
+        holderName,
+        cardMeta,
+    });
+    return res.status(200).json(new ApiResponse(200, result, "Tarjeta actualizada"));
+});
+
+/** PATCH /subscriptions/me/auto-renew  Body: { enabled: boolean } */
+export const setMyAutoRenew = asyncHandler(async (req, res, next) => {
+    const { enabled } = req.body || {};
+    if (typeof enabled !== "boolean") return next(new ApiError(400, "enabled must be a boolean"));
+    await ensureUserSubscription(req.user.prismaId);
+    await setAutoRenew({ userId: req.user.prismaId, enabled });
+    const info = await getPaymentMethodInfo(req.user.prismaId);
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            info,
+            enabled ? "Renovación automática activada" : "Renovación automática desactivada"
+        )
+    );
+});
+
+/** DELETE /subscriptions/me/payment-method */
+export const deleteMyPaymentMethod = asyncHandler(async (req, res) => {
+    await deleteStoredCard({ userId: req.user.prismaId });
+    const info = await getPaymentMethodInfo(req.user.prismaId);
+    return res.status(200).json(new ApiResponse(200, info, "Tarjeta eliminada"));
+});

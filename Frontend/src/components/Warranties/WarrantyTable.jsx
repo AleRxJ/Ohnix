@@ -20,12 +20,12 @@ const STATUS_COLORS = {
 
 const isOverdue = (warranty) => warranty.due_date && dayjs(warranty.due_date).isBefore(dayjs()) && !["delivered", "closed"].includes(warranty.status);
 
-const WarrantyTable = ({ warranties = [], loading = false, pagination, onChangePage, onViewDetails = () => {} }) => {
+const WarrantyTable = ({ warranties = [], loading = false, pagination, onChangePage, onViewDetails = () => {}, emptyAction = null }) => {
     const { t } = useI18n();
     const isMobile = useIsMobile();
 
     if (!loading && warranties.length === 0) {
-        return <EmptyState title={t("warranties.no_warranties")} description={t("warranties.no_warranties_desc")} />;
+        return <EmptyState title={t("warranties.no_warranties")} subtitle={t("warranties.no_warranties_desc")} action={emptyAction} />;
     }
 
     if (isMobile) {

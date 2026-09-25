@@ -276,6 +276,40 @@ export const subscriptionService = {
         return response.data;
     },
 
+    // ── Stored card / automatic renewal (subscriptionAutoRenew.service.js) ──
+    async getCardCheckoutParams(requestId) {
+        const response = await api.get(`/subscriptions/me/upgrade-requests/${requestId}/card-checkout`);
+        return response.data;
+    },
+
+    // payload: { tokenCard, docType, docNumber, holderName, cardMeta }
+    async payRequestWithCard(requestId, payload) {
+        const response = await api.post(`/subscriptions/me/upgrade-requests/${requestId}/card-pay`, payload);
+        return response.data;
+    },
+
+    async getMyPaymentMethod() {
+        const response = await api.get("/subscriptions/me/payment-method");
+        return response.data;
+    },
+
+    // ePayco: { provider: "epayco", tokenCard, docType, docNumber, holderName, cardMeta }
+    // Stripe: { provider: "stripe" } -> data.checkoutUrl (setup page)
+    async updateMyPaymentMethod(payload) {
+        const response = await api.put("/subscriptions/me/payment-method", payload);
+        return response.data;
+    },
+
+    async deleteMyPaymentMethod() {
+        const response = await api.delete("/subscriptions/me/payment-method");
+        return response.data;
+    },
+
+    async setMyAutoRenew(enabled) {
+        const response = await api.patch("/subscriptions/me/auto-renew", { enabled });
+        return response.data;
+    },
+
     // Fallback for a Negocio/Escala signup that didn't complete payment -
     // starts the Starter trial instead, without repeating registration. See
     // startMyStarterTrial in Backend/controllers/subscription.controller.js.

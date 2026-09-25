@@ -13,6 +13,7 @@ import {
     ArrowRightOutlined,
     CopyOutlined,
     ApiOutlined,
+    CreditCardOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -27,6 +28,7 @@ import { useMarketPricing } from "../hooks/useMarketPricing";
 import SubscriptionPlanCard, { PLAN_COLORS } from "../components/profile/SubscriptionPlanCard";
 import PlanComparisonCard, { LIMIT_ROWS, formatLimit, getPlanPriceLabel } from "../components/profile/PlanComparisonCard";
 import BillingCycleToggle from "../components/common/BillingCycleToggle";
+import PaymentMethodCard from "../components/billing/PaymentMethodCard";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -166,6 +168,7 @@ const SLA_HOURS_BY_TARGET_PLAN = {
 const TRACKER_STEP_KEYS = ["submitted", "reviewing", "approved", "activated"];
 
 const PAYMENT_METHOD_LABELS = {
+    card_token: "Tarjeta (renovación automática)",
     epayco: "Pagar con ePayco",
     card: "Tarjeta / Card",
     pse: "ACH (PSE - otros bancos)",
@@ -826,16 +829,18 @@ const Billing = () => {
         }
     };
 
-    const handleStartCheckoutColombia = async (request) => {
+    // paymentMethod: "card_token" (Ohnix card form - card saved for automatic
+    // renewal) or "epayco" (widget: PSE, Nequi, cash - one-off manual payment).
+    const handleStartCheckoutColombia = async (request, paymentMethod = "card_token") => {
         if (!request?.id) {
             return;
         }
 
         try {
-            setCheckoutLoadingRequestId(request.id);
+            setCheckoutLoadingRequestId(`${request.id}:${paymentMethod}`);
             const response = await subscriptionService.createUpgradeCheckoutSessionWithMethod(
                 request.id,
-                { country: "CO", paymentMethod: "epayco" }
+                { country: "CO", paymentMethod }
             );
             const checkoutUrl = response?.data?.checkoutUrl;
             if (!checkoutUrl) {
@@ -1033,6 +1038,12 @@ const Billing = () => {
                         onRequestUpgrade={handleRequestUpgrade}
                         onRenew={handleRenew}
                         isAdmin={isAdmin}
+                    />
+
+                    <PaymentMethodCard
+                        endsAt={(subscription || user?.subscription)?.endsAt}
+                        disabled={pageBusy}
+                        onChanged={handleRefreshSubscription}
                     />
 
                     {eligibleForTrialFallback && !pageBusy ? (
@@ -1343,7 +1354,10 @@ const Billing = () => {
                                                         selection.country,
                                                         item.targetPlan
                                                     );
-                                                    const isLoading = checkoutLoadingRequestId === item.id;
+                                                    // Colombia tracks which button is loading (card form vs ePayco widget).
+                                                    const isCardLoading = checkoutLoadingRequestId === `${item.id}:card_token`;
+                                                    const isEpaycoLoading = checkoutLoadingRequestId === `${item.id}:epayco`;
+                                                    const isLoading = checkoutLoadingRequestId === item.id || isCardLoading || isEpaycoLoading;
 
                                                     // Enterprise has no fixed price, so there's no
                                                     // automated checkout to offer here (see
@@ -1427,9 +1441,40 @@ const Billing = () => {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* ePayco button */}
+                                                                    {/* Card form - card saved for automatic renewal */}
                                                                     <button
-                                                                        onClick={() => !isLoading && !pageBusy && handleStartCheckoutColombia(item)}
+                                                                        onClick={() => !isLoading && !pageBusy && handleStartCheckoutColombia(item, "card_token")}
+                                                                        disabled={isLoading || pageBusy}
+                                                                        className={[
+                                                                            "group relative mb-3 w-full overflow-hidden rounded-xl border px-5 py-4 text-left transition-all duration-200",
+                                                                            isLoading || pageBusy
+                                                                                ? "cursor-not-allowed border-[#29D8D5]/20 bg-[#29D8D5]/5 opacity-60"
+                                                                                : "cursor-pointer border-[#29D8D5]/45 bg-[#29D8D5]/10 hover:border-[#29D8D5]/70 hover:bg-[#29D8D5]/15",
+                                                                        ].join(" ")}
+                                                                    >
+                                                                        <div className="flex items-center justify-between">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <CreditCardOutlined className="text-lg text-[#29D8D5]" />
+                                                                                <span className="text-sm font-semibold text-white">
+                                                                                    {isCardLoading ? "Redirigiendo..." : "Tarjeta de crédito o débito"}
+                                                                                </span>
+                                                                            </div>
+                                                                            {isCardLoading ? (
+                                                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#29D8D5]/30 border-t-[#29D8D5]" />
+                                                                            ) : (
+                                                                                <svg className="h-4 w-4 text-[#29D8D5] transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                                                                </svg>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="mt-2 text-[10px] text-[#6b8090]">
+                                                                            Renovación automática · sin pagos manuales cada periodo
+                                                                        </div>
+                                                                    </button>
+
+                                                                    {/* ePayco widget - manual one-off payment */}
+                                                                    <button
+                                                                        onClick={() => !isLoading && !pageBusy && handleStartCheckoutColombia(item, "epayco")}
                                                                         disabled={isLoading || pageBusy}
                                                                         className={[
                                                                             "group relative w-full overflow-hidden rounded-xl border px-5 py-4 text-left transition-all duration-200",
@@ -1450,10 +1495,10 @@ const Billing = () => {
                                                                                 </div>
                                                                                 <div className="h-4 w-px bg-white/10" />
                                                                                 <span className="text-sm font-medium text-white/90">
-                                                                                    {isLoading ? "Redirigiendo..." : "Pagar con ePayco"}
+                                                                                    {isEpaycoLoading ? "Redirigiendo..." : "PSE y otros medios"}
                                                                                 </span>
                                                                             </div>
-                                                                            {isLoading ? (
+                                                                            {isEpaycoLoading ? (
                                                                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#00AFF0]/30 border-t-[#00AFF0]" />
                                                                             ) : (
                                                                                 <svg className="h-4 w-4 text-[#00AFF0] transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1462,7 +1507,7 @@ const Billing = () => {
                                                                             )}
                                                                         </div>
                                                                         <div className="mt-2 flex items-center gap-1.5 text-[10px] text-[#4a6070]">
-                                                                            {["PSE", "Tarjeta", "Nequi", "Daviplata"].map((m, i, arr) => (
+                                                                            {["PSE", "Nequi", "Daviplata", "Pago manual"].map((m, i, arr) => (
                                                                                 <React.Fragment key={m}>
                                                                                     <span>{m}</span>
                                                                                     {i < arr.length - 1 && <span className="text-[#2a3a44]">·</span>}
@@ -1484,7 +1529,7 @@ const Billing = () => {
                                                     }
 
                                                     // ── Otros países (Stripe) ────────────────────────────
-                                                    const nonEpaycoMethods = methodsForCountry.filter((m) => m !== "epayco");
+                                                    const nonEpaycoMethods = methodsForCountry.filter((m) => m !== "epayco" && m !== "card_token");
                                                     const canCheckout = Object.keys(checkoutMethodsByCountry).length > 0 || Boolean(paymentUrl);
 
                                                     return (

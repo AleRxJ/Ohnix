@@ -139,7 +139,7 @@ export const FEATURE_LABELS = [
     { key: "teamActivityLog",   es: "Log de actividad del equipo",     en: "Team activity log"            },
     { key: "multiLocation",     es: "Múltiples puntos de venta",       en: "Multiple points of sale"      },
     { key: "salesQuotations",   es: "Cotizaciones para clientes",       en: "Customer sales quotations"    },
-    { key: "discoveryEngine",   es: "Discovery Engine: detección automática de riesgos y oportunidades", en: "Discovery Engine: automatic risk & opportunity detection" },
+    { key: "discoveryEngine",   es: "Detección automática de riesgos y oportunidades (Discovery Engine)", en: "Automatic risk & opportunity detection (Discovery Engine)" },
 ].filter((feature) => ELECTRONIC_INVOICING_ENABLED || feature.key !== "electronicInvoicing");
 
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)

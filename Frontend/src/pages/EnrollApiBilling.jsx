@@ -16,8 +16,9 @@
 // `ePayco.checkout.configure` widget for one-time payments). Tokenization's
 // own ePayco.token.create($form, callback) expects a jQuery-wrapped form
 // element (confirmed from ePayco's own docs) - jQuery is loaded from a CDN
-// script tag here rather than added as an npm dependency, since this is the
-// only page in the app that needs it.
+// script tag rather than added as an npm dependency. The loading/tokenizing
+// lives in utils/epaycoTokenizer.js, shared with EpaycoCardForm.jsx (plan
+// checkout with automatic renewal).
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -26,31 +27,7 @@ import { api } from "../api/api";
 import useI18n from "../hooks/useI18n";
 import ThemeToggle from "../components/common/ThemeToggle";
 import LanguageSwitcher from "../components/LanguageSwitcher/LanguageSwitcher";
-
-const JQUERY_SCRIPT_URL = "https://code.jquery.com/jquery-3.7.1.min.js";
-const JQUERY_SCRIPT_ID = "jquery-cdn-script";
-const EPAYCO_TOKEN_SCRIPT_URL = "https://checkout.epayco.co/epayco.min.js";
-const EPAYCO_TOKEN_SCRIPT_ID = "epayco-tokenize-script";
-
-const loadScriptOnce = (id, src) =>
-    new Promise((resolve, reject) => {
-        const existing = document.getElementById(id);
-        if (existing) {
-            if (existing.dataset.loaded === "true") resolve();
-            else existing.addEventListener("load", () => resolve());
-            return;
-        }
-        const script = document.createElement("script");
-        script.id = id;
-        script.src = src;
-        script.async = true;
-        script.onload = () => {
-            script.dataset.loaded = "true";
-            resolve();
-        };
-        script.onerror = () => reject(new Error(`Failed to load ${src}`));
-        document.head.appendChild(script);
-    });
+import { tokenizeEpaycoCard } from "../utils/epaycoTokenizer";
 
 const EnrollApiBilling = () => {
     const { token } = useParams();
@@ -97,28 +74,14 @@ const EnrollApiBilling = () => {
         setSubmitting(true);
 
         try {
-            await loadScriptOnce(JQUERY_SCRIPT_ID, JQUERY_SCRIPT_URL);
-            await loadScriptOnce(EPAYCO_TOKEN_SCRIPT_ID, EPAYCO_TOKEN_SCRIPT_URL);
-
-            if (!epaycoPublicKey) throw new Error(t("api_billing_enroll.missing_public_key"));
-            if (!window.jQuery || !window.ePayco) throw new Error(t("api_billing_enroll.script_error"));
-
-            window.ePayco.setPublicKey(epaycoPublicKey);
-            const $form = window.jQuery(formRef.current);
-
-            const tokenCard = await new Promise((resolve, reject) => {
-                window.ePayco.token.create($form, (err, tokenResult) => {
-                    if (err) {
-                        reject(new Error(err?.message || err?.[0]?.codError || t("api_billing_enroll.card_error")));
-                        return;
-                    }
-                    const id = tokenResult?.id || tokenResult?.token?.id || tokenResult;
-                    if (!id) {
-                        reject(new Error(t("api_billing_enroll.card_error")));
-                        return;
-                    }
-                    resolve(id);
-                });
+            const tokenCard = await tokenizeEpaycoCard({
+                formElement: formRef.current,
+                publicKey: epaycoPublicKey,
+                messages: {
+                    missingPublicKey: t("api_billing_enroll.missing_public_key"),
+                    scriptError: t("api_billing_enroll.script_error"),
+                    cardError: t("api_billing_enroll.card_error"),
+                },
             });
 
             await api.post(`/api-billing/enroll/${token}`, { tokenCard });

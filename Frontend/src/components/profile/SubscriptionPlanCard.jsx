@@ -120,7 +120,13 @@ const SubscriptionPlanCard = ({
     // A cancellation already scheduled its own "your plan ends soon" banner
     // below - don't also show the renewal-reminder banner, which reads like
     // an accidental-lapse warning rather than the outcome the user asked for.
-    const showRenewalBanner = renewalDaysLeft !== null && renewalDaysLeft <= 7 && !cancelAtPeriodEnd;
+    // Stored card + automatic renewal on and no failed charge pending: the
+    // plan renews by itself, so there's nothing to remind about (a failed
+    // charge brings the banner back - see subscriptionAutoRenew.service.js).
+    const autoRenewOn =
+        Boolean(subscription?.autoRenew && subscription?.card) && !(subscription?.renewalAttempts > 0);
+    const showRenewalBanner =
+        renewalDaysLeft !== null && renewalDaysLeft <= 7 && !cancelAtPeriodEnd && !autoRenewOn;
     const cancelDateLabel = planEndsAt
         ? new Date(planEndsAt).toLocaleDateString(lang === "es" ? "es-CO" : "en-US")
         : "";
@@ -370,7 +376,9 @@ const SubscriptionPlanCard = ({
                             said when the current plan actually runs out. */}
                         {planEndsAt && !cancelAtPeriodEnd && (
                             <Text className="text-[var(--ohnix-text-muted)] text-xs mt-0.5 block">
-                                {t("profile.subscription.plan_valid_until", { date: cancelDateLabel })}
+                                {autoRenewOn
+                                    ? t("auto_renew.renews_on", "Se renueva automáticamente el {{date}}", { date: cancelDateLabel })
+                                    : t("profile.subscription.plan_valid_until", { date: cancelDateLabel })}
                             </Text>
                         )}
                     </div>

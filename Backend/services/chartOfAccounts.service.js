@@ -158,6 +158,44 @@ export const ensureCapitalContributionAccount = async (tx, accountId) => {
     return tx.chartAccount.create({ data: { ...CAPITAL_CONTRIBUTION_ACCOUNT, createdById: accountId } });
 };
 
+// GMF (4x1000) - banks list it as its own statement line on every debit, so
+// BankReconciliationPanel.jsx's "Clasificar GMF" flow needs a dedicated
+// expense account to preselect. 530505 rather than a 5115 subaccount because
+// this chart already uses 5115 for prestaciones sociales (see above).
+// upsert, not findFirst+create: this is called from a plain read (no tx), so
+// two tabs opening the panel at once would otherwise race into P2002 on
+// @@unique([createdById, code]).
+const GMF_ACCOUNT = { code: "530505", name: "Gravamen a los movimientos financieros (4x1000)", accountType: "expense" };
+
+const ensureNamedAccount = async (db, accountId, definition) => {
+    await ensureDefaultChartOfAccounts(db, accountId);
+    return db.chartAccount.upsert({
+        where: { createdById_code: { createdById: accountId, code: definition.code } },
+        update: {},
+        create: { ...definition, createdById: accountId },
+    });
+};
+
+export const ensureGmfAccount = (db, accountId) => ensureNamedAccount(db, accountId, GMF_ACCOUNT);
+
+// Liquidación de IVA (vatSettlement.service.js) - where the 240805/240810
+// balances are swept to: the net owed to the DIAN, or the saldo a favor
+// carried into the next period (PUC 1355 "Anticipo de impuestos y
+// contribuciones o saldos a favor").
+export const VAT_SETTLEMENT_ACCOUNT_CODES = { generated: "240805", deductible: "240810", payable: "240895", credit: "135520" };
+const VAT_PAYABLE_ACCOUNT = { code: VAT_SETTLEMENT_ACCOUNT_CODES.payable, name: "IVA por pagar (liquidación)", accountType: "liability" };
+const VAT_CREDIT_ACCOUNT = { code: VAT_SETTLEMENT_ACCOUNT_CODES.credit, name: "Saldo a favor en IVA", accountType: "asset" };
+
+export const ensureVatSettlementAccounts = async (tx, accountId) => {
+    const coa = await getChartAccountMap(tx, accountId);
+    return {
+        generated: coa.get(VAT_SETTLEMENT_ACCOUNT_CODES.generated),
+        deductible: coa.get(VAT_SETTLEMENT_ACCOUNT_CODES.deductible),
+        payable: await ensureNamedAccount(tx, accountId, VAT_PAYABLE_ACCOUNT),
+        credit: await ensureNamedAccount(tx, accountId, VAT_CREDIT_ACCOUNT),
+    };
+};
+
 // Fase 7 - a starting point for fixedAsset.service.js#createFixedAsset, not
 // a hard requirement: registering an asset can point at any active asset/
 // expense account instead (e.g. a company that wants "Flota y equipo de

@@ -315,6 +315,7 @@ model User {
   accountingPeriodsClosed              AccountingPeriod[]             @relation("AccountingPeriodClosedBy")
   fiscalYearClosuresOwned              FiscalYearClosure[]            @relation("FiscalYearClosureCreatedBy")
   fiscalYearClosuresClosed             FiscalYearClosure[]            @relation("FiscalYearClosureClosedBy")
+  vatSettlements                       VatSettlement[]                @relation("VatSettlementCreatedBy")
   journalEntriesCreated                JournalEntry[]
   accountingConfigAuditsOwned          AccountingConfigAudit[]        @relation("AccountingConfigAuditAccount")
   costCentersOwned                     CostCenter[]                   @relation("CostCenterAccount")
@@ -646,6 +647,9 @@ model PlanUpgradeRequest {
   // null on every other outcome.
   periodStartsAt   DateTime?            @map("period_starts_at")
   periodEndsAt     DateTime?            @map("period_ends_at")
+  // True for a charge Ohnix fired itself against a stored card (automatic
+  // renewal), false for anything the customer paid through a checkout.
+  isAutoCharge     Boolean              @default(false) @map("is_auto_charge")
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
 
@@ -835,9 +839,10 @@ model Subscription {
   cancelAtPeriodEnd Boolean            @default(false) @map("cancel_at_period_end")
   // Set by the self-service "bajar de plan" flow (never by an upgrade) -
   // the customer keeps full access to their current (higher) plan through
-  // `endsAt`, no proration, no immediate charge (this system has no stored
-  // payment method to auto-bill anyway - every renewal is a manual
-  // checkout). Once `endsAt` lapses, blockLapsedSubscriptions applies this
+  // `endsAt`, no proration, no immediate charge. With automatic renewal on,
+  // the renewal charge is billed for this plan instead (see
+  // subscriptionAutoRenew.service.js); otherwise, once `endsAt` lapses,
+  // blockLapsedSubscriptions applies this
   // to `plan` and clears it, so the next time they pay, it's for the lower
   // plan they actually asked for instead of silently re-billing the higher
   // one. Mutually exclusive with a full cancellation in intent, not in
@@ -857,6 +862,40 @@ model Subscription {
   // Product.lowStockThreshold ?? Subscription.lowStockThreshold ?? platform
   // default. See lowStockScheduler.js#getLowStockProductsForUser.
   lowStockThreshold Int?               @map("low_stock_threshold")
+  // ── Auto-renewal with a stored card (subscriptionAutoRenew.service.js) ──
+  // autoRenew is only ever true while a card is on file - turning it off
+  // means the plan simply ends at `endsAt` (no charge), and it's the ONLY
+  // state in which the card may be deleted (same model as Netflix/LinkedIn:
+  // replace the card, or stop renewing - never "active plan, no card").
+  // autoRenewConsentAt is the evidence of the recurring-charge authorization
+  // the customer accepted at checkout.
+  autoRenew               Boolean   @default(false) @map("auto_renew")
+  autoRenewConsentAt      DateTime? @map("auto_renew_consent_at")
+  // "epayco" | "stripe" - which provider holds the card below.
+  paymentProvider         String?   @map("payment_provider")
+  // Opaque provider references only - the card number never reaches Ohnix
+  // (tokenized in the browser by ePayco's JS / Stripe Checkout).
+  epaycoCustomerId        String?   @map("epayco_customer_id")
+  epaycoTokenCard         String?   @map("epayco_token_card")
+  stripeCustomerId        String?   @map("stripe_customer_id")
+  stripePaymentMethodId   String?   @map("stripe_payment_method_id")
+  // Display-only card metadata (brand + last 4 + expiry).
+  cardBrand               String?   @map("card_brand")
+  cardLast4               String?   @map("card_last4")
+  cardExpMonth            Int?      @map("card_exp_month")
+  cardExpYear             Int?      @map("card_exp_year")
+  // Cardholder identification - ePayco requires it on every charge.create.
+  billingDocType          String?   @map("billing_doc_type")
+  billingDocNumber        String?   @map("billing_doc_number")
+  billingHolderName       String?   @map("billing_holder_name")
+  // Retry bookkeeping for a failed automatic charge (RETRY_SCHEDULE_DAYS in
+  // subscriptionAutoRenew.service.js). nextRenewalAttemptAt doubles as the
+  // claim lock that stops two scheduler runs from charging twice.
+  renewalAttempts         Int       @default(0) @map("renewal_attempts")
+  nextRenewalAttemptAt    DateTime? @map("next_renewal_attempt_at")
+  lastRenewalError        String?   @map("last_renewal_error") @db.Text
+  // Pre-charge notice dedupe - the endsAt value we last warned about.
+  upcomingChargeNoticeFor DateTime? @map("upcoming_charge_notice_for")
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
 
@@ -2556,6 +2595,8 @@ enum CashMovementSourceType {
   // Fase 6 (estado de cambios en el patrimonio) - equityMovement.service.js.
   capital_contribution
   equity_distribution
+  // Pago de IVA a la DIAN - vatSettlement.service.js#payVatSettlement.
+  tax_payment
 }
 
 // Append-only ledger - literal mirror of StockMovement, money instead of
@@ -3309,6 +3350,63 @@ enum JournalSourceType {
   // a CashMovement together.
   capital_contribution
   equity_distribution
+  // Liquidación de IVA - vatSettlement.service.js. vat_settlement sweeps
+  // 240805/240810 into 240895 (IVA por pagar) or 135520 (saldo a favor);
+  // vat_settlement_void is its mirror when an unpaid settlement is annulled;
+  // vat_payment is the cash payment of 240895 to the DIAN. None of the three
+  // is in journalEntry.service.js's SINGLE_ENTRY_SOURCE_TYPES: a period can
+  // be settled -> voided -> settled again under the same VatSettlement.id.
+  vat_settlement
+  vat_settlement_void
+  vat_payment
+}
+
+enum VatPeriodicity {
+  bimonthly
+  four_monthly
+}
+
+enum VatSettlementStatus {
+  posted
+  paid
+  voided
+}
+
+// One row per declared IVA period (ET art. 600: bimestral or cuatrimestral).
+// Amounts are frozen at settlement time from the ledger, not recomputed -
+// they're what was declared. A voided row is reused (not duplicated) when
+// the same period is settled again, hence the plain @@unique.
+model VatSettlement {
+  id                  String              @id @default(cuid())
+  createdById         String              @map("created_by")
+  periodicity         VatPeriodicity
+  year                Int
+  periodNumber        Int                 @map("period_number")
+  startDate           DateTime            @map("start_date")
+  endDate             DateTime            @map("end_date")
+  generatedTotal      Decimal             @map("generated_total") @db.Decimal(14, 2)
+  deductibleTotal     Decimal             @map("deductible_total") @db.Decimal(14, 2)
+  carryForwardApplied Decimal             @default(0) @map("carry_forward_applied") @db.Decimal(14, 2)
+  netPayable          Decimal             @default(0) @map("net_payable") @db.Decimal(14, 2)
+  creditBalance       Decimal             @default(0) @map("credit_balance") @db.Decimal(14, 2)
+  status              VatSettlementStatus @default(posted)
+  settlementEntryId   String?             @map("settlement_entry_id")
+  paymentEntryId      String?             @map("payment_entry_id")
+  paidCashAccountId   String?             @map("paid_cash_account_id")
+  paidAt              DateTime?           @map("paid_at")
+  voidedAt            DateTime?           @map("voided_at")
+  voidReason          String?             @map("void_reason") @db.Text
+  // Plain tenant-scoped actor id, not FK-constrained - same convention as
+  // FiscalYearReopening.reopenedById.
+  settledById         String              @map("settled_by")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  createdBy User @relation("VatSettlementCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([createdById, periodicity, year, periodNumber])
+  @@index([createdById, status, endDate])
+  @@map("vat_settlements")
 }
 
 enum FiscalYearClosureStatus {

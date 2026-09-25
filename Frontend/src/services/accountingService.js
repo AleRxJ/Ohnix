@@ -272,6 +272,26 @@ export const accountingService = {
         const response = await api.get("/accounting/reports/exogena", { params: { year } });
         return response.data;
     },
+    async listVatSettlements() {
+        const response = await api.get("/accounting/vat-settlements");
+        return response.data;
+    },
+    async previewVatSettlement(params) {
+        const response = await api.get("/accounting/vat-settlements/preview", { params });
+        return response.data;
+    },
+    async settleVatPeriod(payload) {
+        const response = await api.post("/accounting/vat-settlements", payload);
+        return response.data;
+    },
+    async voidVatSettlement(id, reason) {
+        const response = await api.post(`/accounting/vat-settlements/${id}/void`, { reason });
+        return response.data;
+    },
+    async payVatSettlement(id, payload) {
+        const response = await api.post(`/accounting/vat-settlements/${id}/pay`, payload);
+        return response.data;
+    },
 
     async getWithholdingCertificate(supplierId, year) {
         const response = await api.get(`/accounting/reports/withholdings/certificates/${encodeURIComponent(supplierId)}`, { params: { year } });

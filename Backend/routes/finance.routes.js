@@ -26,6 +26,9 @@ import {
     suggestStatementMatches,
     getReconciliationSummary,
     getReconciliationReport,
+    unmatchStatementEntry,
+    getReconciliationBalance,
+    getGmfAccount,
     getAccountsPayablePlan,
     updatePurchaseDueDate,
     getAccountsReceivablePlan,
@@ -119,6 +122,14 @@ router.route("/reconciliation/summary")
     .get(requireModulePermission("finance", "view"), getReconciliationSummary);
 router.route("/reconciliation/report")
     .get(requireModulePermission("finance", "view"), getReconciliationReport);
+router.route("/reconciliation/unmatch")
+    .post(requireModulePermission("finance", "edit"), unmatchStatementEntry);
+router.route("/reconciliation/balance")
+    .get(requireModulePermission("finance", "view"), getReconciliationBalance);
+// "edit", not "view": the first call lazily creates the 530505 GMF account
+// in the tenant's chart (chartOfAccounts.service.js#ensureGmfAccount).
+router.route("/reconciliation/gmf-account")
+    .get(requireModulePermission("finance", "edit"), getGmfAccount);
 
 // Payment methods (Fase 5 - causación automática) - creating/editing a
 // method changes what every future payment against it automatically

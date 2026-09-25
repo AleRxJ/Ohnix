@@ -142,6 +142,18 @@ export const financeService = {
         const response = await api.get("/finance/reconciliation/report", { params: { cash_account_id: cashAccountId, ...params } });
         return response.data;
     },
+    async unmatchEntry({ cashAccountId, entryId }) {
+        const response = await api.post("/finance/reconciliation/unmatch", { cash_account_id: cashAccountId, entry_id: entryId });
+        return response.data;
+    },
+    async getReconciliationBalance(cashAccountId, params = {}) {
+        const response = await api.get("/finance/reconciliation/balance", { params: { cash_account_id: cashAccountId, ...params } });
+        return response.data;
+    },
+    async getGmfAccount() {
+        const response = await api.get("/finance/reconciliation/gmf-account");
+        return response.data;
+    },
     async allocateOrderPayment(orderId, paymentId, amount) { const response = await api.post(`/finance/orders/${orderId}/payments/${paymentId}/allocate`, { amount }); return response.data; },
     async listOrderPaymentAllocations(orderId, paymentId) { const response = await api.get(`/finance/orders/${orderId}/payments/${paymentId}/allocations`); return response.data; },
     async allocatePurchasePayment(purchaseId, paymentId, amount) { const response = await api.post(`/finance/purchases/${purchaseId}/payments/${paymentId}/allocate`, { amount }); return response.data; },

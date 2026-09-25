@@ -6,7 +6,7 @@ import { calculateRetentionReturn, calculateWithholdingAmount } from "../service
 import { summarizeWithholdingRows } from "../services/withholdingReport.service.js";
 import { buildPayablePlan } from "../services/accountsPayable.service.js";
 import { buildReceivablePlan } from "../services/accountsReceivable.service.js";
-import { isReconciliationAmountMatch, scoreReconciliationCandidate } from "../services/bankReconciliation.service.js";
+import { computeReconciliationBalance, isReconciliationAmountMatch, scoreReconciliationCandidate } from "../services/bankReconciliation.service.js";
 
 test("one-to-one accounting sources are idempotent when they have a source id", () => {
     for (const sourceType of [
@@ -175,4 +175,18 @@ test("final retention return absorbs rounding and never exceeds the original", (
         ),
         { baseNow: 222.22, withheldNow: 5.55 }
     );
+});
+
+test("bank reconciliation balance: book - pending book movements + pending statement lines", () => {
+    // Book 1,000,000; a 200,000 deposit the bank hasn't credited yet; the
+    // bank already charged 12,000 fees + 4,000 GMF that aren't booked yet.
+    const result = computeReconciliationBalance({ bookBalance: 1000000, pendingMovementsTotal: 200000, pendingEntriesTotal: -16000, statementBalance: 784000 });
+    assert.deepEqual(result, { expectedStatementBalance: 784000, difference: 0, balanced: true });
+
+    const off = computeReconciliationBalance({ bookBalance: 1000000, pendingMovementsTotal: 200000, pendingEntriesTotal: -16000, statementBalance: 780000 });
+    assert.equal(off.difference, -4000);
+    assert.equal(off.balanced, false);
+
+    // No statement balance typed yet: still shows the expected figure.
+    assert.deepEqual(computeReconciliationBalance({ bookBalance: 50.1, pendingMovementsTotal: 0.2, pendingEntriesTotal: 0 }), { expectedStatementBalance: 49.9, difference: null, balanced: null });
 });

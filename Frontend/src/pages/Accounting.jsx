@@ -10,6 +10,7 @@ import StatCard from "../components/dashboard/StatCard";
 import PlanGate from "../components/common/PlanGate";
 import EmptyState from "../components/common/EmptyState";
 import SectionGuide from "../components/common/SectionGuide";
+import VatSettlementCard from "../components/accounting/VatSettlementCard";
 import useIsMobile from "../hooks/useIsMobile";
 import { accountingService } from "../services/accountingService";
 import { financeService } from "../services/financeService";
@@ -277,6 +278,9 @@ const SOURCE_TYPE_LABEL_KEYS = {
     recurring_journal: "accounting.source_recurring_journal",
     capital_contribution: "accounting.source_capital_contribution",
     equity_distribution: "accounting.source_equity_distribution",
+    vat_settlement: "accounting.source_vat_settlement",
+    vat_settlement_void: "accounting.source_vat_settlement_void",
+    vat_payment: "accounting.source_vat_payment",
 };
 
 // Automatic descriptions are persisted for auditability. Translate only
@@ -3386,6 +3390,7 @@ const TaxesTab = () => {
                     <Button icon={<ArrowRightOutlined />}>{t("accounting.taxes_vat_link")}</Button>
                 </Link>
             </Card>
+            <VatSettlementCard />
             <WithholdingConfigCard />
             <WithholdingConceptsCard />
             <WithholdingReportCard />

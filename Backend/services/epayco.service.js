@@ -185,6 +185,29 @@ export const createEpaycoCheckoutSession = ({ request }) => {
     };
 };
 
+// Card-token checkout (Ohnix's own tokenized card form, the card is saved
+// for automatic renewal). Same return shape as the widget session above -
+// only the frontend page differs; the charge itself happens server-side in
+// subscriptionAutoRenew.service.js#payRequestWithNewCard.
+export const createEpaycoCardCheckoutSession = ({ request }) => {
+    const session = createEpaycoCheckoutSession({ request });
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
+    return {
+        ...session,
+        checkoutUrl: `${frontendBase}/billing/card-checkout?requestId=${encodeURIComponent(request.id)}`,
+        paymentMethod: "card_token",
+    };
+};
+
+export const getEpaycoConfirmationUrl = () => getEpaycoConfig().confirmationUrl;
+
+// Public (browser-safe) values the card form needs to init ePayco's
+// tokenization JS - never a secret.
+export const getEpaycoPublicTokenizationConfig = () => {
+    const cfg = getEpaycoConfig();
+    return { publicKey: cfg.publicKey, test: cfg.test };
+};
+
 // ---------------------------------------------------------------------------
 // Widget parameters
 //

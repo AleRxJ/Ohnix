@@ -293,6 +293,19 @@ export const useCashAccountMovements = (cashAccountId) => {
         finally { setSubmitting(false); }
     };
 
+    const unmatchEntry = async (entryId) => {
+        setSubmitting(true);
+        try {
+            await financeService.unmatchEntry({ cashAccountId, entryId });
+            toast.success(t("finance.unmatched_success"));
+            await load();
+            return true;
+        } catch (err) {
+            toast.error(financeErrorMessage(err, t, "finance.unmatch_failed"));
+            return false;
+        } finally { setSubmitting(false); }
+    };
+
     const registerStatementExpense = async (payload) => {
         setSubmitting(true);
         try {
@@ -331,6 +344,7 @@ export const useCashAccountMovements = (cashAccountId) => {
         matchEntry,
         getSuggestions,
         matchEntries,
+        unmatchEntry,
         registerStatementExpense,
         registerStatementIncome,
     };

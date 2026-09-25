@@ -74,6 +74,7 @@ import {
     listAccountingAudit,
     reverseJournalEntry,
 } from "../controllers/accounting.controller.js";
+import { listVatSettlements, previewVatSettlement, settleVatPeriod, voidVatSettlement, payVatSettlement } from "../controllers/vatSettlement.controller.js";
 
 const router = Router();
 
@@ -188,6 +189,15 @@ router.route("/reports/cash-flow").get(requireModulePermission("accounting", "vi
 router.route("/reports/balance-sheet").get(requireModulePermission("accounting", "view"), getBalanceSheet);
 router.route("/reports/equity-changes").get(requireModulePermission("accounting", "view"), getEquityChangesStatement);
 router.route("/reports/trial-balance").get(requireModulePermission("accounting", "view"), getTrialBalance);
+
+// Liquidación de IVA - settling, voiding and paying post to the ledger (and
+// paying moves cash), same "admin" gate as closing a period.
+router.route("/vat-settlements")
+    .get(requireModulePermission("accounting", "view"), listVatSettlements)
+    .post(requireModulePermission("accounting", "admin"), settleVatPeriod);
+router.get("/vat-settlements/preview", requireModulePermission("accounting", "view"), previewVatSettlement);
+router.post("/vat-settlements/:id/void", requireModulePermission("accounting", "admin"), voidVatSettlement);
+router.post("/vat-settlements/:id/pay", requireModulePermission("accounting", "admin"), payVatSettlement);
 
 router.route("/periods").get(requireModulePermission("accounting", "view"), listAccountingPeriods);
 // Closing a period is a business-consequential action (blocks all further
