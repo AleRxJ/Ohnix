@@ -17,6 +17,8 @@ const SOURCE_LABEL_KEYS = {
     adjustment: "finance.source_adjustment",
     tax_payment: "finance.source_tax_payment",
     prepaid_expense: "finance.source_prepaid_expense",
+    loan_disbursement: "finance.source_loan_disbursement",
+    loan_payment: "finance.source_loan_payment",
 };
 
 // Fase 7 - the reconciliation section (import, manual entry, unmatched

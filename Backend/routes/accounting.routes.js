@@ -76,6 +76,7 @@ import {
 } from "../controllers/accounting.controller.js";
 import { listVatSettlements, previewVatSettlement, settleVatPeriod, voidVatSettlement, payVatSettlement } from "../controllers/vatSettlement.controller.js";
 import { listPrepaidExpenses, createPrepaidExpense, updatePrepaidExpense, runPrepaidAmortizationNow, cancelPrepaidExpense } from "../controllers/prepaidExpense.controller.js";
+import * as phase3 from "../controllers/accountingPhase3.controller.js";
 
 const router = Router();
 
@@ -132,6 +133,31 @@ router.route("/prepaid-expenses/:id")
     .patch(requireModulePermission("accounting", "edit"), updatePrepaidExpense);
 router.post("/prepaid-expenses/:id/run", requireModulePermission("accounting", "edit"), runPrepaidAmortizationNow);
 router.post("/prepaid-expenses/:id/cancel", requireModulePermission("accounting", "admin"), cancelPrepaidExpense);
+
+// Deterioro de cartera - posting the adjustment is "admin" (it moves the
+// P&L by an estimate), previewing is "view".
+router.get("/receivable-impairment/runs", requireModulePermission("accounting", "view"), phase3.listImpairmentRuns);
+router.post("/receivable-impairment/preview", requireModulePermission("accounting", "view"), phase3.previewImpairment);
+router.post("/receivable-impairment/run", requireModulePermission("accounting", "admin"), phase3.runImpairment);
+
+// Obligaciones financieras - same split as fixed assets.
+router.route("/financial-obligations")
+    .get(requireModulePermission("accounting", "view"), phase3.listFinancialObligations)
+    .post(requireModulePermission("accounting", "edit"), phase3.createFinancialObligation);
+router.post("/financial-obligations/schedule-preview", requireModulePermission("accounting", "view"), phase3.previewObligationSchedule);
+router.post("/financial-obligations/:id/pay", requireModulePermission("accounting", "edit"), phase3.payObligationInstallment);
+
+// Kardex valorizado vs. 1435 - read-only.
+router.get("/reports/inventory-valuation", requireModulePermission("accounting", "view"), phase3.getInventoryValuation);
+router.get("/reports/kardex/:productId", requireModulePermission("accounting", "view"), phase3.getProductKardex);
+
+// Declaración de ICA - same gates as the IVA settlement.
+router.route("/ica-declarations")
+    .get(requireModulePermission("accounting", "view"), phase3.listIcaDeclarations)
+    .post(requireModulePermission("accounting", "admin"), phase3.settleIcaDeclaration);
+router.get("/ica-declarations/preview", requireModulePermission("accounting", "view"), phase3.previewIcaDeclaration);
+router.post("/ica-declarations/:id/void", requireModulePermission("accounting", "admin"), phase3.voidIcaDeclaration);
+router.post("/ica-declarations/:id/pay", requireModulePermission("accounting", "admin"), phase3.payIcaDeclaration);
 
 router.route("/recurring-journals")
     .get(requireModulePermission("accounting", "view"), listRecurringJournalTemplates)

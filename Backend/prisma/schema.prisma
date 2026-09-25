@@ -317,6 +317,9 @@ model User {
   fiscalYearClosuresClosed             FiscalYearClosure[]            @relation("FiscalYearClosureClosedBy")
   vatSettlements                       VatSettlement[]                @relation("VatSettlementCreatedBy")
   prepaidExpenses                      PrepaidExpense[]               @relation("PrepaidExpenseCreatedBy")
+  receivableImpairmentRuns             ReceivableImpairmentRun[]      @relation("ReceivableImpairmentRunCreatedBy")
+  financialObligations                 FinancialObligation[]          @relation("FinancialObligationCreatedBy")
+  icaDeclarations                      IcaDeclaration[]               @relation("IcaDeclarationCreatedBy")
   journalEntriesCreated                JournalEntry[]
   accountingConfigAuditsOwned          AccountingConfigAudit[]        @relation("AccountingConfigAuditAccount")
   costCentersOwned                     CostCenter[]                   @relation("CostCenterAccount")
@@ -2600,6 +2603,9 @@ enum CashMovementSourceType {
   tax_payment
   // Pago de un gasto diferido - prepaidExpense.service.js#createPrepaidExpense.
   prepaid_expense
+  // Obligaciones financieras - financialObligation.service.js.
+  loan_disbursement
+  loan_payment
 }
 
 // Append-only ledger - literal mirror of StockMovement, money instead of
@@ -2876,6 +2882,8 @@ model ChartAccount {
   fixedAssetsAsExpense          FixedAsset[]                   @relation("FixedAssetExpenseAccount")
   prepaidExpensesAsAsset        PrepaidExpense[]               @relation("PrepaidExpenseAssetAccount")
   prepaidExpensesAsExpense      PrepaidExpense[]               @relation("PrepaidExpenseExpenseAccount")
+  obligationsAsLiability        FinancialObligation[]          @relation("FinancialObligationLiabilityAccount")
+  obligationsAsInterest         FinancialObligation[]          @relation("FinancialObligationInterestAccount")
   recurringJournalTemplateLines RecurringJournalTemplateLine[]
   paymentMethods                PaymentMethod[]
 
@@ -3172,6 +3180,132 @@ model PrepaidExpense {
   @@map("prepaid_expenses")
 }
 
+// One row per "calcular y registrar deterioro" run - receivableImpairment.
+// service.js. Frozen snapshot of what was computed (the receivables move on
+// afterwards), plus the entry that brought 1399 to `requiredProvision`.
+model ReceivableImpairmentRun {
+  id                  String   @id @default(cuid())
+  createdById         String   @map("created_by")
+  asOfDate            DateTime @map("as_of_date")
+  // { bucket: percent } actually applied, and { bucket: pending } it saw.
+  rates               Json
+  bucketTotals        Json     @map("bucket_totals")
+  requiredProvision   Decimal  @map("required_provision") @db.Decimal(14, 2)
+  previousProvision   Decimal  @map("previous_provision") @db.Decimal(14, 2)
+  adjustment          Decimal  @db.Decimal(14, 2)
+  journalEntryId      String?  @map("journal_entry_id")
+  runById             String   @map("run_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  createdBy User @relation("ReceivableImpairmentRunCreatedBy", fields: [createdById], references: [id])
+
+  @@index([createdById, asOfDate])
+  @@map("receivable_impairment_runs")
+}
+
+enum FinancialObligationStatus {
+  active
+  paid
+  cancelled
+}
+
+// Obligación financiera (préstamo bancario, leasing financiero simple):
+// fixed-installment (French) schedule from an effective annual rate. The
+// schedule is derived, never stored - see financialObligation.service.js#
+// buildAmortizationSchedule; only the installments actually paid are rows.
+model FinancialObligation {
+  id                    String                    @id @default(cuid())
+  createdById           String                    @map("created_by")
+  lenderName            String                    @map("lender_name")
+  reference             String?
+  principal             Decimal                   @db.Decimal(14, 2)
+  // Tasa efectiva anual, percent (e.g. 24.5).
+  annualRate            Decimal                   @map("annual_rate") @db.Decimal(7, 4)
+  termMonths            Int                       @map("term_months")
+  disbursementDate      DateTime                  @map("disbursement_date")
+  firstPaymentDate      DateTime                  @map("first_payment_date")
+  liabilityAccountId    String                    @map("liability_account_id")
+  interestAccountId     String                    @map("interest_account_id")
+  // Set only when the disbursement was registered here (Dr bank / Cr 2105).
+  disbursementCashAccountId String?               @map("disbursement_cash_account_id")
+  disbursementEntryId   String?                   @map("disbursement_entry_id")
+  status                FinancialObligationStatus @default(active)
+  installmentsPaid      Int                       @default(0) @map("installments_paid")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+
+  createdBy       User                         @relation("FinancialObligationCreatedBy", fields: [createdById], references: [id])
+  liabilityAccount ChartAccount                @relation("FinancialObligationLiabilityAccount", fields: [liabilityAccountId], references: [id])
+  interestAccount ChartAccount                 @relation("FinancialObligationInterestAccount", fields: [interestAccountId], references: [id])
+  payments        FinancialObligationPayment[]
+
+  @@index([createdById, status])
+  @@map("financial_obligations")
+}
+
+model FinancialObligationPayment {
+  id                String   @id @default(cuid())
+  obligationId      String   @map("obligation_id")
+  installmentNumber Int      @map("installment_number")
+  principal         Decimal  @db.Decimal(14, 2)
+  interest          Decimal  @db.Decimal(14, 2)
+  paidAt            DateTime @map("paid_at")
+  cashAccountId     String   @map("cash_account_id")
+  journalEntryId    String?  @map("journal_entry_id")
+  createdById       String   @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  obligation FinancialObligation @relation(fields: [obligationId], references: [id])
+
+  @@unique([obligationId, installmentNumber])
+  @@map("financial_obligation_payments")
+}
+
+enum IcaPeriodicity {
+  annual
+  bimonthly
+}
+
+// Declaración de ICA (industria y comercio) - icaDeclaration.service.js.
+// Same frozen-at-settlement / reuse-the-voided-row convention as
+// VatSettlement. The base comes from the ledger's revenue for the period;
+// `excludedIncome` is what the user deducts by hand (ingresos no gravados,
+// exentos, obtenidos fuera del municipio, venta de activos fijos).
+model IcaDeclaration {
+  id                 String              @id @default(cuid())
+  createdById        String              @map("created_by")
+  periodicity        IcaPeriodicity
+  year               Int
+  periodNumber       Int                 @map("period_number")
+  startDate          DateTime            @map("start_date")
+  endDate            DateTime            @map("end_date")
+  grossIncome        Decimal             @map("gross_income") @db.Decimal(14, 2)
+  excludedIncome     Decimal             @default(0) @map("excluded_income") @db.Decimal(14, 2)
+  taxableBase        Decimal             @map("taxable_base") @db.Decimal(14, 2)
+  ratePerThousand    Decimal             @map("rate_per_thousand") @db.Decimal(6, 3)
+  icaTax             Decimal             @map("ica_tax") @db.Decimal(14, 2)
+  avisosTableros     Decimal             @default(0) @map("avisos_tableros") @db.Decimal(14, 2)
+  bomberilSurcharge  Decimal             @default(0) @map("bomberil_surcharge") @db.Decimal(14, 2)
+  withheldIcaApplied Decimal             @default(0) @map("withheld_ica_applied") @db.Decimal(14, 2)
+  netPayable         Decimal             @default(0) @map("net_payable") @db.Decimal(14, 2)
+  status             VatSettlementStatus @default(posted)
+  settlementEntryId  String?             @map("settlement_entry_id")
+  paymentEntryId     String?             @map("payment_entry_id")
+  paidCashAccountId  String?             @map("paid_cash_account_id")
+  paidAt             DateTime?           @map("paid_at")
+  voidedAt           DateTime?           @map("voided_at")
+  voidReason         String?             @map("void_reason") @db.Text
+  settledById        String              @map("settled_by")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  createdBy User @relation("IcaDeclarationCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([createdById, periodicity, year, periodNumber])
+  @@index([createdById, status, endDate])
+  @@map("ica_declarations")
+}
+
 model WithholdingConcept {
   id                String              @id @default(cuid())
   accountId         String              @map("account_id")
@@ -3430,6 +3564,19 @@ enum JournalSourceType {
   prepaid_expense
   prepaid_amortization
   prepaid_cancellation
+  // Deterioro de cartera - receivableImpairment.service.js. One entry per
+  // run, adjusting 1399 to the required provision (5199 up / 4250 down).
+  // A plain adjustment, so the generic reversal stays allowed: the next run
+  // simply recomputes against whatever 1399 holds.
+  receivable_impairment
+  // Obligaciones financieras - financialObligation.service.js.
+  loan_disbursement
+  loan_payment
+  // Declaración de ICA - icaDeclaration.service.js (same lifecycle as the
+  // vat_settlement trio above).
+  ica_declaration
+  ica_declaration_void
+  ica_payment
 }
 
 enum VatPeriodicity {

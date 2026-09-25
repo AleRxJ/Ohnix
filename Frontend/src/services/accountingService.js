@@ -101,6 +101,62 @@ export const accountingService = {
         const response = await api.post(`/accounting/prepaid-expenses/${id}/cancel`, { reason });
         return response.data;
     },
+    async listImpairmentRuns() {
+        const response = await api.get("/accounting/receivable-impairment/runs");
+        return response.data;
+    },
+    async previewImpairment(payload) {
+        const response = await api.post("/accounting/receivable-impairment/preview", payload);
+        return response.data;
+    },
+    async runImpairment(payload) {
+        const response = await api.post("/accounting/receivable-impairment/run", payload);
+        return response.data;
+    },
+    async listFinancialObligations() {
+        const response = await api.get("/accounting/financial-obligations");
+        return response.data;
+    },
+    async previewObligationSchedule(payload) {
+        const response = await api.post("/accounting/financial-obligations/schedule-preview", payload);
+        return response.data;
+    },
+    async createFinancialObligation(payload) {
+        const response = await api.post("/accounting/financial-obligations", payload);
+        return response.data;
+    },
+    async payObligationInstallment(id, payload) {
+        const response = await api.post(`/accounting/financial-obligations/${id}/pay`, payload);
+        return response.data;
+    },
+    async getInventoryValuation(params = {}) {
+        const response = await api.get("/accounting/reports/inventory-valuation", { params });
+        return response.data;
+    },
+    async getProductKardex(productId, params = {}) {
+        const response = await api.get(`/accounting/reports/kardex/${productId}`, { params });
+        return response.data;
+    },
+    async listIcaDeclarations() {
+        const response = await api.get("/accounting/ica-declarations");
+        return response.data;
+    },
+    async previewIcaDeclaration(params) {
+        const response = await api.get("/accounting/ica-declarations/preview", { params });
+        return response.data;
+    },
+    async settleIcaDeclaration(payload) {
+        const response = await api.post("/accounting/ica-declarations", payload);
+        return response.data;
+    },
+    async voidIcaDeclaration(id, reason) {
+        const response = await api.post(`/accounting/ica-declarations/${id}/void`, { reason });
+        return response.data;
+    },
+    async payIcaDeclaration(id, payload) {
+        const response = await api.post(`/accounting/ica-declarations/${id}/pay`, payload);
+        return response.data;
+    },
 
     async listRecurringJournalTemplates({ includeInactive = false } = {}) {
         const response = await api.get("/accounting/recurring-journals", { params: { include_inactive: includeInactive } });

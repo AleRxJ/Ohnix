@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal, Progress, Upload } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined, DownloadOutlined, ToolOutlined, RetweetOutlined } from "@ant-design/icons";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined, DownloadOutlined, ToolOutlined, RetweetOutlined, BankOutlined, ContainerOutlined, FallOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
@@ -12,6 +12,10 @@ import EmptyState from "../components/common/EmptyState";
 import SectionGuide from "../components/common/SectionGuide";
 import VatSettlementCard from "../components/accounting/VatSettlementCard";
 import PrepaidExpensesTab from "../components/accounting/PrepaidExpensesTab";
+import ReceivableImpairmentTab from "../components/accounting/ReceivableImpairmentTab";
+import FinancialObligationsTab from "../components/accounting/FinancialObligationsTab";
+import InventoryValuationTab from "../components/accounting/InventoryValuationTab";
+import IcaDeclarationCard from "../components/accounting/IcaDeclarationCard";
 import useIsMobile from "../hooks/useIsMobile";
 import { accountingService } from "../services/accountingService";
 import { financeService } from "../services/financeService";
@@ -285,6 +289,12 @@ const SOURCE_TYPE_LABEL_KEYS = {
     prepaid_expense: "accounting.source_prepaid_expense",
     prepaid_amortization: "accounting.source_prepaid_amortization",
     prepaid_cancellation: "accounting.source_prepaid_cancellation",
+    receivable_impairment: "accounting.source_receivable_impairment",
+    loan_disbursement: "accounting.source_loan_disbursement",
+    loan_payment: "accounting.source_loan_payment",
+    ica_declaration: "accounting.source_ica_declaration",
+    ica_declaration_void: "accounting.source_ica_declaration_void",
+    ica_payment: "accounting.source_ica_payment",
 };
 
 // Automatic descriptions are persisted for auditability. Translate only
@@ -3403,6 +3413,7 @@ const TaxesTab = () => {
                 </Link>
             </Card>
             <VatSettlementCard />
+            <IcaDeclarationCard />
             <WithholdingConfigCard />
             <WithholdingConceptsCard />
             <WithholdingReportCard />
@@ -3776,6 +3787,9 @@ const Accounting = () => {
         { key: "recurring_expenses", label: tabLabel(<ClockCircleOutlined />, "accounting.tab_recurring_expenses"), children: <RecurringExpensesTab /> },
         { key: "fixed_assets", label: tabLabel(<ToolOutlined />, "accounting.tab_fixed_assets"), children: <FixedAssetsTab /> },
         { key: "prepaid_expenses", label: tabLabel(<CalendarOutlined />, "accounting.tab_prepaid_expenses"), children: <PrepaidExpensesTab /> },
+        { key: "financial_obligations", label: tabLabel(<BankOutlined />, "accounting.tab_financial_obligations"), children: <FinancialObligationsTab /> },
+        { key: "receivable_impairment", label: tabLabel(<FallOutlined />, "accounting.tab_receivable_impairment"), children: <ReceivableImpairmentTab /> },
+        { key: "inventory_valuation", label: tabLabel(<ContainerOutlined />, "accounting.tab_inventory_valuation"), children: <InventoryValuationTab /> },
         { key: "recurring_journals", label: tabLabel(<RetweetOutlined />, "accounting.tab_recurring_journals"), children: <RecurringJournalsTab /> },
         { key: "budgets", label: tabLabel(<BarChartOutlined />, "accounting.tab_budgets"), children: <BudgetsTab /> },
         { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },

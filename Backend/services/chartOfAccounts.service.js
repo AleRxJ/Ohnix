@@ -191,6 +191,49 @@ export const ensureGmfAccount = (db, accountId) => ensureNamedAccount(db, accoun
 const PREPAID_EXPENSE_ACCOUNT = { code: "1705", name: "Gastos pagados por anticipado", accountType: "asset" };
 export const ensurePrepaidExpenseAccount = (db, accountId) => ensureNamedAccount(db, accountId, PREPAID_EXPENSE_ACCOUNT);
 
+// Deterioro de cartera (receivableImpairment.service.js): 1399 is a contra-
+// asset (credit balance) netted against 1305 on the balance sheet.
+const IMPAIRMENT_ACCOUNTS = {
+    allowance: { code: "1399", name: "Deterioro acumulado de cartera", accountType: "asset" },
+    expense: { code: "5199", name: "Gasto por deterioro de cartera", accountType: "expense" },
+    recovery: { code: "4250", name: "Recuperación de deterioro de cartera", accountType: "revenue" },
+};
+export const ensureImpairmentAccounts = async (db, accountId) => ({
+    allowance: await ensureNamedAccount(db, accountId, IMPAIRMENT_ACCOUNTS.allowance),
+    expense: await ensureNamedAccount(db, accountId, IMPAIRMENT_ACCOUNTS.expense),
+    recovery: await ensureNamedAccount(db, accountId, IMPAIRMENT_ACCOUNTS.recovery),
+});
+
+// Obligaciones financieras (financialObligation.service.js) - defaults only,
+// any active liability/expense account can be chosen per loan. 530525
+// rather than PUC's 530520 because this chart already uses 530520 for
+// payment-gateway commissions.
+const LOAN_ACCOUNTS = {
+    liability: { code: "2105", name: "Obligaciones financieras - bancos nacionales", accountType: "liability" },
+    interest: { code: "530525", name: "Gastos financieros - intereses", accountType: "expense" },
+};
+export const ensureLoanAccounts = async (db, accountId) => ({
+    liability: await ensureNamedAccount(db, accountId, LOAN_ACCOUNTS.liability),
+    interest: await ensureNamedAccount(db, accountId, LOAN_ACCOUNTS.interest),
+});
+
+// Declaración de ICA (icaDeclaration.service.js). 5117 follows this chart's
+// own 51xx custom codes (5115/5116 are already personnel expenses here, so
+// PUC's 511505 would land under "prestaciones sociales"); 2412 is the PUC
+// liability. 135518 (ReteICA a favor) is a DEFAULT_ACCOUNTS entry.
+const ICA_ACCOUNTS = {
+    expense: { code: "5117", name: "Impuesto de industria y comercio, avisos y tableros", accountType: "expense" },
+    payable: { code: "2412", name: "Impuesto de industria y comercio por pagar", accountType: "liability" },
+};
+export const ensureIcaAccounts = async (db, accountId) => {
+    const coa = await getChartAccountMap(db, accountId);
+    return {
+        expense: await ensureNamedAccount(db, accountId, ICA_ACCOUNTS.expense),
+        payable: await ensureNamedAccount(db, accountId, ICA_ACCOUNTS.payable),
+        withheld: coa.get("135518"),
+    };
+};
+
 // Liquidación de IVA (vatSettlement.service.js) - where the 240805/240810
 // balances are swept to: the net owed to the DIAN, or the saldo a favor
 // carried into the next period (PUC 1355 "Anticipo de impuestos y
