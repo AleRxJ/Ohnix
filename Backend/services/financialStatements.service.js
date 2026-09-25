@@ -493,14 +493,22 @@ const CASH_EQUIVALENT_CODES = ["1105", "1110"];
 // business activity for the period (an opening balance being entered, a
 // reconciliation correction) - keeping them out of "operating" avoids
 // making a one-time correction look like recurring business cash flow.
-// Investing/financing are structurally ready but will read empty today:
-// nothing in chartOfAccounts/accountingPosting yet posts a fixed-asset
-// purchase or a loan/capital contribution to a dedicated account - the day
-// that exists, whatever its sourceType is falls into "operating" (the
-// default below) until this map is extended, same safety net as
-// getIncomeStatement's "expenses only reflect what's been entered" note.
+// Financing: loans (financialObligation.service.js) and owners' capital
+// (equityMovement.service.js). loan_payment carries the installment's
+// interest too - NIC 7.33 allows interest paid to be presented under
+// financing, which keeps each installment in one place.
+// Investing: proceeds from selling a fixed asset (fixedAsset.service.js#
+// disposeFixedAsset); registering an asset doesn't move cash here.
+// Anything else is operating (including IVA/ICA payments and diferidos).
 const CASH_FLOW_ADJUSTMENT_SOURCE_TYPES = new Set(["opening_balance", "cash_adjustment", "inventory_adjustment", "transfer_discrepancy"]);
-const cashFlowCategory = (sourceType) => (CASH_FLOW_ADJUSTMENT_SOURCE_TYPES.has(sourceType) ? "adjustments" : "operating");
+const CASH_FLOW_FINANCING_SOURCE_TYPES = new Set(["loan_disbursement", "loan_payment", "loan_extra_payment", "capital_contribution", "equity_distribution"]);
+const CASH_FLOW_INVESTING_SOURCE_TYPES = new Set(["fixed_asset_disposal"]);
+export const cashFlowCategory = (sourceType) => {
+    if (CASH_FLOW_ADJUSTMENT_SOURCE_TYPES.has(sourceType)) return "adjustments";
+    if (CASH_FLOW_FINANCING_SOURCE_TYPES.has(sourceType)) return "financing";
+    if (CASH_FLOW_INVESTING_SOURCE_TYPES.has(sourceType)) return "investing";
+    return "operating";
+};
 
 const emptyCashFlowCategories = () => ({
     operating: { total: 0, lines: [] },

@@ -1545,7 +1545,7 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
 
         const [orderPaidRows, purchasePaidRows, financialCreditNotes] = await Promise.all([
             orderIds.length
-                ? prisma.orderPayment.groupBy({ by: ["orderId"], where: { orderId: { in: orderIds } }, _sum: { amount: true } })
+                ? prisma.orderPayment.groupBy({ by: ["orderId"], where: { orderId: { in: orderIds } }, _sum: { amount: true, exchangeRateDifference: true } })
                 : [],
             purchaseIds.length
                 ? prisma.purchasePayment.groupBy({ by: ["purchaseId"], where: { purchaseId: { in: purchaseIds } }, _sum: { amount: true } })
@@ -1555,7 +1555,14 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
                 : [],
         ]);
 
-        const orderPaidMap = new Map(orderPaidRows.map((r) => [r.orderId, Number(r._sum.amount || 0)]));
+        // Same receivable definition as receivableBalance.service.js: only
+        // amount - diferencia en cambio cleared 1305, and a castigo takes the
+        // invoice out of cartera.
+        const orderPaidMap = new Map(orderPaidRows.map((r) => [r.orderId, Number(r._sum.amount || 0) - Number(r._sum.exchangeRateDifference || 0)]));
+        const orderWriteOffRows = orderIds.length
+            ? await prisma.receivableWriteOff.groupBy({ by: ["orderId"], where: { orderId: { in: orderIds }, reversedAt: null }, _sum: { amount: true } })
+            : [];
+        const orderWrittenOffMap = new Map(orderWriteOffRows.map((r) => [r.orderId, Number(r._sum.amount || 0)]));
         const purchasePaidMap = new Map(purchasePaidRows.map((r) => [r.purchaseId, Number(r._sum.amount || 0)]));
         const financialCreditByOrder = new Map();
         for (const adjustment of financialCreditNotes) {
@@ -1583,7 +1590,8 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
                     customer: order.customer ? { _id: toExternalId(order.customer), name: order.customer.name } : null,
                     total: round2(total),
                     paid: round2(paid),
-                    pending: round2(total - paid),
+                    written_off: round2(orderWrittenOffMap.get(order.id) || 0),
+                    pending: round2(total - paid - (orderWrittenOffMap.get(order.id) || 0)),
                     days_overdue: rawDays === null ? null : Math.max(0, rawDays),
                 };
             })

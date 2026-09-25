@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { documentPaymentDetails } from "../utils/paymentAvailability.js";
+import { computeOrderReceivable, loadReceivableAdjustments } from "./receivableBalance.service.js";
 
 const money = (v) => Math.round(Number(v || 0) * 100) / 100;
 
@@ -19,12 +20,20 @@ const allocate = async ({ accountId, actorId, paymentId, documentId, amount, pay
         if (!document || document.createdById !== accountId || document.id !== documentId) throw new ApiError(404, "Document not found.", [], "", "payment_allocation_document_not_found");
         const already = payment.allocations.reduce((s, row) => s + Number(row.amount), 0);
         if (money(already + value) > money(payment.amount)) throw new ApiError(422, "Allocation exceeds the payment balance.", [], "", "payment_allocation_payment_exceeded");
-        const gross = document[payable ? "purchaseDetails" : "orderDetails"].reduce((s, row) => s + Number(row.total) + Number(row.taxAmount) - Number(row.refundAmount) - Number(row.returnedTaxAmount), 0);
-        const withheld = payable ? document.retentions.reduce((s, row) => s + Number(row.withheldAmount) - Number(row.returnedWithheldAmount), 0) : 0;
-        const total = money(Math.max(gross - withheld, 0));
-        const paid = document.payments.reduce((s, row) => s + Number(row.amount), 0);
+        let balance;
+        if (payable) {
+            const gross = document.purchaseDetails.reduce((s, row) => s + Number(row.total) + Number(row.taxAmount) - Number(row.refundAmount) - Number(row.returnedTaxAmount), 0);
+            const withheld = document.retentions.reduce((s, row) => s + Number(row.withheldAmount) - Number(row.returnedWithheldAmount), 0);
+            const paid = document.payments.reduce((s, row) => s + Number(row.amount), 0);
+            balance = money(Math.max(money(Math.max(gross - withheld, 0)) - paid, 0));
+        } else {
+            // Receivables share receivableBalance.service.js's definition
+            // (credit notes, diferencia en cambio, castigos).
+            const { creditReduction, writtenOff } = await loadReceivableAdjustments([documentId], { db: tx });
+            balance = Math.max(computeOrderReceivable({ orderDetails: document.orderDetails, payments: document.payments, creditReduction: creditReduction.get(documentId), writtenOff: writtenOff.get(documentId) }).pending, 0);
+        }
         const existing = await allocationModel.aggregate({ _sum: { amount: true }, where: { [payable ? "purchaseId" : "orderId"]: documentId } });
-        if (money(Number(existing._sum.amount || 0) + value) > money(Math.max(total - paid, 0))) throw new ApiError(422, "Allocation exceeds the document balance.", [], "", "payment_allocation_document_exceeded");
+        if (money(Number(existing._sum.amount || 0) + value) > money(balance)) throw new ApiError(422, "Allocation exceeds the document balance.", [], "", "payment_allocation_document_exceeded");
         return allocationModel.create({ data: { [payable ? "purchasePaymentId" : "orderPaymentId"]: paymentId, [payable ? "purchaseId" : "orderId"]: documentId, amount: value, createdById: actorId } });
     }, { isolationLevel: "Serializable" });
 };

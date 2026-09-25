@@ -139,6 +139,11 @@ router.post("/prepaid-expenses/:id/cancel", requireModulePermission("accounting"
 router.get("/receivable-impairment/runs", requireModulePermission("accounting", "view"), phase3.listImpairmentRuns);
 router.post("/receivable-impairment/preview", requireModulePermission("accounting", "view"), phase3.previewImpairment);
 router.post("/receivable-impairment/run", requireModulePermission("accounting", "admin"), phase3.runImpairment);
+// Castigo de cartera - business-consequential (takes an invoice out of
+// cartera), "admin" like closing a period.
+router.get("/receivable-write-offs", requireModulePermission("accounting", "view"), phase3.listWriteOffs);
+router.post("/receivable-write-offs", requireModulePermission("accounting", "admin"), phase3.writeOffReceivable);
+router.post("/receivable-write-offs/:id/reverse", requireModulePermission("accounting", "admin"), phase3.reverseWriteOff);
 
 // Obligaciones financieras - same split as fixed assets.
 router.route("/financial-obligations")
@@ -146,6 +151,7 @@ router.route("/financial-obligations")
     .post(requireModulePermission("accounting", "edit"), phase3.createFinancialObligation);
 router.post("/financial-obligations/schedule-preview", requireModulePermission("accounting", "view"), phase3.previewObligationSchedule);
 router.post("/financial-obligations/:id/pay", requireModulePermission("accounting", "edit"), phase3.payObligationInstallment);
+router.post("/financial-obligations/:id/extra-payment", requireModulePermission("accounting", "edit"), phase3.payObligationExtra);
 
 // Kardex valorizado vs. 1435 - read-only.
 router.get("/reports/inventory-valuation", requireModulePermission("accounting", "view"), phase3.getInventoryValuation);

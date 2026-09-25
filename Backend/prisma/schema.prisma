@@ -320,6 +320,7 @@ model User {
   receivableImpairmentRuns             ReceivableImpairmentRun[]      @relation("ReceivableImpairmentRunCreatedBy")
   financialObligations                 FinancialObligation[]          @relation("FinancialObligationCreatedBy")
   icaDeclarations                      IcaDeclaration[]               @relation("IcaDeclarationCreatedBy")
+  receivableWriteOffs                  ReceivableWriteOff[]           @relation("ReceivableWriteOffCreatedBy")
   journalEntriesCreated                JournalEntry[]
   accountingConfigAuditsOwned          AccountingConfigAudit[]        @relation("AccountingConfigAuditAccount")
   costCentersOwned                     CostCenter[]                   @relation("CostCenterAccount")
@@ -2048,6 +2049,7 @@ model Order {
   orderDetails       OrderDetail[]
   electronicInvoice  ElectronicInvoice?
   payments           OrderPayment[]
+  writeOffs          ReceivableWriteOff[]
   paymentAllocations OrderPaymentAllocation[]
   salesQuotation     SalesQuotation?
   warranties         Warranty[]
@@ -3231,6 +3233,13 @@ model FinancialObligation {
   disbursementEntryId   String?                   @map("disbursement_entry_id")
   status                FinancialObligationStatus @default(active)
   installmentsPaid      Int                       @default(0) @map("installments_paid")
+  // Set by an extra payment to principal: the installment that applies from
+  // then on (reduce_installment recomputes it; reduce_term keeps it and
+  // shortens termMonths). Null = the original annuity.
+  plannedInstallment    Decimal?                  @map("planned_installment") @db.Decimal(14, 2)
+  // Highest installment number whose interest has been accrued because its
+  // due date passed unpaid - see financialObligation.service.js#accrueDueInterest.
+  interestAccruedThrough Int                      @default(0) @map("interest_accrued_through")
   createdAt             DateTime                  @default(now()) @map("created_at")
   updatedAt             DateTime                  @updatedAt @map("updated_at")
 
@@ -3243,10 +3252,18 @@ model FinancialObligation {
   @@map("financial_obligations")
 }
 
+enum FinancialObligationPaymentKind {
+  installment
+  extra
+}
+
 model FinancialObligationPayment {
   id                String   @id @default(cuid())
   obligationId      String   @map("obligation_id")
-  installmentNumber Int      @map("installment_number")
+  kind              FinancialObligationPaymentKind @default(installment)
+  // Null for an extra payment to principal (it isn't one of the schedule's
+  // installments); the unique index below only binds actual installments.
+  installmentNumber Int?     @map("installment_number")
   principal         Decimal  @db.Decimal(14, 2)
   interest          Decimal  @db.Decimal(14, 2)
   paidAt            DateTime @map("paid_at")
@@ -3304,6 +3321,36 @@ model IcaDeclaration {
   @@unique([createdById, periodicity, year, periodNumber])
   @@index([createdById, status, endDate])
   @@map("ica_declarations")
+}
+
+// Castigo de cartera: a specific invoice given up as uncollectible. It
+// reduces the order's pending balance everywhere it's computed (see
+// receivableBalance.service.js) and consumes the deterioro acumulado first.
+// Reversible (the customer paid after all), which restores the balance.
+model ReceivableWriteOff {
+  id              String    @id @default(cuid())
+  createdById     String    @map("created_by")
+  orderId         String    @map("order_id")
+  amount          Decimal   @db.Decimal(14, 2)
+  // How much came out of 1399 vs. straight to 5199 when there wasn't
+  // enough allowance.
+  allowanceUsed   Decimal   @map("allowance_used") @db.Decimal(14, 2)
+  expenseAmount   Decimal   @map("expense_amount") @db.Decimal(14, 2)
+  writeOffDate    DateTime  @map("write_off_date")
+  reason          String    @db.Text
+  journalEntryId  String?   @map("journal_entry_id")
+  reversedAt      DateTime? @map("reversed_at")
+  reversalReason  String?   @map("reversal_reason") @db.Text
+  reversalEntryId String?   @map("reversal_entry_id")
+  actorId         String    @map("actor_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  createdBy User  @relation("ReceivableWriteOffCreatedBy", fields: [createdById], references: [id])
+  order     Order @relation(fields: [orderId], references: [id])
+
+  @@index([createdById, reversedAt])
+  @@index([orderId])
+  @@map("receivable_write_offs")
 }
 
 model WithholdingConcept {
@@ -3577,6 +3624,15 @@ enum JournalSourceType {
   ica_declaration
   ica_declaration_void
   ica_payment
+  // Castigo de cartera - receivableWriteOff.service.js. The write-off
+  // (Dr 1399/5199 / Cr 1305) and its reversal when the customer ends up
+  // paying (Dr 1305 / Cr 4250).
+  receivable_write_off
+  receivable_write_off_reversal
+  // Obligaciones financieras: interest of an installment whose due date
+  // passed unpaid (Dr 530525 / Cr 233510), and an extra payment to principal.
+  loan_interest_accrual
+  loan_extra_payment
 }
 
 enum VatPeriodicity {

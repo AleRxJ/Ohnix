@@ -2,12 +2,26 @@ import { prisma } from "../db/prisma.js";
 import { documentPaymentDetails } from "../utils/paymentAvailability.js";
 import { ApiError } from "../utils/ApiError.js";
 import { getAgingBucket, summarizeAging } from "../utils/accountAging.js";
+import { listUpcomingInstallments } from "./financialObligation.service.js";
 
 const round2 = (value) => Number(Number(value).toFixed(2));
 
-export const buildPayablePlan = ({ purchases, availableCash, now = new Date() }) => {
+const scheduleFields = (dueDate, now) => {
+    const due = dueDate ? new Date(dueDate) : null;
+    const rawDays = due ? Math.floor((now - due) / 86400000) : null;
+    return {
+        days_overdue: rawDays === null ? null : Math.max(rawDays, 0),
+        aging_bucket: getAgingBucket(rawDays),
+        status: rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current",
+    };
+};
+
+// `otherObligations` are non-purchase payables competing for the same cash
+// (loan installments, IVA/ICA por pagar) - already shaped as
+// { id, kind, number, document_date, due_date, supplier, total, paid, pending, link }.
+export const buildPayablePlan = ({ purchases, availableCash, otherObligations = [], now = new Date() }) => {
     const normalizedCash = Math.max(round2(availableCash), 0);
-    const documents = purchases.map((purchase) => {
+    const purchaseDocuments = purchases.map((purchase) => {
         const gross = purchase.purchaseDetails.reduce((sum, row) => sum + Number(row.total) + Number(row.taxAmount) - Number(row.refundAmount) - Number(row.returnedTaxAmount), 0);
         const withheld = purchase.retentions.reduce((sum, row) => sum + Number(row.withheldAmount) - Number(row.returnedWithheldAmount), 0);
         const paid = purchase.payments.reduce((sum, row) => sum + Number(row.amount), 0);
@@ -18,8 +32,12 @@ export const buildPayablePlan = ({ purchases, availableCash, now = new Date() })
         const daysOverdue = rawDays === null ? null : Math.max(rawDays, 0);
         const status = rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current";
         const paymentDetails = purchase.payments.map(documentPaymentDetails);
-        return { id: purchase.id, number: purchase.purchaseNo, document_date: purchase.purchaseDate, due_date: purchase.dueDate, supplier: purchase.supplier, total, paid: round2(paid), pending, payment_details: paymentDetails, days_overdue: daysOverdue, aging_bucket: getAgingBucket(rawDays), status };
-    }).filter((row) => row.pending > 0.001);
+        return { id: purchase.id, kind: "purchase", number: purchase.purchaseNo, document_date: purchase.purchaseDate, due_date: purchase.dueDate, supplier: purchase.supplier, total, paid: round2(paid), pending, payment_details: paymentDetails, days_overdue: daysOverdue, aging_bucket: getAgingBucket(rawDays), status };
+    });
+    const documents = [
+        ...purchaseDocuments,
+        ...otherObligations.map((row) => ({ payment_details: [], ...row, ...scheduleFields(row.due_date, now) })),
+    ].filter((row) => row.pending > 0.001);
 
     const rank = { overdue: 0, due_soon: 1, current: 2, unscheduled: 3 };
     documents.sort((a, b) => rank[a.status] - rank[b.status] || new Date(a.due_date || a.document_date) - new Date(b.due_date || b.document_date));
@@ -48,7 +66,60 @@ export const getAccountsPayablePlan = async ({ accountId, posScopeAll, posScopeI
         }),
         prisma.cashAccount.findMany({ where: { createdById: accountId, isActive: true, ...(posScopeAll ? {} : { OR: [{ pointOfSaleId: null }, { pointOfSaleId: { in: posScopeIds || [] } }] }) }, select: { balance: true } }),
     ]);
-    return buildPayablePlan({ purchases, availableCash: cashAccounts.reduce((sum, row) => sum + Number(row.balance), 0) });
+    // Company-level obligations (not tied to a point of sale) only for users
+    // who see every location - a location-scoped cashier's plan stays about
+    // that location's purchases.
+    const otherObligations = posScopeAll ? await loadOtherObligations(accountId) : [];
+    return buildPayablePlan({ purchases, otherObligations, availableCash: cashAccounts.reduce((sum, row) => sum + Number(row.balance), 0) });
+};
+
+// Loan installments (next unpaid one per loan), IVA settlements and ICA
+// declarations posted but unpaid. The DIAN/municipal deadline depends on
+// the NIT and calendar, which isn't modeled, so tax rows are unscheduled.
+export const loadOtherObligations = async (accountId) => {
+    const [installments, vatRows, icaRows] = await Promise.all([
+        listUpcomingInstallments(accountId),
+        prisma.vatSettlement.findMany({ where: { createdById: accountId, status: "posted", netPayable: { gt: 0 } } }),
+        prisma.icaDeclaration.findMany({ where: { createdById: accountId, status: "posted", netPayable: { gt: 0 } } }),
+    ]);
+    return [
+        ...installments.map(({ obligation, next }) => ({
+            id: `loan:${obligation.id}`,
+            kind: "loan_installment",
+            number: `${next.number}/${obligation.termMonths}`,
+            document_date: obligation.disbursementDate,
+            due_date: next.due_date,
+            supplier: { id: obligation.id, name: obligation.lenderName },
+            total: next.installment,
+            paid: 0,
+            pending: next.installment,
+            link: { path: "/accounting", tab: "financial_obligations" },
+        })),
+        ...vatRows.map((row) => ({
+            id: `vat:${row.id}`,
+            kind: "vat",
+            number: `IVA ${row.periodNumber}/${row.year}`,
+            document_date: row.endDate,
+            due_date: null,
+            supplier: { name: "DIAN" },
+            total: Number(row.netPayable),
+            paid: 0,
+            pending: Number(row.netPayable),
+            link: { path: "/accounting", tab: "taxes" },
+        })),
+        ...icaRows.map((row) => ({
+            id: `ica:${row.id}`,
+            kind: "ica",
+            number: row.periodicity === "annual" ? `ICA ${row.year}` : `ICA ${row.periodNumber}/${row.year}`,
+            document_date: row.endDate,
+            due_date: null,
+            supplier: { name: "Municipio" },
+            total: Number(row.netPayable),
+            paid: 0,
+            pending: Number(row.netPayable),
+            link: { path: "/accounting", tab: "taxes" },
+        })),
+    ];
 };
 
 export const updatePurchaseDueDate = async ({ accountId, purchaseId, dueDate }) => {

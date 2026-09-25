@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { buildReceivablePlan } from "./accountsReceivable.service.js";
+import { loadReceivableAdjustments } from "./receivableBalance.service.js";
 import { ensureImpairmentAccounts } from "./chartOfAccounts.service.js";
 import { recordJournalEntry } from "./journalEntry.service.js";
 
@@ -63,10 +64,13 @@ const loadReceivablesAsOf = async (db, accountId, asOfDate) => {
             id: true, invoiceNo: true, orderDate: true, dueDate: true,
             customer: { select: { id: true, name: true, identification: true } },
             orderDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } },
-            payments: { where: { paidAt: { lte: asOfDate } }, select: { id: true, amount: true, paidAt: true, method: true, reference: true, allocations: { select: { amount: true } } } },
+            payments: { where: { paidAt: { lte: asOfDate } }, select: { id: true, amount: true, exchangeRateDifference: true, paidAt: true, method: true, reference: true, allocations: { select: { amount: true } } } },
         },
     });
-    return buildReceivablePlan({ orders, now: asOfDate }).documents;
+    // Same credit notes and castigos the rest of the system nets out, as
+    // they stood at the cutoff.
+    const { creditReduction, writtenOff } = await loadReceivableAdjustments(orders.map((order) => order.id), { db, asOf: asOfDate });
+    return buildReceivablePlan({ orders: orders.map((order) => ({ ...order, financialCreditReduction: creditReduction.get(order.id) || 0, writtenOff: writtenOff.get(order.id) || 0 })), now: asOfDate }).documents;
 };
 
 const allowanceBalance = async (db, allowanceId, asOfDate) => {
@@ -137,3 +141,19 @@ export const runImpairment = async ({ accountId, actorId, asOf, rates }) => pris
 
 export const listImpairmentRuns = ({ accountId }) =>
     prisma.receivableImpairmentRun.findMany({ where: { createdById: accountId }, orderBy: { createdAt: "desc" }, take: 50 });
+
+// Close-readiness warning: is the recorded allowance (1399) at the month's
+// end still what the aging requires? Read-only (never seeds accounts);
+// rates from the latest run, the fiscal defaults when there is none.
+export const getImpairmentReadiness = async ({ accountId, asOfDate, db = prisma }) => {
+    const [lastRun, allowance] = await Promise.all([
+        db.receivableImpairmentRun.findFirst({ where: { createdById: accountId }, orderBy: { createdAt: "desc" }, select: { rates: true } }),
+        db.chartAccount.findFirst({ where: { createdById: accountId, code: "1399" }, select: { id: true } }),
+    ]);
+    const rates = normalizeImpairmentRates(lastRun?.rates || {});
+    const documents = await loadReceivablesAsOf(db, accountId, asOfDate);
+    const { required } = computeImpairment({ documents, rates, asOfDate });
+    const recorded = allowance ? await allowanceBalance(db, allowance.id, asOfDate) : 0;
+    const adjustment = round2(required - recorded);
+    return Math.abs(adjustment) >= 1 ? { required, recorded, adjustment } : null;
+};

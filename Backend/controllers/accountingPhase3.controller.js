@@ -4,6 +4,7 @@ import * as impairmentService from "../services/receivableImpairment.service.js"
 import * as obligationService from "../services/financialObligation.service.js";
 import * as inventoryValuationService from "../services/inventoryValuation.service.js";
 import * as icaService from "../services/icaDeclaration.service.js";
+import * as writeOffService from "../services/receivableWriteOff.service.js";
 
 // Deterioro de cartera, obligaciones financieras, kardex valorizado and ICA
 // - thin HTTP layer over their services, same snake_case response shape as
@@ -153,4 +154,41 @@ export const payIcaDeclaration = asyncHandler(async (req, res) => {
     const { cash_account_id, payment_date } = req.body || {};
     const row = await icaService.payIcaDeclaration({ accountId: req.user.prismaId, actorId: req.user.actorId, id: req.params.id, cashAccountId: cash_account_id, paymentDate: payment_date });
     return res.status(200).json(new ApiResponse(200, mapIca(row), "ICA declaration paid successfully"));
+});
+
+// --- Castigo de cartera ---
+const mapWriteOff = (row) => ({
+    _id: row.id,
+    order: row.order ? { _id: row.order.id, invoice_no: row.order.invoiceNo, customer: row.order.customer ? { _id: row.order.customer.id, name: row.order.customer.name } : null } : { _id: row.orderId },
+    amount: Number(row.amount),
+    allowance_used: Number(row.allowanceUsed),
+    expense_amount: Number(row.expenseAmount),
+    write_off_date: row.writeOffDate,
+    reason: row.reason,
+    reversed_at: row.reversedAt,
+    reversal_reason: row.reversalReason,
+    created_at: row.createdAt,
+});
+
+export const listWriteOffs = asyncHandler(async (req, res) => {
+    const rows = await writeOffService.listWriteOffs({ accountId: req.user.prismaId });
+    return res.status(200).json(new ApiResponse(200, rows.map(mapWriteOff), "Write-offs fetched successfully"));
+});
+
+export const writeOffReceivable = asyncHandler(async (req, res) => {
+    const { order_id, amount, reason, write_off_date } = req.body || {};
+    const row = await writeOffService.writeOffReceivable({ accountId: req.user.prismaId, actorId: req.user.actorId, orderId: order_id, amount, reason, writeOffDate: write_off_date });
+    return res.status(201).json(new ApiResponse(201, mapWriteOff(row), "Receivable written off successfully"));
+});
+
+export const reverseWriteOff = asyncHandler(async (req, res) => {
+    const row = await writeOffService.reverseWriteOff({ accountId: req.user.prismaId, actorId: req.user.actorId, id: req.params.id, reason: req.body?.reason, reversalDate: req.body?.reversal_date });
+    return res.status(200).json(new ApiResponse(200, mapWriteOff(row), "Write-off reversed successfully"));
+});
+
+// --- Abono extraordinario ---
+export const payObligationExtra = asyncHandler(async (req, res) => {
+    const { cash_account_id, payment_date, amount, strategy } = req.body || {};
+    const row = await obligationService.payExtraPrincipal(req.user.prismaId, req.user.actorId, req.params.id, { cashAccountId: cash_account_id, paymentDate: payment_date, amount, strategy });
+    return res.status(200).json(new ApiResponse(200, row, "Extra payment registered successfully"));
 });

@@ -15,8 +15,9 @@ export const reverseJournalEntry = async ({ accountId, actorId, id, reason, entr
         // vatSettlement.service.js instead. Same for prepaid_* (a reversed
         // amortization would desync PrepaidExpense.monthsAmortized) - cancel
         // the diferido instead. loan_* would desync installmentsPaid, ica_*
-        // the IcaDeclaration status.
-        if (["period_close", "period_reopen", "period_reclose", "manual_journal_reversal", "vat_settlement", "vat_settlement_void", "vat_payment", "prepaid_expense", "prepaid_amortization", "prepaid_cancellation", "loan_disbursement", "loan_payment", "ica_declaration", "ica_declaration_void", "ica_payment"].includes(original.sourceType)) throw new ApiError(409, "This journal entry cannot be reversed.", [], "", "journal_reversal_not_allowed");
+        // the IcaDeclaration status, receivable_write_off* the castigo's
+        // effect on the order's pending balance.
+        if (["period_close", "period_reopen", "period_reclose", "manual_journal_reversal", "vat_settlement", "vat_settlement_void", "vat_payment", "prepaid_expense", "prepaid_amortization", "prepaid_cancellation", "loan_disbursement", "loan_payment", "loan_extra_payment", "loan_interest_accrual", "receivable_write_off", "receivable_write_off_reversal", "ica_declaration", "ica_declaration_void", "ica_payment"].includes(original.sourceType)) throw new ApiError(409, "This journal entry cannot be reversed.", [], "", "journal_reversal_not_allowed");
         const reversal = await recordJournalEntry(tx, { accountId, createdById: actorId, entryDate: date, description: `Reversal: ${original.description || original.sourceType}. ${String(reason).trim()}`, sourceType: "manual_journal_reversal", sourceId: original.id, lines: original.lines.map((line) => ({ chartAccountId: line.chartAccountId, debit: Number(line.credit), credit: Number(line.debit), description: line.description, costCenterId: line.costCenterId, thirdPartyType: line.thirdPartyType, thirdPartyId: line.thirdPartyId, thirdPartyName: line.thirdPartyName, thirdPartyDocument: line.thirdPartyDocument })) });
         return { originalId: original.id, reversalId: reversal.id };
     });

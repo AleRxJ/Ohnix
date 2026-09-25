@@ -302,3 +302,11 @@ export const cancelPrepaidExpense = async (accountId, actorId, id, { reason } = 
         return mapPrepaidExpense(row, null);
     }, { isolationLevel: "Serializable" });
 };
+
+// Close-readiness warning: diferidos with months due up to `period`
+// ("YYYY-MM") that haven't been amortized yet.
+export const findPendingAmortizations = async ({ accountId, period, db = prisma }) => {
+    const rows = await db.prepaidExpense.findMany({ where: { createdById: accountId, status: "active" } });
+    const pending = rows.map((row) => computeAmortizationDue(row, period)).filter((due) => due.pendingMonths > 0);
+    return pending.length ? { count: pending.length, amount: round2(pending.reduce((sum, due) => sum + due.amount, 0)) } : null;
+};

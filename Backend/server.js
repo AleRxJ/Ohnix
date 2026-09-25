@@ -11,6 +11,7 @@ import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.j
 import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
 import fixedAssetDepreciationScheduler from "./utils/fixedAssetDepreciationScheduler.js";
 import prepaidExpenseScheduler from "./utils/prepaidExpenseScheduler.js";
+import loanInterestAccrualScheduler from "./utils/loanInterestAccrualScheduler.js";
 import recurringJournalScheduler from "./utils/recurringJournalScheduler.js";
 import receiptTacitaScheduler from "./utils/receiptTacitaScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
@@ -106,6 +107,8 @@ connectDB()
                 fixedAssetDepreciationScheduler.start();
                 console.log("🗓️ Starting prepaid expense amortization scheduler...");
                 prepaidExpenseScheduler.start();
+                console.log("🏦 Starting loan interest accrual scheduler...");
+                loanInterestAccrualScheduler.start();
                 console.log("🔁 Starting recurring journal scheduler...");
                 recurringJournalScheduler.start();
                 console.log("📜 Starting receipt tácita scheduler...");
@@ -135,6 +138,7 @@ process.on("SIGTERM", () => {
     recurringExpenseScheduler.stop();
     fixedAssetDepreciationScheduler.stop();
     prepaidExpenseScheduler.stop();
+    loanInterestAccrualScheduler.stop();
     recurringJournalScheduler.stop();
     receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
@@ -153,6 +157,7 @@ process.on("SIGINT", () => {
     recurringExpenseScheduler.stop();
     fixedAssetDepreciationScheduler.stop();
     prepaidExpenseScheduler.stop();
+    loanInterestAccrualScheduler.stop();
     recurringJournalScheduler.stop();
     receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();

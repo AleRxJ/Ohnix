@@ -231,3 +231,22 @@ export const payIcaDeclaration = async ({ accountId, actorId, id, cashAccountId,
 export const listIcaDeclarations = ({ accountId }) =>
     prisma.icaDeclaration.findMany({ where: { createdById: accountId }, orderBy: [{ endDate: "desc" }] });
 
+
+// Close-readiness warning (accountingPeriod.service.js), same idea as
+// vatSettlement.service.js#findUnsettledVatPeriodEndingIn: closing the month
+// that ends an undeclared ICA period would block posting its declaration.
+// Only for companies that configured an ICA rate (the rest aren't ICA
+// declarants here); periodicity from the latest declaration, annual if none.
+export const findUnsettledIcaPeriodEndingIn = async ({ accountId, year, month, db = prisma }) => {
+    const account = await db.user.findUnique({ where: { id: accountId }, select: { company: { select: { icaRatePerThousand: true } } } });
+    if (account?.company?.icaRatePerThousand == null) return null;
+    const latest = await db.icaDeclaration.findFirst({ where: { createdById: accountId, status: { not: "voided" } }, orderBy: { endDate: "desc" }, select: { periodicity: true } });
+    const periodicity = latest?.periodicity || "annual";
+    const months = MONTHS[periodicity];
+    if (month % months !== 0) return null;
+    const range = getIcaPeriodRange(periodicity, year, month / months);
+    const declared = await db.icaDeclaration.findFirst({ where: { createdById: accountId, status: { not: "voided" }, startDate: { lte: range.endDate }, endDate: { gte: range.startDate } }, select: { id: true } });
+    if (declared) return null;
+    const income = await getIncomeStatement({ accountId, startDate: range.startDate, endDate: range.endDate });
+    return income.total_revenue > 0 ? { periodicity, year: range.year, period_number: range.periodNumber } : null;
+};

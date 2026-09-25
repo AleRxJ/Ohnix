@@ -5,6 +5,10 @@ import { getPeriodClosingPlan } from "./financialStatements.service.js";
 import { recordJournalEntry } from "./journalEntry.service.js";
 import { getCashIntegrity } from "./cashIntegrity.service.js";
 import { findUnsettledVatPeriodEndingIn } from "./vatSettlement.service.js";
+import { findUnsettledIcaPeriodEndingIn } from "./icaDeclaration.service.js";
+import { getImpairmentReadiness } from "./receivableImpairment.service.js";
+import { findPendingAmortizations } from "./prepaidExpense.service.js";
+import { listUpcomingInstallments } from "./financialObligation.service.js";
 
 export const listAccountingPeriods = async (accountId) =>
     prisma.accountingPeriod.findMany({
@@ -18,18 +22,31 @@ export const getAccountingPeriodCloseReadiness = async ({ accountId, periodId, d
     if (!period) throw new ApiError(404, "Accounting period not found.", [], "", "accounting_period_not_found");
     const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));
     const endDate = new Date(Date.UTC(period.year, period.month, 0, 23, 59, 59, 999));
-    const [integrity, unmatchedStatementEntries, unmatchedCashMovements, unsettledVatPeriod] = await Promise.all([
+    // Everything past the integrity check is a warning, never a blocker:
+    // each one points at a module whose entries belong to this month and
+    // would be refused (accounting_period_closed) once it's closed.
+    const periodKey = `${period.year}-${String(period.month).padStart(2, "0")}`;
+    const [integrity, unmatchedStatementEntries, unmatchedCashMovements, unsettledVatPeriod, unsettledIcaPeriod, impairment, prepaidPending, installments] = await Promise.all([
         getCashIntegrity({ accountId, db }),
         db.bankStatementEntry.count({ where: { cashAccount: { createdById: accountId }, entryDate: { gte: startDate, lte: endDate }, matchedMovementId: null } }),
         db.cashMovement.count({ where: { cashAccount: { createdById: accountId }, createdAt: { gte: startDate, lte: endDate }, reconciledAt: null } }),
         findUnsettledVatPeriodEndingIn({ accountId, year: period.year, month: period.month, db }),
+        findUnsettledIcaPeriodEndingIn({ accountId, year: period.year, month: period.month, db }),
+        getImpairmentReadiness({ accountId, asOfDate: endDate, db }),
+        findPendingAmortizations({ accountId, period: periodKey, db }),
+        listUpcomingInstallments(accountId, db),
     ]);
+    const overdueInstallments = installments.filter(({ next }) => next.due_date <= endDate);
     const operationalDifferences = integrity.operational.filter((row) => row.status !== "ok");
     return {
         period: { id: period.id, year: period.year, month: period.month, status: period.status },
         can_close: operationalDifferences.length === 0,
         blockers: { operational_differences: operationalDifferences },
-        warnings: { unmatched_statement_entries: unmatchedStatementEntries, unmatched_cash_movements: unmatchedCashMovements, accounting_differences: integrity.accounting.filter((row) => row.status !== "ok"), unsettled_vat_period: unsettledVatPeriod },
+        warnings: { unmatched_statement_entries: unmatchedStatementEntries, unmatched_cash_movements: unmatchedCashMovements, accounting_differences: integrity.accounting.filter((row) => row.status !== "ok"), unsettled_vat_period: unsettledVatPeriod,
+            unsettled_ica_period: unsettledIcaPeriod,
+            impairment_outdated: impairment,
+            prepaid_pending: prepaidPending,
+            overdue_loan_installments: overdueInstallments.length ? { count: overdueInstallments.length, amount: Number(overdueInstallments.reduce((sum, row) => sum + row.next.installment, 0).toFixed(2)) } : null },
     };
 };
 

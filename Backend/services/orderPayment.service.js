@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { recordCashMovement, creditCashAccount } from "./cashMovement.service.js";
 import { buildAccountingThirdParty, postOrderPaymentJournalEntry } from "./accountingPosting.service.js";
 import { getActivePaymentMethod } from "./paymentMethod.service.js";
+import { computeOrderReceivable, loadReceivableAdjustments } from "./receivableBalance.service.js";
 
 const round2 = (value) => Number(Number(value || 0).toFixed(2));
 // Fase 4 (multi-moneda) - only ever consulted when the order isn't COP AND
@@ -14,29 +15,18 @@ const round2 = (value) => Number(Number(value || 0).toFixed(2));
 // realistic expectation.
 const MAX_FX_VARIANCE_PERCENT = 0.15;
 
-// Single receivable balance used by payment validation and the planning UI:
-// frozen sale base/tax, less returns and financial credit notes, less cash
-// already collected. This prevents collecting more than the accounting
-// receivable after a post-sale adjustment.
+// Receivable balance used by payment validation - see
+// receivableBalance.service.js for the single definition every screen
+// shares (credit notes, diferencia en cambio, castigos).
 export const getOrderPendingBalance = async (orderId, db = prisma) => {
-    const [order, paidAgg, notes] = await Promise.all([
-        db.order.findUnique({ where: { id: orderId }, select: { id: true, total: true, orderStatus: true, currencyCode: true, orderDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } } } }),
-        db.orderPayment.aggregate({ where: { orderId }, _sum: { amount: true, exchangeRateDifference: true } }),
-        db.electronicCreditNote.findMany({ where: { invoice: { orderId } }, select: { id: true } }),
-    ]);
+    const order = await db.order.findUnique({
+        where: { id: orderId },
+        select: { id: true, total: true, orderStatus: true, currencyCode: true, orderDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } }, payments: { select: { amount: true, exchangeRateDifference: true } } },
+    });
     if (!order) throw new ApiError(404, "Order not found.", [], "", "order_payment_order_not_found");
-    const entries = notes.length ? await db.journalEntry.findMany({ where: { sourceType: "credit_note_financial", sourceId: { in: notes.map((note) => note.id) } }, select: { lines: { where: { chartAccount: { code: "1305" } }, select: { credit: true } } } }) : [];
-    const operationalTotal = order.orderDetails.reduce((sum, row) => sum + Number(row.total) + Number(row.taxAmount) - Number(row.refundAmount) - Number(row.returnedTaxAmount), 0);
-    const creditReduction = entries.reduce((sum, entry) => sum + entry.lines.reduce((lineSum, line) => lineSum + Number(line.credit), 0), 0);
-    const total = Math.max(Number((operationalTotal - creditReduction).toFixed(2)), 0);
-    // A settleInFull payment's exchangeRateDifference never actually applied
-    // against the receivable (see postOrderPaymentJournalEntry - only
-    // `amount - exchangeRateDifference` cleared 1305) - net it back out here
-    // so "pending" reflects the receivable, not the raw cash collected.
-    // Always 0 for a COP order (exchangeRateDifference is always 0 there).
-    const paid = Number(paidAgg._sum.amount || 0) - Number(paidAgg._sum.exchangeRateDifference || 0);
-    const pending = Number((total - paid).toFixed(2));
-    return { order, total, paid: Number(paid), pending };
+    const { creditReduction, writtenOff } = await loadReceivableAdjustments([orderId], { db });
+    const balance = computeOrderReceivable({ orderDetails: order.orderDetails, payments: order.payments, creditReduction: creditReduction.get(orderId), writtenOff: writtenOff.get(orderId) });
+    return { order, total: balance.total, paid: balance.paid, writtenOff: balance.writtenOff, pending: balance.pending };
 };
 
 // What the customer's configured flat rates (Customer.withholding*Percent -

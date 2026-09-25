@@ -211,10 +211,13 @@ export const ensureImpairmentAccounts = async (db, accountId) => ({
 const LOAN_ACCOUNTS = {
     liability: { code: "2105", name: "Obligaciones financieras - bancos nacionales", accountType: "liability" },
     interest: { code: "530525", name: "Gastos financieros - intereses", accountType: "expense" },
+    // Causación of an installment's interest once its due date passes unpaid.
+    accruedInterest: { code: "233510", name: "Intereses por pagar", accountType: "liability" },
 };
 export const ensureLoanAccounts = async (db, accountId) => ({
     liability: await ensureNamedAccount(db, accountId, LOAN_ACCOUNTS.liability),
     interest: await ensureNamedAccount(db, accountId, LOAN_ACCOUNTS.interest),
+    accruedInterest: await ensureNamedAccount(db, accountId, LOAN_ACCOUNTS.accruedInterest),
 });
 
 // Declaración de ICA (icaDeclaration.service.js). 5117 follows this chart's
