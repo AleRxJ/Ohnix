@@ -40,33 +40,39 @@ export const getVatPeriodRange = (periodicity, year, periodNumber) => {
 };
 
 // generated = 240805 credit balance, deductible = 240810 debit balance,
+// withheldVat = 135517 debit balance (ReteIVA customers withheld - always
+// swept in full, it belongs to the period being declared, F300-style),
 // carryForward = 135520 debit balance (saldo a favor from earlier periods).
 // Returns the entry lines keyed by account role, always balanced:
-//   net > 0: Dr 240805 G / Cr 240810 D / Cr 135520 applied / Cr 240895 rest
-//   net < 0: Dr 240805 G / Cr 240810 D / Dr 135520 |net|
+//   position = G - D - W
+//   position > 0: Dr 240805 G / Cr 240810 D / Cr 135517 W / Cr 135520 applied / Cr 240895 rest
+//   position < 0: Dr 240805 G / Cr 240810 D / Cr 135517 W / Dr 135520 |position|
 // A negative G or D (returns exceeding sales/purchases) flips its side.
-export const computeVatSettlement = ({ generated, deductible, carryForward = 0 }) => {
+export const computeVatSettlement = ({ generated, deductible, withheldVat = 0, carryForward = 0 }) => {
     const g = round2(generated);
     const d = round2(deductible);
+    const w = Math.max(0, round2(withheldVat));
     const carry = Math.max(0, round2(carryForward));
     const net = round2(g - d);
+    const position = round2(net - w);
     const lines = [
         { role: "generated", debit: g > 0 ? g : 0, credit: g < 0 ? -g : 0 },
         { role: "deductible", debit: d < 0 ? -d : 0, credit: d > 0 ? d : 0 },
+        { role: "withheld", debit: 0, credit: w },
     ];
     let carryForwardApplied = 0;
     let netPayable = 0;
     let creditBalance = 0;
-    if (net > 0) {
-        carryForwardApplied = round2(Math.min(carry, net));
-        netPayable = round2(net - carryForwardApplied);
+    if (position > 0) {
+        carryForwardApplied = round2(Math.min(carry, position));
+        netPayable = round2(position - carryForwardApplied);
         lines.push({ role: "credit", debit: 0, credit: carryForwardApplied });
         lines.push({ role: "payable", debit: 0, credit: netPayable });
-    } else if (net < 0) {
-        creditBalance = -net;
+    } else if (position < 0) {
+        creditBalance = -position;
         lines.push({ role: "credit", debit: creditBalance, credit: 0 });
     }
-    return { generated: g, deductible: d, net, carryForwardApplied, netPayable, creditBalance, availableCredit: carry, lines: lines.filter((line) => line.debit !== 0 || line.credit !== 0) };
+    return { generated: g, deductible: d, net, withheldVatApplied: w, carryForwardApplied, netPayable, creditBalance, availableCredit: carry, lines: lines.filter((line) => line.debit !== 0 || line.credit !== 0) };
 };
 
 const sumBalances = async (db, accounts, where) => {
@@ -80,6 +86,7 @@ const sumBalances = async (db, accounts, where) => {
     return {
         generated: -debitBalance("generated"),
         deductible: debitBalance("deductible"),
+        withheldVat: debitBalance("withheld"),
         carryForward: debitBalance("credit"),
     };
 };
@@ -131,10 +138,11 @@ export const previewVatSettlement = async ({ accountId, periodicity, year, perio
         existing,
         blockers,
         result,
-        activity: { generated: round2(activity.generated), deductible: round2(activity.deductible) },
+        activity: { generated: round2(activity.generated), deductible: round2(activity.deductible), withheldVat: round2(activity.withheldVat) },
         priorAdjustments: {
             generated: round2(cumulative.generated - activity.generated),
             deductible: round2(cumulative.deductible - activity.deductible),
+            withheldVat: round2(cumulative.withheldVat - activity.withheldVat),
         },
     };
 };
@@ -156,6 +164,7 @@ export const settleVatPeriod = async ({ accountId, actorId, periodicity, year, p
                 endDate: range.endDate,
                 generatedTotal: result.generated,
                 deductibleTotal: result.deductible,
+                withheldVatApplied: result.withheldVatApplied,
                 carryForwardApplied: result.carryForwardApplied,
                 netPayable: result.netPayable,
                 creditBalance: result.creditBalance,
@@ -277,3 +286,23 @@ export const payVatSettlement = async ({ accountId, actorId, id, cashAccountId, 
 export const listVatSettlements = ({ accountId }) =>
     prisma.vatSettlement.findMany({ where: { createdById: accountId }, orderBy: [{ endDate: "desc" }] });
 
+
+// Close-readiness warning (accountingPeriod.service.js): closing the month
+// that ends an unsettled IVA period would block its settlement afterwards
+// (recordJournalEntry refuses a closed period). Periodicity is inferred from
+// the latest settlement, bimonthly when there is none yet. Read-only on
+// purpose - unlike ensureVatSettlementAccounts, this never seeds accounts.
+export const findUnsettledVatPeriodEndingIn = async ({ accountId, year, month, db = prisma }) => {
+    const latest = await db.vatSettlement.findFirst({ where: { createdById: accountId, status: { not: "voided" } }, orderBy: { endDate: "desc" }, select: { periodicity: true } });
+    const periodicity = latest?.periodicity || "bimonthly";
+    const months = MONTHS_PER_PERIOD[periodicity];
+    if (month % months !== 0) return null;
+    const range = getVatPeriodRange(periodicity, year, month / months);
+    const settled = await db.vatSettlement.findFirst({ where: { createdById: accountId, status: { not: "voided" }, startDate: { lte: range.endDate }, endDate: { gte: range.startDate } }, select: { id: true } });
+    if (settled) return null;
+    const accounts = await db.chartAccount.findMany({ where: { createdById: accountId, code: { in: ["240805", "240810", "135517"] } }, select: { id: true } });
+    if (!accounts.length) return null;
+    const agg = await db.journalEntryLine.groupBy({ by: ["chartAccountId"], where: { chartAccountId: { in: accounts.map((a) => a.id) }, journalEntry: { entryDate: { lte: range.endDate } } }, _sum: { debit: true, credit: true } });
+    const hasBalance = agg.some((row) => Math.abs(Number(row._sum.debit || 0) - Number(row._sum.credit || 0)) >= 0.005);
+    return hasBalance ? { periodicity, year: range.year, period_number: range.periodNumber } : null;
+};

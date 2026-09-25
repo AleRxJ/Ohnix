@@ -316,6 +316,7 @@ model User {
   fiscalYearClosuresOwned              FiscalYearClosure[]            @relation("FiscalYearClosureCreatedBy")
   fiscalYearClosuresClosed             FiscalYearClosure[]            @relation("FiscalYearClosureClosedBy")
   vatSettlements                       VatSettlement[]                @relation("VatSettlementCreatedBy")
+  prepaidExpenses                      PrepaidExpense[]               @relation("PrepaidExpenseCreatedBy")
   journalEntriesCreated                JournalEntry[]
   accountingConfigAuditsOwned          AccountingConfigAudit[]        @relation("AccountingConfigAuditAccount")
   costCentersOwned                     CostCenter[]                   @relation("CostCenterAccount")
@@ -2597,6 +2598,8 @@ enum CashMovementSourceType {
   equity_distribution
   // Pago de IVA a la DIAN - vatSettlement.service.js#payVatSettlement.
   tax_payment
+  // Pago de un gasto diferido - prepaidExpense.service.js#createPrepaidExpense.
+  prepaid_expense
 }
 
 // Append-only ledger - literal mirror of StockMovement, money instead of
@@ -2660,6 +2663,17 @@ model OrderPayment {
   // payment's fee, same "freeze what was used" convention as
   // exchangeRateDifference above. Always 0 when paymentMethodId is null.
   feeAmount              Decimal  @default(0) @map("fee_amount") @db.Decimal(14, 2)
+  // Retenciones que el CLIENTE le practicó a esta empresa al pagar - same
+  // "customer paid the full amount, less of it reached the bank" shape as
+  // feeAmount above: `amount` still clears 1305 in full, the cash account
+  // only receives amount - feeAmount - these three, and each one is booked
+  // as an anticipo de impuestos (135515/135517/135518) - see
+  // accountingPosting.service.js#postOrderPaymentJournalEntry. 135517
+  // (ReteIVA) is later swept by vatSettlement.service.js; 135515
+  // (ReteFuente) is netted in rentaDeclaration.service.js.
+  withheldIncomeTax      Decimal  @default(0) @map("withheld_income_tax") @db.Decimal(14, 2)
+  withheldVat            Decimal  @default(0) @map("withheld_vat") @db.Decimal(14, 2)
+  withheldIca            Decimal  @default(0) @map("withheld_ica") @db.Decimal(14, 2)
   reference              String?
   paidAt                 DateTime @default(now()) @map("paid_at")
   createdById            String   @map("created_by")
@@ -2860,6 +2874,8 @@ model ChartAccount {
   fixedAssetsAsAsset            FixedAsset[]                   @relation("FixedAssetAssetAccount")
   fixedAssetsAsDepreciation     FixedAsset[]                   @relation("FixedAssetDepreciationAccount")
   fixedAssetsAsExpense          FixedAsset[]                   @relation("FixedAssetExpenseAccount")
+  prepaidExpensesAsAsset        PrepaidExpense[]               @relation("PrepaidExpenseAssetAccount")
+  prepaidExpensesAsExpense      PrepaidExpense[]               @relation("PrepaidExpenseExpenseAccount")
   recurringJournalTemplateLines RecurringJournalTemplateLine[]
   paymentMethods                PaymentMethod[]
 
@@ -2884,6 +2900,7 @@ model CostCenter {
   pointsOfSale                  PointOfSale[]
   accountingBudgets             AccountingBudget[]
   fixedAssets                   FixedAsset[]
+  prepaidExpenses               PrepaidExpense[]
   recurringJournalTemplateLines RecurringJournalTemplateLine[]
 
   @@unique([accountId, code])
@@ -3107,6 +3124,52 @@ model FixedAsset {
 
   @@index([createdById, status])
   @@map("fixed_assets")
+}
+
+enum PrepaidExpenseStatus {
+  active
+  completed
+  cancelled
+}
+
+// Diferido / gasto pagado por anticipado (seguros, arriendos anticipados,
+// licencias, suscripciones anuales): paid once, recognized as expense over
+// `months`, straight-line from `startPeriod`. Mirrors FixedAsset's shape and
+// cron dedupe (lastAmortizedPeriod) - see prepaidExpense.service.js.
+model PrepaidExpense {
+  id                  String               @id @default(cuid())
+  createdById         String               @map("created_by")
+  name                String
+  description         String?              @db.Text
+  totalAmount         Decimal              @map("total_amount") @db.Decimal(14, 2)
+  months              Int
+  // "YYYY-MM" - first month that gets an amortization entry.
+  startPeriod         String               @map("start_period")
+  assetAccountId      String               @map("asset_account_id")
+  expenseAccountId    String               @map("expense_account_id")
+  costCenterId        String?              @map("cost_center_id")
+  // Set only when the payment itself was registered here (Dr 1705 / Cr
+  // bank); null when it was already booked elsewhere and this row only
+  // schedules the amortization.
+  fundingCashAccountId String?             @map("funding_cash_account_id")
+  fundingEntryId      String?              @map("funding_entry_id")
+  status              PrepaidExpenseStatus @default(active)
+  monthsAmortized     Int                  @default(0) @map("months_amortized")
+  lastAmortizedPeriod String?              @map("last_amortized_period")
+  lastRunStatus       String?              @map("last_run_status")
+  lastRunError        String?              @map("last_run_error")
+  cancelledAt         DateTime?            @map("cancelled_at")
+  cancelReason        String?              @map("cancel_reason") @db.Text
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  createdBy      User         @relation("PrepaidExpenseCreatedBy", fields: [createdById], references: [id])
+  assetAccount   ChartAccount @relation("PrepaidExpenseAssetAccount", fields: [assetAccountId], references: [id])
+  expenseAccount ChartAccount @relation("PrepaidExpenseExpenseAccount", fields: [expenseAccountId], references: [id])
+  costCenter     CostCenter?  @relation(fields: [costCenterId], references: [id])
+
+  @@index([createdById, status])
+  @@map("prepaid_expenses")
 }
 
 model WithholdingConcept {
@@ -3359,6 +3422,14 @@ enum JournalSourceType {
   vat_settlement
   vat_settlement_void
   vat_payment
+  // Diferidos - prepaidExpense.service.js. prepaid_expense is the optional
+  // cash funding (Dr 1705 / Cr bank) when the payment is registered here;
+  // prepaid_amortization is the monthly Dr gasto / Cr 1705 (several per
+  // PrepaidExpense, like fixed_asset_depreciation); prepaid_cancellation
+  // expenses whatever was still pending when the diferido is cancelled.
+  prepaid_expense
+  prepaid_amortization
+  prepaid_cancellation
 }
 
 enum VatPeriodicity {
@@ -3387,6 +3458,9 @@ model VatSettlement {
   generatedTotal      Decimal             @map("generated_total") @db.Decimal(14, 2)
   deductibleTotal     Decimal             @map("deductible_total") @db.Decimal(14, 2)
   carryForwardApplied Decimal             @default(0) @map("carry_forward_applied") @db.Decimal(14, 2)
+  // ReteIVA customers withheld (135517 balance at the cutoff) - reduces
+  // what's owed, same as the F300's "retenciones por IVA que le practicaron".
+  withheldVatApplied  Decimal             @default(0) @map("withheld_vat_applied") @db.Decimal(14, 2)
   netPayable          Decimal             @default(0) @map("net_payable") @db.Decimal(14, 2)
   creditBalance       Decimal             @default(0) @map("credit_balance") @db.Decimal(14, 2)
   status              VatSettlementStatus @default(posted)

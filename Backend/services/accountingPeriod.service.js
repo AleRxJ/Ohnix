@@ -4,6 +4,7 @@ import { ensureCurrentYearEarningsAccount } from "./chartOfAccounts.service.js";
 import { getPeriodClosingPlan } from "./financialStatements.service.js";
 import { recordJournalEntry } from "./journalEntry.service.js";
 import { getCashIntegrity } from "./cashIntegrity.service.js";
+import { findUnsettledVatPeriodEndingIn } from "./vatSettlement.service.js";
 
 export const listAccountingPeriods = async (accountId) =>
     prisma.accountingPeriod.findMany({
@@ -17,17 +18,18 @@ export const getAccountingPeriodCloseReadiness = async ({ accountId, periodId, d
     if (!period) throw new ApiError(404, "Accounting period not found.", [], "", "accounting_period_not_found");
     const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));
     const endDate = new Date(Date.UTC(period.year, period.month, 0, 23, 59, 59, 999));
-    const [integrity, unmatchedStatementEntries, unmatchedCashMovements] = await Promise.all([
+    const [integrity, unmatchedStatementEntries, unmatchedCashMovements, unsettledVatPeriod] = await Promise.all([
         getCashIntegrity({ accountId, db }),
         db.bankStatementEntry.count({ where: { cashAccount: { createdById: accountId }, entryDate: { gte: startDate, lte: endDate }, matchedMovementId: null } }),
         db.cashMovement.count({ where: { cashAccount: { createdById: accountId }, createdAt: { gte: startDate, lte: endDate }, reconciledAt: null } }),
+        findUnsettledVatPeriodEndingIn({ accountId, year: period.year, month: period.month, db }),
     ]);
     const operationalDifferences = integrity.operational.filter((row) => row.status !== "ok");
     return {
         period: { id: period.id, year: period.year, month: period.month, status: period.status },
         can_close: operationalDifferences.length === 0,
         blockers: { operational_differences: operationalDifferences },
-        warnings: { unmatched_statement_entries: unmatchedStatementEntries, unmatched_cash_movements: unmatchedCashMovements, accounting_differences: integrity.accounting.filter((row) => row.status !== "ok") },
+        warnings: { unmatched_statement_entries: unmatchedStatementEntries, unmatched_cash_movements: unmatchedCashMovements, accounting_differences: integrity.accounting.filter((row) => row.status !== "ok"), unsettled_vat_period: unsettledVatPeriod },
     };
 };
 

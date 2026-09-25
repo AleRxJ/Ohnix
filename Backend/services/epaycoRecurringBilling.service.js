@@ -149,7 +149,10 @@ export const chargeEpaycoToken = async ({
             ip: ip || "127.0.0.1",
             ...(urlConfirmation ? { url_confirmation: urlConfirmation, method_confirmation: "POST" } : {}),
             use_default_card_customer: true,
-            ...extras,
+            // Must be nested under `extras` (SDK README, "Payment > Create") -
+            // flat extra1..N are silently dropped; confirmed in sandbox that
+            // only the nested form comes back as x_extra1 on the transaction.
+            ...(Object.keys(extras).length ? { extras } : {}),
         });
         return { ...parseEpaycoChargeResponse(response), raw: response };
     } catch (error) {

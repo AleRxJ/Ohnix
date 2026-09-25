@@ -11,6 +11,7 @@ const mapSettlement = (row) => row ? ({
     end_date: row.endDate,
     generated_total: Number(row.generatedTotal),
     deductible_total: Number(row.deductibleTotal),
+    withheld_vat_applied: Number(row.withheldVatApplied),
     carry_forward_applied: Number(row.carryForwardApplied),
     net_payable: Number(row.netPayable),
     credit_balance: Number(row.creditBalance),
@@ -40,6 +41,7 @@ export const previewVatSettlement = asyncHandler(async (req, res) => {
         generated: preview.result.generated,
         deductible: preview.result.deductible,
         net: preview.result.net,
+        withheld_vat: preview.result.withheldVatApplied,
         available_credit: preview.result.availableCredit,
         carry_forward_applied: preview.result.carryForwardApplied,
         net_payable: preview.result.netPayable,
@@ -48,6 +50,7 @@ export const previewVatSettlement = asyncHandler(async (req, res) => {
         activity_deductible: preview.activity.deductible,
         prior_adjustment_generated: preview.priorAdjustments.generated,
         prior_adjustment_deductible: preview.priorAdjustments.deductible,
+        prior_adjustment_withheld_vat: preview.priorAdjustments.withheldVat,
     }, "IVA settlement preview fetched successfully"));
 });
 

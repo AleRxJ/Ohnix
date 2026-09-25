@@ -11,6 +11,7 @@ import PlanGate from "../components/common/PlanGate";
 import EmptyState from "../components/common/EmptyState";
 import SectionGuide from "../components/common/SectionGuide";
 import VatSettlementCard from "../components/accounting/VatSettlementCard";
+import PrepaidExpensesTab from "../components/accounting/PrepaidExpensesTab";
 import useIsMobile from "../hooks/useIsMobile";
 import { accountingService } from "../services/accountingService";
 import { financeService } from "../services/financeService";
@@ -281,6 +282,9 @@ const SOURCE_TYPE_LABEL_KEYS = {
     vat_settlement: "accounting.source_vat_settlement",
     vat_settlement_void: "accounting.source_vat_settlement_void",
     vat_payment: "accounting.source_vat_payment",
+    prepaid_expense: "accounting.source_prepaid_expense",
+    prepaid_amortization: "accounting.source_prepaid_amortization",
+    prepaid_cancellation: "accounting.source_prepaid_cancellation",
 };
 
 // Automatic descriptions are persisted for auditability. Translate only
@@ -1994,12 +1998,13 @@ const PeriodsTab = () => {
                             description={
                                 <div className="space-y-2">
                                     <p className="m-0">{t("accounting.close_readiness_reconciliation_desc", { entries: warnings.unmatched_statement_entries || 0, movements: warnings.unmatched_cash_movements || 0 })}</p>
-                                    <a href="/finance" target="_blank" rel="noreferrer" className="text-[var(--ohnix-accent)] hover:underline text-xs font-medium">{t("accounting.close_readiness_reconciliation_link")}</a>
+                                    <a href="/finance/reconciliation" target="_blank" rel="noreferrer" className="text-[var(--ohnix-accent)] hover:underline text-xs font-medium">{t("accounting.close_readiness_reconciliation_link")}</a>
                                 </div>
                             }
                         />
                     )}
                     {(warnings.accounting_differences || []).length > 0 && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_accounting_title")} description={t("accounting.close_readiness_accounting_desc", { count: warnings.accounting_differences.length })} />}
+                    {warnings.unsettled_vat_period && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_vat_title")} description={t("accounting.close_readiness_vat_desc", { period: warnings.unsettled_vat_period.period_number, year: warnings.unsettled_vat_period.year, periodicity: t(`accounting.vat_periodicity_${warnings.unsettled_vat_period.periodicity}`).toLowerCase() })} />}
                     <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{t("accounting.close_readiness_footer")}</p>
                 </div>,
                 okText: blockers.length > 0 ? t("accounting.close_readiness_blocked_cta") : t("accounting.close_period"),
@@ -3212,7 +3217,7 @@ const RentaReportCard = () => {
     const exportExcel = () => {
         if (!declaration?.configured) return;
         const rateInfo = declaration.ordinary
-            ? [[t("accounting.renta_col_tarifa"), `${declaration.ordinary.rate_percent}%`], [t("accounting.renta_col_impuesto_estimado"), declaration.ordinary.estimated_tax]]
+            ? [[t("accounting.renta_col_tarifa"), `${declaration.ordinary.rate_percent}%`], [t("accounting.renta_col_impuesto_estimado"), declaration.ordinary.estimated_tax], [t("accounting.renta_col_withholdings_suffered"), declaration.ordinary.withholdings_suffered], [t("accounting.renta_col_anticipo"), declaration.ordinary.anticipo.amount], [t("accounting.renta_col_balance_due"), declaration.ordinary.balance_due]]
             : declaration.simple
                 ? [[t("accounting.renta_col_tarifa"), `${declaration.simple.bracket.rate_percent}%`], [t("accounting.renta_col_impuesto_estimado"), declaration.simple.estimated_tax]]
                 : [];
@@ -3270,6 +3275,13 @@ const RentaReportCard = () => {
                         <Col xs={12} lg={6}><StatCard title={t("accounting.renta_col_renta_liquida")} value={declaration.taxable_income} formatter={formatCurrency} /></Col>
                         <Col xs={12} lg={6}><StatCard title={t("accounting.renta_col_impuesto_estimado")} value={estimatedTax} formatter={formatCurrency} valueStyle={{ fontWeight: 700, color: "var(--ohnix-status-warning)" }} /></Col>
                     </Row>
+                    {declaration.ordinary && (
+                        <Row gutter={[12, 12]} className="mb-4">
+                            <Col xs={12} lg={8}><StatCard title={t("accounting.renta_col_withholdings_suffered")} value={declaration.ordinary.withholdings_suffered} formatter={formatCurrency} /></Col>
+                            <Col xs={12} lg={8}><StatCard title={t("accounting.renta_col_anticipo")} value={declaration.ordinary.anticipo.amount} formatter={formatCurrency} /></Col>
+                            <Col xs={24} lg={8}><StatCard title={t(declaration.ordinary.balance_due < 0 ? "accounting.renta_col_balance_favor" : "accounting.renta_col_balance_due")} value={Math.abs(declaration.ordinary.balance_due)} formatter={formatCurrency} valueStyle={{ fontWeight: 700 }} /></Col>
+                        </Row>
+                    )}
                     <div className="flex gap-2 mb-2">
                         <Button icon={<FileTextOutlined />} loading={pdfLoading} onClick={downloadPdf}>{t("accounting.renta_download_pdf")}</Button>
                         <Button icon={<DownloadOutlined />} onClick={exportExcel}>{t("reports.export_to_excel")}</Button>
@@ -3763,6 +3775,7 @@ const Accounting = () => {
         { key: "cost_centers", label: tabLabel(<PartitionOutlined />, "accounting.tab_cost_centers"), children: <CostCentersTab /> },
         { key: "recurring_expenses", label: tabLabel(<ClockCircleOutlined />, "accounting.tab_recurring_expenses"), children: <RecurringExpensesTab /> },
         { key: "fixed_assets", label: tabLabel(<ToolOutlined />, "accounting.tab_fixed_assets"), children: <FixedAssetsTab /> },
+        { key: "prepaid_expenses", label: tabLabel(<CalendarOutlined />, "accounting.tab_prepaid_expenses"), children: <PrepaidExpensesTab /> },
         { key: "recurring_journals", label: tabLabel(<RetweetOutlined />, "accounting.tab_recurring_journals"), children: <RecurringJournalsTab /> },
         { key: "budgets", label: tabLabel(<BarChartOutlined />, "accounting.tab_budgets"), children: <BudgetsTab /> },
         { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },

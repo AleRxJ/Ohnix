@@ -151,6 +151,17 @@ const OrderDetailsDrawer = ({
             align: "right",
             render: (v) => v ? <span className="text-[var(--ohnix-status-warning)]">-{formatCurrency(v)}</span> : t("common.na"),
         }] : []),
+        // Retenciones the customer practiced - part of the amount paid, but
+        // booked as anticipo de impuestos instead of reaching the bank.
+        ...(orderPayments.some((p) => p.withheld_income_tax || p.withheld_vat || p.withheld_ica) ? [{
+            title: t("finance.payment_withholdings_label"),
+            key: "withholdings",
+            align: "right",
+            render: (_, p) => {
+                const total = (p.withheld_income_tax || 0) + (p.withheld_vat || 0) + (p.withheld_ica || 0);
+                return total ? <span title={`ReteFuente ${formatCurrency(p.withheld_income_tax || 0)} · ReteIVA ${formatCurrency(p.withheld_vat || 0)} · ReteICA ${formatCurrency(p.withheld_ica || 0)}`}>{formatCurrency(total)}</span> : t("common.na");
+            },
+        }] : []),
     ];
 
     const columns = [

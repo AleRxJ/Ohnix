@@ -25,6 +25,7 @@ const SOURCE_LABEL_KEYS = {
     transfer_in: "finance.source_transfer_in",
     adjustment: "finance.source_adjustment",
     tax_payment: "finance.source_tax_payment",
+    prepaid_expense: "finance.source_prepaid_expense",
 };
 
 // Fase 7 - extracted from CashAccountMovementsDrawer.jsx (which kept only

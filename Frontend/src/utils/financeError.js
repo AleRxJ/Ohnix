@@ -24,6 +24,8 @@ export const FINANCE_ERROR_CODES = {
     reconciliation_amount_mismatch: "finance.error_reconciliation_amount_mismatch",
     reconciliation_concurrent_change: "finance.error_reconciliation_concurrent_change",
     reconciliation_entry_not_matched: "finance.error_reconciliation_entry_not_matched",
+    order_payment_withholding_invalid: "finance.error_order_payment_withholding_invalid",
+    order_payment_withholding_exceeds_amount: "finance.withholdings_exceed_amount",
     reconciliation_unmatch_fields_required: "finance.error_reconciliation_match_fields_required",
     reconciliation_cutoff_invalid: "finance.error_reconciliation_cutoff_invalid",
     reconciliation_statement_balance_invalid: "finance.error_reconciliation_statement_balance_invalid",

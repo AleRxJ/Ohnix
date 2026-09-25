@@ -7,14 +7,29 @@ import { streamReportPdf } from "../utils/reportPdf.js";
 const round2 = (value) => Number(Number(value || 0).toFixed(2));
 const ANTICIPO_TIERS = { first: 25, second: 50, later: 75 };
 
-// Ohnix doesn't model retenciones que le practican terceros a la empresa
-// sobre sus propias ventas (only the reverse - PurchaseRetention, what this
-// company withholds paying its OWN suppliers) - see exogenaReport.service.js's
-// comment on the same asymmetry. The anticipo below is therefore gross,
-// informational only, never netted against a real retention balance.
-const buildAnticipo = (estimatedTax, tier) => {
+// Anticipo for the following year, ET art. 807 (método de la renta líquida):
+// impuesto x porcentaje, less the retenciones en la fuente the company
+// suffered during the year - never negative. Retenciones sufridas come from
+// the customer payments that recorded them (OrderPayment.withheldIncomeTax,
+// posted to 135515 - see accountingPosting.service.js#postOrderPaymentJournalEntry).
+// The prior year's anticipo isn't modeled, so balanceDue is an upper bound.
+export const buildRentaSettlement = (estimatedTax, tier, withholdingsSuffered = 0) => {
     const percent = ANTICIPO_TIERS[tier] || ANTICIPO_TIERS.later;
-    return { tier: tier && ANTICIPO_TIERS[tier] ? tier : "later", percent, amount: round2((estimatedTax * percent) / 100) };
+    const withholdings = round2(withholdingsSuffered);
+    const grossAnticipo = round2((estimatedTax * percent) / 100);
+    const anticipo = { tier: tier && ANTICIPO_TIERS[tier] ? tier : "later", percent, gross_amount: grossAnticipo, amount: Math.max(round2(grossAnticipo - withholdings), 0) };
+    return { anticipo, withholdingsSuffered: withholdings, balanceDue: round2(estimatedTax - withholdings + anticipo.amount) };
+};
+
+// Debits minus credits on 135515 dated within the year - the year's own
+// retenciones, not the account's lifetime balance (nothing ever clears
+// 135515 yet, so its balance would re-count earlier years).
+export const loadIncomeTaxWithholdings = async (accountId, from, to) => {
+    const agg = await prisma.journalEntryLine.aggregate({
+        where: { chartAccount: { createdById: accountId, code: "135515" }, journalEntry: { entryDate: { gte: from, lte: to } } },
+        _sum: { debit: true, credit: true },
+    });
+    return round2(Number(agg._sum.debit || 0) - Number(agg._sum.credit || 0));
 };
 
 // Never a certified DIAN filing - see IncomeTaxYearConfig/SimpleRegimeBracket's
@@ -68,6 +83,7 @@ export const getRentaDeclaration = async ({ accountId, year, manualAdjustments =
         if (!yearConfig) return { ...base, configured: false, reason: "year_config_missing" };
         const taxableGravable = Math.max(taxableIncome, 0);
         const estimatedTax = round2((taxableGravable * yearConfig.ordinary_rate_percent) / 100);
+        const settlement = buildRentaSettlement(estimatedTax, anticipoTier, await loadIncomeTaxWithholdings(accountId, from, to));
         return {
             ...base,
             configured: true,
@@ -76,7 +92,9 @@ export const getRentaDeclaration = async ({ accountId, year, manualAdjustments =
                 rate_percent: yearConfig.ordinary_rate_percent,
                 taxable_gravable: taxableGravable,
                 estimated_tax: estimatedTax,
-                anticipo: buildAnticipo(estimatedTax, anticipoTier),
+                withholdings_suffered: settlement.withholdingsSuffered,
+                anticipo: settlement.anticipo,
+                balance_due: settlement.balanceDue,
             },
         };
     }
@@ -143,7 +161,9 @@ export const renderRentaDeclarationPdf = (res, declaration) => {
                 ["Tarifa aplicada", `${declaration.ordinary.rate_percent}%`],
                 ["Renta líquida gravable", formatCOP(declaration.ordinary.taxable_gravable)],
                 ["Impuesto de renta estimado", formatCOP(declaration.ordinary.estimated_tax)],
-                [`Anticipo estimado (${declaration.ordinary.anticipo.percent}%)`, formatCOP(declaration.ordinary.anticipo.amount)],
+                ["(−) Retenciones en la fuente que le practicaron", formatCOP(declaration.ordinary.withholdings_suffered)],
+                [`(+) Anticipo año siguiente (${declaration.ordinary.anticipo.percent}%, neto de retenciones)`, formatCOP(declaration.ordinary.anticipo.amount)],
+                [declaration.ordinary.balance_due < 0 ? "Saldo a favor estimado" : "Saldo a pagar estimado", formatCOP(Math.abs(declaration.ordinary.balance_due))],
             ],
         });
     } else if (declaration.simple) {

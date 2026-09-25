@@ -443,7 +443,16 @@ export const postOrderPaymentJournalEntry = async (tx, { accountId, createdById,
     const fxDifference = round2(payment.exchangeRateDifference || 0);
     const clearedReceivable = round2(paymentAmount - fxDifference);
     const feeAmount = round2(payment.feeAmount || 0);
-    const cashDelta = round2(paymentAmount - feeAmount);
+    // Retenciones sufridas: the customer settled `amount` in full but kept
+    // these back for the DIAN - they never reach the cash account, they're
+    // an anticipo de impuestos instead (see OrderPayment's schema comment).
+    const withholdings = [
+        ["135515", round2(payment.withheldIncomeTax || 0)],
+        ["135517", round2(payment.withheldVat || 0)],
+        ["135518", round2(payment.withheldIca || 0)],
+    ].filter(([, value]) => value > 0);
+    const withheldTotal = round2(withholdings.reduce((sum, [, value]) => sum + value, 0));
+    const cashDelta = round2(paymentAmount - feeAmount - withheldTotal);
 
     return recordJournalEntry(tx, {
         accountId,
@@ -458,6 +467,14 @@ export const postOrderPaymentJournalEntry = async (tx, { accountId, createdById,
             ...(fxDifference > 0 ? [{ chartAccountId: coa.get("4210").id, debit: 0, credit: fxDifference }] : []),
             ...(fxDifference < 0 ? [{ chartAccountId: coa.get("5305").id, debit: -fxDifference, credit: 0 }] : []),
             ...(feeAmount > 0 ? [{ chartAccountId: payment.paymentMethod.expenseAccountId, debit: feeAmount, credit: 0 }] : []),
+            // Tagged with the customer too: who withheld is what a
+            // certificado de retención / exógena needs to reconcile against.
+            ...withholdings.map(([code, value]) => ({
+                chartAccountId: coa.get(code).id,
+                debit: value,
+                credit: 0,
+                ...(thirdParty ? { thirdPartyType: thirdParty.type, thirdPartyId: thirdParty.id || null, thirdPartyName: thirdParty.name, thirdPartyDocument: thirdParty.document || null } : {}),
+            })),
         ], thirdParty, coa.get("1305").id), costCenterId),
     });
 };

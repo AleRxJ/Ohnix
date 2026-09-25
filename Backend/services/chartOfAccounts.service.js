@@ -69,6 +69,14 @@ const DEFAULT_ACCOUNTS = [
     // 5305 above, which Fase 4 already reserved specifically for diferencia
     // en cambio, not commissions.
     { code: "530520", name: "Comisiones bancarias y de pasarelas de pago", accountType: "expense" },
+    // Retenciones que los CLIENTES le practican a esta empresa al pagarle
+    // (OrderPayment.withheldIncomeTax/withheldVat/withheldIca) - anticipos
+    // de impuestos (PUC 1355), not an expense: 135517 is swept by
+    // vatSettlement.service.js, 135515 netted in rentaDeclaration.service.js.
+    // Backfilled into older charts by getChartAccountMap on first posting.
+    { code: "135515", name: "Retención en la fuente (a favor)", accountType: "asset" },
+    { code: "135517", name: "Impuesto a las ventas retenido (ReteIVA a favor)", accountType: "asset" },
+    { code: "135518", name: "Impuesto de industria y comercio retenido (ReteICA a favor)", accountType: "asset" },
 ];
 
 // Lazily seeds the default chart the first time a tenant needs one - same
@@ -178,11 +186,16 @@ const ensureNamedAccount = async (db, accountId, definition) => {
 
 export const ensureGmfAccount = (db, accountId) => ensureNamedAccount(db, accountId, GMF_ACCOUNT);
 
+// Diferidos (prepaidExpense.service.js) - the default asset account a
+// prepaid expense sits on until amortized; any active asset account works.
+const PREPAID_EXPENSE_ACCOUNT = { code: "1705", name: "Gastos pagados por anticipado", accountType: "asset" };
+export const ensurePrepaidExpenseAccount = (db, accountId) => ensureNamedAccount(db, accountId, PREPAID_EXPENSE_ACCOUNT);
+
 // Liquidación de IVA (vatSettlement.service.js) - where the 240805/240810
 // balances are swept to: the net owed to the DIAN, or the saldo a favor
 // carried into the next period (PUC 1355 "Anticipo de impuestos y
 // contribuciones o saldos a favor").
-export const VAT_SETTLEMENT_ACCOUNT_CODES = { generated: "240805", deductible: "240810", payable: "240895", credit: "135520" };
+export const VAT_SETTLEMENT_ACCOUNT_CODES = { generated: "240805", deductible: "240810", withheld: "135517", payable: "240895", credit: "135520" };
 const VAT_PAYABLE_ACCOUNT = { code: VAT_SETTLEMENT_ACCOUNT_CODES.payable, name: "IVA por pagar (liquidación)", accountType: "liability" };
 const VAT_CREDIT_ACCOUNT = { code: VAT_SETTLEMENT_ACCOUNT_CODES.credit, name: "Saldo a favor en IVA", accountType: "asset" };
 
@@ -191,6 +204,7 @@ export const ensureVatSettlementAccounts = async (tx, accountId) => {
     return {
         generated: coa.get(VAT_SETTLEMENT_ACCOUNT_CODES.generated),
         deductible: coa.get(VAT_SETTLEMENT_ACCOUNT_CODES.deductible),
+        withheld: coa.get(VAT_SETTLEMENT_ACCOUNT_CODES.withheld),
         payable: await ensureNamedAccount(tx, accountId, VAT_PAYABLE_ACCOUNT),
         credit: await ensureNamedAccount(tx, accountId, VAT_CREDIT_ACCOUNT),
     };

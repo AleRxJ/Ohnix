@@ -81,6 +81,26 @@ export const accountingService = {
         const response = await api.post(`/accounting/fixed-assets/${id}/run`);
         return response.data;
     },
+    async listPrepaidExpenses({ includeInactive = false } = {}) {
+        const response = await api.get("/accounting/prepaid-expenses", { params: { include_inactive: includeInactive } });
+        return response.data;
+    },
+    async createPrepaidExpense(payload) {
+        const response = await api.post("/accounting/prepaid-expenses", payload);
+        return response.data;
+    },
+    async updatePrepaidExpense(id, payload) {
+        const response = await api.patch(`/accounting/prepaid-expenses/${id}`, payload);
+        return response.data;
+    },
+    async runPrepaidAmortizationNow(id) {
+        const response = await api.post(`/accounting/prepaid-expenses/${id}/run`);
+        return response.data;
+    },
+    async cancelPrepaidExpense(id, reason) {
+        const response = await api.post(`/accounting/prepaid-expenses/${id}/cancel`, { reason });
+        return response.data;
+    },
 
     async listRecurringJournalTemplates({ includeInactive = false } = {}) {
         const response = await api.get("/accounting/recurring-journals", { params: { include_inactive: includeInactive } });

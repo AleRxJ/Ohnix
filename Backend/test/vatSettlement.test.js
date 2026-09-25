@@ -62,3 +62,22 @@ test("IVA period ranges: bimestral and cuatrimestral, UTC month boundaries", () 
     assert.throws(() => getVatPeriodRange("four_monthly", 2026, 4), { code: "vat_settlement_period_invalid" });
     assert.throws(() => getVatPeriodRange("monthly", 2026, 1), { code: "vat_settlement_periodicity_invalid" });
 });
+
+test("IVA settlement: ReteIVA customers withheld reduces the payable, and can flip it to saldo a favor", () => {
+    const payable = computeVatSettlement({ generated: 1900000, deductible: 760000, withheldVat: 200000, carryForward: 40000 });
+    assert.equal(payable.withheldVatApplied, 200000);
+    assert.equal(payable.carryForwardApplied, 40000);
+    assert.equal(payable.netPayable, 900000);
+    assert.deepEqual(byRole(payable.lines).withheld, { role: "withheld", debit: 0, credit: 200000 });
+    let sum = totals(payable.lines);
+    assert.equal(sum.debit, sum.credit);
+
+    // Withholdings bigger than the net: all of it is still swept, the excess
+    // becomes saldo a favor (and the prior credit isn't touched).
+    const favor = computeVatSettlement({ generated: 190000, deductible: 100000, withheldVat: 150000, carryForward: 40000 });
+    assert.equal(favor.netPayable, 0);
+    assert.equal(favor.carryForwardApplied, 0);
+    assert.equal(favor.creditBalance, 60000);
+    sum = totals(favor.lines);
+    assert.equal(sum.debit, sum.credit);
+});

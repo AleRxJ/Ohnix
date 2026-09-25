@@ -31,6 +31,7 @@ const Orders = () => {
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
     const [cashAccounts, setCashAccounts] = useState([]);
     const [paymentMethods, setPaymentMethods] = useState([]);
+    const [withholdingSuggestion, setWithholdingSuggestion] = useState(null);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [createForm] = Form.useForm();
@@ -118,6 +119,12 @@ const Orders = () => {
                 // RegisterPaymentModal simply hides the payment-method select when empty
             }
         }
+        // Best-effort (and skipped offline by the request failing) - the
+        // withholding inputs still work by hand without it.
+        setWithholdingSuggestion(null);
+        financeService.getOrderWithholdingSuggestion(selectedOrder._id)
+            .then((res) => setWithholdingSuggestion(res?.data || null))
+            .catch(() => {});
         paymentForm.resetFields();
         setPaymentModalVisible(true);
     };
@@ -269,6 +276,8 @@ const Orders = () => {
                     isForeignCurrency={Boolean(selectedOrder.currency_code && selectedOrder.currency_code !== "COP")}
                     paymentMethods={paymentMethods}
                     feeDirection="subtract"
+                    showWithholdings
+                    withholdingSuggestion={withholdingSuggestion}
                 />
             )}
 

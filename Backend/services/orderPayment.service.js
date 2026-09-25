@@ -39,6 +39,45 @@ export const getOrderPendingBalance = async (orderId, db = prisma) => {
     return { order, total, paid: Number(paid), pending };
 };
 
+// What the customer's configured flat rates (Customer.withholding*Percent -
+// the same ones electronicInvoicing.service.js#buildItcycleWithholdingTotals
+// prints on the invoice) say should be withheld on this sale, less what
+// earlier payments already recorded. A suggestion only - the payment modal
+// pre-fills it, the user confirms against the customer's actual certificate.
+// Same bases as the invoice: ReteFuente/ReteICA on the pre-tax sale amount,
+// ReteIVA on the IVA itself, both net of returns.
+export const getOrderWithholdingSuggestion = async ({ accountId, orderId }) => {
+    const order = await prisma.order.findFirst({
+        where: { id: orderId, createdById: accountId },
+        select: {
+            customer: { select: { withholdingIncomePercent: true, withholdingVatPercent: true, withholdingIcaPercent: true } },
+            orderDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } },
+            payments: { select: { withheldIncomeTax: true, withheldVat: true, withheldIca: true } },
+        },
+    });
+    if (!order) throw new ApiError(404, "Order not found.", [], "", "order_payment_order_not_found");
+    const percent = (value) => (value != null ? Number(value) : 0);
+    const rates = {
+        incomeTax: percent(order.customer?.withholdingIncomePercent),
+        vat: percent(order.customer?.withholdingVatPercent),
+        ica: percent(order.customer?.withholdingIcaPercent),
+    };
+    const saleBase = order.orderDetails.reduce((sum, row) => sum + Number(row.total) - Number(row.refundAmount), 0);
+    const vatBase = order.orderDetails.reduce((sum, row) => sum + Number(row.taxAmount) - Number(row.returnedTaxAmount), 0);
+    const already = order.payments.reduce((sum, row) => ({
+        incomeTax: sum.incomeTax + Number(row.withheldIncomeTax),
+        vat: sum.vat + Number(row.withheldVat),
+        ica: sum.ica + Number(row.withheldIca),
+    }), { incomeTax: 0, vat: 0, ica: 0 });
+    const remaining = (base, rate, done) => Math.max(round2((base * rate) / 100 - done), 0);
+    return {
+        rates,
+        incomeTax: remaining(saleBase, rates.incomeTax, already.incomeTax),
+        vat: remaining(vatBase, rates.vat, already.vat),
+        ica: remaining(saleBase, rates.ica, already.ica),
+    };
+};
+
 export const listOrderPayments = async ({ accountId, orderId }) => {
     const order = await prisma.order.findFirst({ where: { id: orderId, createdById: accountId }, select: { id: true } });
     if (!order) throw new ApiError(404, "Order not found.", [], "", "order_payment_order_not_found");
@@ -54,11 +93,31 @@ export const listOrderPayments = async ({ accountId, orderId }) => {
     });
 };
 
-export const registerOrderPayment = async ({ accountId, actorId, orderId, amount, cashAccountId, method, reference, settleInFull, paymentMethodId }) => {
+// `withholdings` = retenciones the customer practiced on this payment. They
+// count toward `amount` (the receivable clears in full) but never reach the
+// cash account - see OrderPayment.withheldIncomeTax's schema comment.
+export const normalizeOrderPaymentWithholdings = (withholdings = {}, amount) => {
+    const values = {
+        withheldIncomeTax: round2(withholdings?.incomeTax || 0),
+        withheldVat: round2(withholdings?.vat || 0),
+        withheldIca: round2(withholdings?.ica || 0),
+    };
+    if (Object.values(values).some((value) => !Number.isFinite(value) || value < 0)) {
+        throw new ApiError(400, "Withholdings must be zero or positive amounts.", [], "", "order_payment_withholding_invalid");
+    }
+    const total = round2(values.withheldIncomeTax + values.withheldVat + values.withheldIca);
+    if (total >= Number(amount)) {
+        throw new ApiError(422, "Withholdings must be less than the payment amount.", [], "", "order_payment_withholding_exceeds_amount");
+    }
+    return { ...values, total };
+};
+
+export const registerOrderPayment = async ({ accountId, actorId, orderId, amount, cashAccountId, method, reference, settleInFull, paymentMethodId, withholdings }) => {
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
         throw new ApiError(400, "Payment amount must be greater than zero.", [], "", "order_payment_amount_invalid");
     }
+    const withheld = normalizeOrderPaymentWithholdings(withholdings, numericAmount);
 
     const order = await prisma.order.findFirst({
         where: { id: orderId, createdById: accountId },
@@ -78,8 +137,11 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
     // frozen from the method's current rate. Capped at the payment's own
     // amount (a misconfigured >100% rate can never make cashDelta negative).
     const paymentMethod = await getActivePaymentMethod(accountId, paymentMethodId);
+    // Charged on what the processor actually handled - the customer only
+    // ran amount minus the retenciones through it.
+    const processedAmount = round2(numericAmount - withheld.total);
     const feeAmount = paymentMethod
-        ? Math.min(round2(numericAmount * (Number(paymentMethod.feePercent) / 100) + Number(paymentMethod.feeFixedAmount)), numericAmount)
+        ? Math.min(round2(processedAmount * (Number(paymentMethod.feePercent) / 100) + Number(paymentMethod.feeFixedAmount)), processedAmount)
         : 0;
 
     try {
@@ -108,6 +170,9 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
                 exchangeRateDifference,
                 paymentMethodId: paymentMethod?.id || null,
                 feeAmount,
+                withheldIncomeTax: withheld.withheldIncomeTax,
+                withheldVat: withheld.withheldVat,
+                withheldIca: withheld.withheldIca,
                 cashAccountId,
                 method: method?.trim() || null,
                 reference: reference?.trim() || null,
@@ -118,7 +183,7 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
         // The processor keeps its cut before depositing - only the NET
         // amount actually reaches the cash account, even though the
         // customer paid (and 1305 clears by) the full sale amount.
-        const cashDelta = round2(numericAmount - feeAmount);
+        const cashDelta = round2(numericAmount - feeAmount - withheld.total);
         const balanceAfter = await creditCashAccount(tx, { cashAccountId, amount: cashDelta });
 
         await recordCashMovement(tx, {

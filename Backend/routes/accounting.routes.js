@@ -75,6 +75,7 @@ import {
     reverseJournalEntry,
 } from "../controllers/accounting.controller.js";
 import { listVatSettlements, previewVatSettlement, settleVatPeriod, voidVatSettlement, payVatSettlement } from "../controllers/vatSettlement.controller.js";
+import { listPrepaidExpenses, createPrepaidExpense, updatePrepaidExpense, runPrepaidAmortizationNow, cancelPrepaidExpense } from "../controllers/prepaidExpense.controller.js";
 
 const router = Router();
 
@@ -120,6 +121,17 @@ router.route("/fixed-assets/:id/run")
 // "admin" gate as closing a period, not routine data entry.
 router.route("/fixed-assets/:id/dispose")
     .post(requireModulePermission("accounting", "admin"), disposeFixedAsset);
+
+// Diferidos - same permission split as fixed assets: registering and
+// amortizing is "edit"; cancelling (expenses the whole remainder at once)
+// is "admin", like disposing an asset.
+router.route("/prepaid-expenses")
+    .get(requireModulePermission("accounting", "view"), listPrepaidExpenses)
+    .post(requireModulePermission("accounting", "edit"), createPrepaidExpense);
+router.route("/prepaid-expenses/:id")
+    .patch(requireModulePermission("accounting", "edit"), updatePrepaidExpense);
+router.post("/prepaid-expenses/:id/run", requireModulePermission("accounting", "edit"), runPrepaidAmortizationNow);
+router.post("/prepaid-expenses/:id/cancel", requireModulePermission("accounting", "admin"), cancelPrepaidExpense);
 
 router.route("/recurring-journals")
     .get(requireModulePermission("accounting", "view"), listRecurringJournalTemplates)

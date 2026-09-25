@@ -44,6 +44,10 @@ export const financeService = {
         return response.data;
     },
 
+    async getOrderWithholdingSuggestion(orderId) {
+        const response = await api.get(`/finance/orders/${orderId}/withholding-suggestion`);
+        return response.data;
+    },
     async registerOrderPayment(orderId, payload) {
         const response = await api.post(`/finance/orders/${orderId}/payments`, payload);
         return response.data;

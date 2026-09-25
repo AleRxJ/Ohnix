@@ -17,6 +17,7 @@ import {
     getCashIntegrity,
     listOrderPayments,
     registerOrderPayment,
+    getOrderWithholdingSuggestion,
     listPurchasePayments,
     registerPurchasePayment,
     createStatementEntries,
@@ -84,6 +85,7 @@ router.route("/integrity")
 router.route("/orders/:orderId/payments")
     .get(requireModulePermission("finance", "view"), listOrderPayments)
     .post(requireModulePermission("finance", "edit"), idempotent("finance.order-payment"), registerOrderPayment);
+router.get("/orders/:orderId/withholding-suggestion", requireModulePermission("finance", "view"), getOrderWithholdingSuggestion);
 router.post("/orders/:orderId/payments/:paymentId/allocate", requireModulePermission("finance", "edit"), allocateOrderPayment);
 router.get("/orders/:orderId/payments/:paymentId/allocations", requireModulePermission("finance", "view"), listOrderPaymentAllocations);
 

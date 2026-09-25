@@ -155,6 +155,7 @@ const VatSettlementCard = () => {
         ["vat_deductible_period", -preview.activity_deductible],
         ...(hasPriorAdjustments ? [["vat_prior_adjustments", preview.prior_adjustment_generated - preview.prior_adjustment_deductible]] : []),
         ["vat_net", preview.net, true],
+        ...(preview.withheld_vat > 0 ? [["vat_withheld_applied", -preview.withheld_vat]] : []),
         ...(preview.carry_forward_applied > 0 ? [["vat_carry_forward_applied", -preview.carry_forward_applied]] : []),
     ] : [];
 

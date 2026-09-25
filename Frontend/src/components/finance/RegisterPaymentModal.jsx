@@ -1,4 +1,4 @@
-import { Modal, Form, InputNumber, Select, Input, Checkbox, Alert } from "antd";
+import { Modal, Form, InputNumber, Select, Input, Checkbox, Alert, Collapse, Button } from "antd";
 import { WalletOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -25,18 +25,43 @@ const round2 = (value) => Math.round((Number(value) || 0) * 100) / 100;
 // depositing) or "add" (purchase - the fee is an extra cost on top of what
 // the supplier receives), mirrors the cashDelta sign in
 // orderPayment.service.js/purchasePayment.service.js.
-const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, pendingBalance, cashAccounts, isForeignCurrency = false, paymentMethods = [], feeDirection = "subtract" }) => {
+// `showWithholdings` (orders only): retenciones the CUSTOMER practiced on
+// this payment - part of `amount` (the receivable clears in full) but they
+// never reach the cash account. `withholdingSuggestion` is what the
+// customer's configured rates say is still due on this sale
+// (GET /finance/orders/:id/withholding-suggestion), offered as a one-click
+// pre-fill, never applied silently.
+const WITHHOLDING_FIELDS = [
+    ["withheld_income_tax", "finance.withheld_income_tax_label"],
+    ["withheld_vat", "finance.withheld_vat_label"],
+    ["withheld_ica", "finance.withheld_ica_label"],
+];
+const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, pendingBalance, cashAccounts, isForeignCurrency = false, paymentMethods = [], feeDirection = "subtract", showWithholdings = false, withholdingSuggestion = null }) => {
     const { t } = useI18n();
     const { formatCurrency, currency } = useCurrency();
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const settleInFull = Form.useWatch("settle_in_full", form);
     const amount = Form.useWatch("amount", form);
     const paymentMethodId = Form.useWatch("payment_method_id", form);
+    const withheldIncomeTax = Form.useWatch("withheld_income_tax", form);
+    const withheldVat = Form.useWatch("withheld_vat", form);
+    const withheldIca = Form.useWatch("withheld_ica", form);
+    const withheldTotal = showWithholdings ? round2(Number(withheldIncomeTax || 0) + Number(withheldVat || 0) + Number(withheldIca || 0)) : 0;
     const selectedMethod = paymentMethods.find((method) => method.id === paymentMethodId);
+    // Same base the backend uses: the processor only handled what the
+    // customer actually paid, i.e. amount minus the retenciones.
+    const processedAmount = Math.max(Number(amount || 0) - withheldTotal, 0);
     const estimatedFee = selectedMethod && amount > 0
-        ? Math.min(round2((Number(amount) * Number(selectedMethod.fee_percent)) / 100 + Number(selectedMethod.fee_fixed_amount)), feeDirection === "subtract" ? Number(amount) : Infinity)
+        ? Math.min(round2((processedAmount * Number(selectedMethod.fee_percent)) / 100 + Number(selectedMethod.fee_fixed_amount)), feeDirection === "subtract" ? processedAmount : Infinity)
         : 0;
-    const estimatedNet = feeDirection === "subtract" ? Number(amount || 0) - estimatedFee : Number(amount || 0) + estimatedFee;
+    const estimatedNet = feeDirection === "subtract" ? processedAmount - estimatedFee : Number(amount || 0) + estimatedFee;
+    const hasSuggestion = Boolean(withholdingSuggestion) && WITHHOLDING_FIELDS.some(([name]) => Number(withholdingSuggestion[name]) > 0);
+    const applySuggestion = () => {
+        form.setFieldsValue({
+            ...Object.fromEntries(WITHHOLDING_FIELDS.map(([name]) => [name, Number(withholdingSuggestion[name]) || undefined])),
+            ...(!amount ? { amount: pendingBalance } : {}),
+        });
+    };
 
     return (
         <Modal
@@ -141,6 +166,44 @@ const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, p
                         showIcon
                         message={t("finance.payment_method_fee_preview_title")}
                         description={t("finance.payment_method_fee_preview_desc", { fee: formatCurrency(estimatedFee), net: formatCurrency(estimatedNet) })}
+                    />
+                )}
+
+                {showWithholdings && (
+                    <Collapse
+                        className="mb-4"
+                        defaultActiveKey={hasSuggestion ? ["withholdings"] : []}
+                        items={[{
+                            key: "withholdings",
+                            label: t("finance.withholdings_section_title"),
+                            children: (
+                                <>
+                                    <p className="text-xs text-[var(--ohnix-text-muted)] mt-0 mb-3">{t("finance.withholdings_section_help")}</p>
+                                    {hasSuggestion && (
+                                        <Alert
+                                            className="dark-alert dark-alert-teal mb-3"
+                                            type="info"
+                                            showIcon
+                                            message={t("finance.withholdings_suggestion_title")}
+                                            description={t("finance.withholdings_suggestion_desc", { income: formatCurrency(withholdingSuggestion.withheld_income_tax), vat: formatCurrency(withholdingSuggestion.withheld_vat), ica: formatCurrency(withholdingSuggestion.withheld_ica) })}
+                                            action={<Button size="small" onClick={applySuggestion}>{t("finance.withholdings_suggestion_apply")}</Button>}
+                                        />
+                                    )}
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        {WITHHOLDING_FIELDS.map(([name, label]) => (
+                                            <Form.Item key={name} name={name} label={t(label)} className="mb-0">
+                                                <InputNumber className="w-full" min={0} prefix={currency.symbol} formatter={currencyInputProps.formatter} parser={currencyInputProps.parser} />
+                                            </Form.Item>
+                                        ))}
+                                    </div>
+                                    {withheldTotal > 0 && Number(amount) > 0 && (
+                                        withheldTotal >= Number(amount)
+                                            ? <Alert className="dark-alert dark-alert-amber mt-3" type="warning" showIcon message={t("finance.withholdings_exceed_amount")} />
+                                            : <p className="text-sm text-[var(--ohnix-text-primary)] mt-3 mb-0">{t("finance.withholdings_net_preview", { net: formatCurrency(estimatedNet) })}</p>
+                                    )}
+                                </>
+                            ),
+                        }]}
                     />
                 )}
 

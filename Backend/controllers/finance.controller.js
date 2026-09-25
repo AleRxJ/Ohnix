@@ -61,6 +61,10 @@ const mapPayment = (p) => ({
     // Fase 5 (causación automática) - non-zero only when registered against
     // a configured PaymentMethod. See OrderPayment.feeAmount's schema comment.
     fee_amount: Number(p.feeAmount || 0),
+    // Order payments only (PurchasePayment has no such columns -> 0).
+    withheld_income_tax: Number(p.withheldIncomeTax || 0),
+    withheld_vat: Number(p.withheldVat || 0),
+    withheld_ica: Number(p.withheldIca || 0),
     payment_method: p.paymentMethod ? { _id: p.paymentMethod.id, name: p.paymentMethod.name } : null,
     cash_account: p.cashAccount ? { _id: p.cashAccount.id, name: p.cashAccount.name } : { _id: p.cashAccountId },
     method: p.method,
@@ -165,8 +169,18 @@ export const listOrderPayments = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, payments.map(mapPayment), "Order payments fetched successfully"));
 });
 
+export const getOrderWithholdingSuggestion = asyncHandler(async (req, res) => {
+    const suggestion = await orderPaymentService.getOrderWithholdingSuggestion({ accountId: req.user.prismaId, orderId: req.params.orderId });
+    return res.status(200).json(new ApiResponse(200, {
+        rates: { income_tax: suggestion.rates.incomeTax, vat: suggestion.rates.vat, ica: suggestion.rates.ica },
+        withheld_income_tax: suggestion.incomeTax,
+        withheld_vat: suggestion.vat,
+        withheld_ica: suggestion.ica,
+    }, "Withholding suggestion fetched successfully"));
+});
+
 export const registerOrderPayment = asyncHandler(async (req, res, next) => {
-    const { amount, cash_account_id, method, reference, settle_in_full, payment_method_id } = req.body || {};
+    const { amount, cash_account_id, method, reference, settle_in_full, payment_method_id, withheld_income_tax, withheld_vat, withheld_ica } = req.body || {};
     if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const payment = await orderPaymentService.registerOrderPayment({
@@ -179,6 +193,7 @@ export const registerOrderPayment = asyncHandler(async (req, res, next) => {
         reference,
         settleInFull: settle_in_full === true,
         paymentMethodId: payment_method_id || null,
+        withholdings: { incomeTax: withheld_income_tax, vat: withheld_vat, ica: withheld_ica },
     });
     return res.status(201).json(new ApiResponse(201, mapPayment(payment), "Order payment registered successfully"));
 });
