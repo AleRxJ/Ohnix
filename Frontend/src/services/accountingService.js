@@ -406,6 +406,13 @@ export const accountingService = {
         return response.data;
     },
 
+    async getEquityChangesStatement({ from, to } = {}) {
+        const response = await api.get("/accounting/reports/equity-changes", {
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+        });
+        return response.data;
+    },
+
     async getTrialBalance({ from, to, costCenterId } = {}) {
         const response = await api.get("/accounting/reports/trial-balance", {
             params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(costCenterId ? { cost_center_id: costCenterId } : {}) },

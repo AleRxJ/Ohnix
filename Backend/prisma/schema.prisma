@@ -2553,6 +2553,9 @@ enum CashMovementSourceType {
   payroll_payment
   payroll_benefit_settlement
   payroll_termination_settlement
+  // Fase 6 (estado de cambios en el patrimonio) - equityMovement.service.js.
+  capital_contribution
+  equity_distribution
 }
 
 // Append-only ledger - literal mirror of StockMovement, money instead of
@@ -3300,6 +3303,12 @@ enum JournalSourceType {
   // plus, when applicable, the indemnización expense - see
   // accountingPosting.service.js#postTerminationSettlementJournalEntry.
   payroll_termination_settlement
+  // Estado de cambios en el patrimonio - equityMovement.service.js. Same
+  // two values as CashMovementSourceType above, kept in sync since every
+  // capital contribution/distribution always posts both a JournalEntry and
+  // a CashMovement together.
+  capital_contribution
+  equity_distribution
 }
 
 enum FiscalYearClosureStatus {

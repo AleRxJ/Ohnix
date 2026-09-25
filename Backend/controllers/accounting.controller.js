@@ -453,6 +453,16 @@ export const getBalanceSheet = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, statement, "Balance sheet fetched successfully"));
 });
 
+export const getEquityChangesStatement = asyncHandler(async (req, res) => {
+    const { from, to } = req.query;
+    const statement = await financialStatementsService.getEquityChangesStatement({
+        accountId: req.user.prismaId,
+        startDate: from ? new Date(from) : undefined,
+        endDate: to ? endOfDay(to) : new Date(),
+    });
+    return res.status(200).json(new ApiResponse(200, statement, "Equity changes statement fetched successfully"));
+});
+
 export const getTrialBalance = asyncHandler(async (req, res) => {
     const { from, to } = req.query;
     const rows = await financialStatementsService.getTrialBalance({

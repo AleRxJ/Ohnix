@@ -25,6 +25,7 @@ import {
     getIncomeStatementComparison,
     getCashFlowStatement,
     getBalanceSheet,
+    getEquityChangesStatement,
     getTrialBalance,
     getAccountingStatus,
     createManualVoucher,
@@ -185,6 +186,7 @@ router.route("/reports/income-statement").get(requireModulePermission("accountin
 router.route("/reports/income-statement/comparison").get(requireModulePermission("accounting", "view"), getIncomeStatementComparison);
 router.route("/reports/cash-flow").get(requireModulePermission("accounting", "view"), getCashFlowStatement);
 router.route("/reports/balance-sheet").get(requireModulePermission("accounting", "view"), getBalanceSheet);
+router.route("/reports/equity-changes").get(requireModulePermission("accounting", "view"), getEquityChangesStatement);
 router.route("/reports/trial-balance").get(requireModulePermission("accounting", "view"), getTrialBalance);
 
 router.route("/periods").get(requireModulePermission("accounting", "view"), listAccountingPeriods);

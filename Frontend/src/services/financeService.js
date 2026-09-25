@@ -173,4 +173,13 @@ export const financeService = {
         const response = await api.patch(`/finance/payment-methods/${id}/active`, { is_active: isActive });
         return response.data;
     },
+
+    async registerCapitalContribution(payload) {
+        const response = await api.post("/finance/equity/contributions", payload);
+        return response.data;
+    },
+    async registerEquityDistribution(payload) {
+        const response = await api.post("/finance/equity/distributions", payload);
+        return response.data;
+    },
 };

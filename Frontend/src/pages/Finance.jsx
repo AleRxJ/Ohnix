@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Spin, Table, Popconfirm, Tooltip } from "antd";
-import { AuditOutlined, HistoryOutlined, PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { AuditOutlined, HistoryOutlined, PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined, RiseOutlined, FallOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import toast from "react-hot-toast";
+import { financeErrorMessage } from "../utils/financeError";
 import PageHeader from "../components/common/PageHeader";
 import CashAccountFormModal from "../components/finance/CashAccountFormModal";
 import CashAccountMovementsDrawer from "../components/finance/CashAccountMovementsDrawer";
@@ -24,7 +26,7 @@ const Finance = () => {
     const { formatCurrency } = useCurrency();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("finance", "edit");
-    const { accounts, loading, submitting, createAccount, updateAccount, deactivateAccount, transferCash, adjustCash } = useCashAccounts();
+    const { accounts, loading, submitting, load: reloadAccounts, createAccount, updateAccount, deactivateAccount, transferCash, adjustCash } = useCashAccounts();
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [assetAccounts, setAssetAccounts] = useState([]);
     const [modal, setModal] = useState(null); // { mode: "create" | "edit", record? }
@@ -39,6 +41,9 @@ const Finance = () => {
     const [historyAccount, setHistoryAccount] = useState(null);
     const [historyRows, setHistoryRows] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [equityModal, setEquityModal] = useState(null); // { type: "contribution" | "distribution" }
+    const [equityForm] = Form.useForm();
+    const [equitySubmitting, setEquitySubmitting] = useState(false);
 
     useEffect(() => {
         pointOfSaleService
@@ -112,6 +117,31 @@ const Finance = () => {
         const success = await adjustCash({ cash_account_id: adjustmentAccount._id, counterpart_account_id: values.counterpart_account_id, amount: values.amount, reason: values.reason.trim(), adjustment_date: values.adjustment_date.toISOString() });
         if (success) { setAdjustmentAccount(null); adjustmentForm.resetFields(); }
     };
+    const openEquityModal = (type) => {
+        equityForm.resetFields();
+        equityForm.setFieldsValue({ date: dayjs() });
+        setEquityModal({ type });
+    };
+    const handleEquitySubmit = async (values) => {
+        setEquitySubmitting(true);
+        const payload = { amount: values.amount, cash_account_id: values.cash_account_id, description: values.description?.trim() || undefined };
+        try {
+            if (equityModal.type === "contribution") {
+                await financeService.registerCapitalContribution({ ...payload, contribution_date: values.date.toISOString() });
+                toast.success(t("finance.capital_contribution_success"));
+            } else {
+                await financeService.registerEquityDistribution({ ...payload, distribution_date: values.date.toISOString() });
+                toast.success(t("finance.equity_distribution_success"));
+            }
+            setEquityModal(null);
+            equityForm.resetFields();
+            await reloadAccounts();
+        } catch (error) {
+            toast.error(financeErrorMessage(error, t, equityModal.type === "contribution" ? "finance.capital_contribution_failed" : "finance.equity_distribution_failed"));
+        } finally {
+            setEquitySubmitting(false);
+        }
+    };
     const openConfigurationHistory = async (record) => {
         setHistoryAccount(record); setHistoryLoading(true);
         try { const response = await financeService.listCashAccountConfigurationHistory(record._id); setHistoryRows(response?.data || []); }
@@ -129,6 +159,8 @@ const Finance = () => {
                         icon={<WalletOutlined />}
                         actionButton={
                             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <Tooltip title={accounts.length === 0 ? t("finance.no_accounts") : canEdit ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<RiseOutlined />} onClick={() => openEquityModal("contribution")} size="large" className="w-full" disabled={!canEdit || accounts.length === 0}>{t("finance.capital_contribution_cta")}</Button></span></Tooltip>
+                                <Tooltip title={accounts.length === 0 ? t("finance.no_accounts") : canEdit ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<FallOutlined />} onClick={() => openEquityModal("distribution")} size="large" className="w-full" disabled={!canEdit || accounts.length === 0}>{t("finance.equity_distribution_cta")}</Button></span></Tooltip>
                                 <Tooltip title={accounts.length < 2 ? t("finance.transfer_requires_accounts") : canEdit ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<SwapOutlined />} onClick={openTransfer} size="large" className="w-full" disabled={!canEdit || accounts.length < 2}>{t("finance.transfer_cta")}</Button></span></Tooltip>
                                 <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
                                 <span className="w-full sm:w-auto inline-block">
@@ -275,6 +307,29 @@ const Finance = () => {
                     <Form.Item name="counterpart_account_id" label={t("finance.adjustment_counterpart")} extra={t("finance.adjustment_counterpart_help")} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={counterpartAccounts.map((row) => ({ value: row._id, label: `${row.code} · ${row.name}` }))} placeholder={t("finance.adjustment_counterpart_placeholder")} /></Form.Item>
                     <Form.Item name="adjustment_date" label={t("finance.adjustment_date")} rules={[{ required: true, message: t("validation.required_field") }]}><DatePicker className="w-full" /></Form.Item>
                     <Form.Item name="reason" label={t("finance.adjustment_reason")} rules={[{ required: true, whitespace: true, message: t("validation.required_field") }]}><Input.TextArea rows={3} maxLength={300} showCount placeholder={t("finance.adjustment_reason_placeholder")} /></Form.Item>
+                </Form>
+            </Modal>
+            <Modal
+                title={t(equityModal?.type === "contribution" ? "finance.capital_contribution_title" : "finance.equity_distribution_title")}
+                open={Boolean(equityModal)}
+                onCancel={() => setEquityModal(null)}
+                onOk={() => equityForm.submit()}
+                confirmLoading={equitySubmitting}
+                okText={t(equityModal?.type === "contribution" ? "finance.capital_contribution_confirm" : "finance.equity_distribution_confirm")}
+                destroyOnHidden
+            >
+                <Alert
+                    className="dark-alert dark-alert-teal mb-4"
+                    type="info"
+                    showIcon
+                    message={t(equityModal?.type === "contribution" ? "finance.capital_contribution_help_title" : "finance.equity_distribution_help_title")}
+                    description={t(equityModal?.type === "contribution" ? "finance.capital_contribution_help_desc" : "finance.equity_distribution_help_desc")}
+                />
+                <Form form={equityForm} layout="vertical" onFinish={handleEquitySubmit}>
+                    <Form.Item name="amount" label={t("finance.amount_label")} rules={[{ required: true, message: t("validation.required_field") }]}><InputNumber min={0.01} precision={2} className="w-full" /></Form.Item>
+                    <Form.Item name="cash_account_id" label={t("finance.cash_account_label")} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((row) => row.is_active).map((row) => ({ value: row._id, label: `${row.name} · ${formatCurrency(row.balance)}` }))} placeholder={t("finance.cash_account_placeholder")} /></Form.Item>
+                    <Form.Item name="date" label={t("finance.col_date")} rules={[{ required: true, message: t("validation.required_field") }]}><DatePicker className="w-full" /></Form.Item>
+                    <Form.Item name="description" label={t("finance.transfer_description")}><Input maxLength={200} /></Form.Item>
                 </Form>
             </Modal>
             <Drawer width={680} open={Boolean(historyAccount)} onClose={() => setHistoryAccount(null)} title={t("finance.mapping_history_title", { name: historyAccount?.name || "" })} styles={{ body: { background: "var(--ohnix-surface-card-soft)" }, header: { background: "var(--ohnix-surface-card-soft)", borderBottom: "1px solid var(--ohnix-line-3)" } }}>

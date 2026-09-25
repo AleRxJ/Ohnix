@@ -145,6 +145,19 @@ export const ensureCurrentYearEarningsAccount = async (tx, accountId) => {
     return tx.chartAccount.create({ data: { ...CURRENT_YEAR_EARNINGS_ACCOUNT, createdById: accountId } });
 };
 
+const CAPITAL_CONTRIBUTION_ACCOUNT = { code: "3115", name: "Aportes sociales", accountType: "equity" };
+
+// Fase 6 (estado de cambios en el patrimonio) - the credit side of every
+// registerCapitalContribution (equityMovement.service.js). Same "created on
+// first use" idiom as the two ensure* helpers above - a tenant that never
+// registers a capital contribution never gets this account at all.
+export const ensureCapitalContributionAccount = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const existing = await tx.chartAccount.findFirst({ where: { createdById: accountId, code: CAPITAL_CONTRIBUTION_ACCOUNT.code } });
+    if (existing) return existing;
+    return tx.chartAccount.create({ data: { ...CAPITAL_CONTRIBUTION_ACCOUNT, createdById: accountId } });
+};
+
 // Fase 7 - a starting point for fixedAsset.service.js#createFixedAsset, not
 // a hard requirement: registering an asset can point at any active asset/
 // expense account instead (e.g. a company that wants "Flota y equipo de

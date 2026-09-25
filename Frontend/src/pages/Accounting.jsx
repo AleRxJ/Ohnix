@@ -275,6 +275,8 @@ const SOURCE_TYPE_LABEL_KEYS = {
     fixed_asset_depreciation: "accounting.source_fixed_asset_depreciation",
     fixed_asset_disposal: "accounting.source_fixed_asset_disposal",
     recurring_journal: "accounting.source_recurring_journal",
+    capital_contribution: "accounting.source_capital_contribution",
+    equity_distribution: "accounting.source_equity_distribution",
 };
 
 // Automatic descriptions are persisted for auditability. Translate only
@@ -2175,6 +2177,9 @@ const FinancialStatementsTab = () => {
     const [cashFlowRange, setCashFlowRange] = useState([dayjs().startOf("month"), dayjs()]);
     const [cashFlow, setCashFlow] = useState(null);
     const [cashFlowLoading, setCashFlowLoading] = useState(false);
+    const [equityRange, setEquityRange] = useState([dayjs().startOf("year"), dayjs()]);
+    const [equity, setEquity] = useState(null);
+    const [equityLoading, setEquityLoading] = useState(false);
     const [notesYear, setNotesYear] = useState(dayjs().year());
     const [notes, setNotes] = useState([]);
     const [notesLoading, setNotesLoading] = useState(false);
@@ -2292,11 +2297,24 @@ const FinancialStatementsTab = () => {
         }
     };
 
+    const fetchEquityChanges = async () => {
+        setEquityLoading(true);
+        try {
+            const res = await accountingService.getEquityChangesStatement({ from: equityRange[0].format("YYYY-MM-DD"), to: equityRange[1].format("YYYY-MM-DD") });
+            setEquity(res?.data || null);
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setEquityLoading(false);
+        }
+    };
+
     useEffect(() => {
         accountingService.listCostCenters().then((response) => setCostCenters(response?.data || [])).catch(() => {});
         fetchIncome();
         fetchCashFlow();
         fetchBalance();
+        fetchEquityChanges();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -2344,6 +2362,17 @@ const FinancialStatementsTab = () => {
             [t("accounting.cash_flow_ending"), cashFlow.ending_balance],
         ];
         exportAccountingExcel(`flujo-de-efectivo-${cashFlowRange[0].format("YYYY-MM-DD")}_${cashFlowRange[1].format("YYYY-MM-DD")}.xlsx`, [{ name: t("accounting.cash_flow_title"), rows: [header, ...rows] }]);
+    };
+
+    const exportEquityChanges = () => {
+        const header = [t("accounting.col_account"), t("accounting.equity_opening_balance"), t("accounting.equity_capital_contributions"), t("accounting.equity_period_result"), t("accounting.equity_distributions"), t("accounting.equity_other_movements"), t("accounting.equity_closing_balance")];
+        const row = (name, r) => [name, r.opening_balance, r.capital_contributions, r.period_result, r.distributions, r.other_movements, r.closing_balance];
+        const rows = [
+            ...(equity.accounts || []).map((account) => row(`${account.code} · ${account.name}`, account)),
+            ...(equity.current_earnings_row ? [row(t("accounting.current_earnings_row"), equity.current_earnings_row)] : []),
+            row(t("common.total"), equity.totals),
+        ];
+        exportAccountingExcel(`estado-de-cambios-en-el-patrimonio-${equityRange[0].format("YYYY-MM-DD")}_${equityRange[1].format("YYYY-MM-DD")}.xlsx`, [{ name: t("accounting.equity_changes_title"), rows: [header, ...rows] }]);
     };
 
     const accountColumns = [
@@ -2535,6 +2564,73 @@ const FinancialStatementsTab = () => {
                             </Col>
                         </Row>
                     </>
+                )}
+            </div>
+
+            <div>
+                <h3 className="text-base font-semibold text-[var(--ohnix-text-primary)] mb-3">{t("accounting.equity_changes_title")}</h3>
+                <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <RangePicker value={equityRange} onChange={(dates) => dates && setEquityRange(dates)} format="YYYY-MM-DD" allowClear={false} />
+                        <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)]" icon={<CalendarOutlined />} onClick={fetchEquityChanges} loading={equityLoading}>
+                            {t("reports.refresh_report")}
+                        </Button>
+                        <Button icon={<DownloadOutlined />} disabled={!equity} onClick={exportEquityChanges}>
+                            {t("reports.export_to_excel")}
+                        </Button>
+                    </div>
+                </Card>
+                {equity && (
+                    <Card className="module-shell border border-[var(--ohnix-line-4)]">
+                        <Table
+                            columns={[
+                                {
+                                    title: t("accounting.col_account"),
+                                    dataIndex: "name",
+                                    render: (name, record) =>
+                                        record.code ? (
+                                            name
+                                        ) : (
+                                            <Tooltip title={t("accounting.current_earnings_row_hint")}>
+                                                <span className="italic text-[var(--ohnix-text-muted)]">
+                                                    {name}
+                                                    <span className="ml-2 inline-flex items-center rounded-full bg-[var(--ohnix-hover-overlay)] px-1.5 py-0.5 text-[9px] font-semibold uppercase not-italic tracking-wide text-[var(--ohnix-text-dim)]">
+                                                        {t("accounting.calculated_row_badge")}
+                                                    </span>
+                                                </span>
+                                            </Tooltip>
+                                        ),
+                                },
+                                { title: t("accounting.equity_opening_balance"), dataIndex: "opening_balance", align: "right", render: formatCurrency },
+                                { title: t("accounting.equity_capital_contributions"), dataIndex: "capital_contributions", align: "right", render: formatCurrency },
+                                { title: t("accounting.equity_period_result"), dataIndex: "period_result", align: "right", render: formatCurrency },
+                                { title: t("accounting.equity_distributions"), dataIndex: "distributions", align: "right", render: (v) => v ? <span className="text-[var(--ohnix-status-warning)]">-{formatCurrency(v)}</span> : formatCurrency(0) },
+                                { title: t("accounting.equity_other_movements"), dataIndex: "other_movements", align: "right", render: formatCurrency },
+                                { title: t("accounting.equity_closing_balance"), dataIndex: "closing_balance", align: "right", render: (v) => <strong>{formatCurrency(v)}</strong> },
+                            ]}
+                            dataSource={[
+                                ...equity.accounts,
+                                ...(equity.current_earnings_row ? [{ code: "", name: t("accounting.current_earnings_row"), ...equity.current_earnings_row }] : []),
+                            ]}
+                            rowKey={(r) => r.id || "current_earnings"}
+                            pagination={false}
+                            loading={equityLoading}
+                            size="small"
+                            className="module-dark-table"
+                            scroll={{ x: "max-content" }}
+                            summary={() => (
+                                <Table.Summary.Row>
+                                    <Table.Summary.Cell index={0}><strong>{t("common.total")}</strong></Table.Summary.Cell>
+                                    <Table.Summary.Cell index={1} align="right">{formatCurrency(equity.totals.opening_balance)}</Table.Summary.Cell>
+                                    <Table.Summary.Cell index={2} align="right">{formatCurrency(equity.totals.capital_contributions)}</Table.Summary.Cell>
+                                    <Table.Summary.Cell index={3} align="right">{formatCurrency(equity.totals.period_result)}</Table.Summary.Cell>
+                                    <Table.Summary.Cell index={4} align="right">{formatCurrency(equity.totals.distributions)}</Table.Summary.Cell>
+                                    <Table.Summary.Cell index={5} align="right">{formatCurrency(equity.totals.other_movements)}</Table.Summary.Cell>
+                                    <Table.Summary.Cell index={6} align="right"><strong>{formatCurrency(equity.totals.closing_balance)}</strong></Table.Summary.Cell>
+                                </Table.Summary.Row>
+                            )}
+                        />
+                    </Card>
                 )}
             </div>
 

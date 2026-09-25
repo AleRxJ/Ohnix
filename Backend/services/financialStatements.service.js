@@ -232,6 +232,29 @@ const getUnclosedPeriodIds = async (accountId, asOfDate) => {
 // deliberately, so one center's half of that entry has no matching line in
 // this filtered set. The caller must not treat that as a real integrity
 // error the way an unfiltered imbalance would be.
+// Net result of whatever periods haven't been formally closed yet, as of
+// asOfDate - the plug that lets getBalanceSheet (and, since Fase 6,
+// getEquityChangesStatement) show "this year's result so far" as part of
+// equity even before a period-close entry has moved it there for real. A
+// closed period's result is instead a real posted balance in 3610/3605,
+// already picked up by the equity accounts themselves.
+const getCurrentEarningsPlug = async (accountId, asOfDate, costCenterId) => {
+    const unclosedPeriodIds = await getUnclosedPeriodIds(accountId, asOfDate);
+    if (!unclosedPeriodIds.length) return 0;
+    const nominalRows = await aggregateByAccount({
+        accountId,
+        accountTypes: ["revenue", "cost", "expense"],
+        endDate: asOfDate,
+        excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
+        periodIds: unclosedPeriodIds,
+        costCenterId,
+    });
+    const revenue = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "revenue")));
+    const costs = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "cost")));
+    const expenses = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "expense")));
+    return round2(revenue - costs - expenses);
+};
+
 export const getBalanceSheet = async ({ accountId, asOfDate, costCenterId }) => {
     const rows = await aggregateByAccount({ accountId, accountTypes: ["asset", "liability", "equity"], endDate: asOfDate, costCenterId });
     const assets = rows.filter((r) => r.account_type === "asset");
@@ -242,23 +265,7 @@ export const getBalanceSheet = async ({ accountId, asOfDate, costCenterId }) => 
     const totalLiabilities = round2(sumAmounts(liabilities));
     const totalEquityAccounts = round2(sumAmounts(equity));
 
-    const unclosedPeriodIds = await getUnclosedPeriodIds(accountId, asOfDate);
-    const currentEarnings = unclosedPeriodIds.length
-        ? (await (async () => {
-              const nominalRows = await aggregateByAccount({
-                  accountId,
-                  accountTypes: ["revenue", "cost", "expense"],
-                  endDate: asOfDate,
-                  excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
-                  periodIds: unclosedPeriodIds,
-                  costCenterId,
-              });
-              const revenue = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "revenue")));
-              const costs = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "cost")));
-              const expenses = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "expense")));
-              return round2(revenue - costs - expenses);
-          })())
-        : 0;
+    const currentEarnings = await getCurrentEarningsPlug(accountId, asOfDate, costCenterId);
 
     const totalEquity = round2(totalEquityAccounts + currentEarnings);
     const totalLiabilitiesAndEquity = round2(totalLiabilities + totalEquity);
@@ -277,6 +284,103 @@ export const getBalanceSheet = async ({ accountId, asOfDate, costCenterId }) => 
         // is set it's informational only, per the comment above.
         balanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01,
     };
+};
+
+const EQUITY_RESULT_SOURCE_TYPES = new Set(["period_close", "period_reopen", "period_reclose", "year_close", "year_reopen", "year_reclose"]);
+const equityMovementCategory = (sourceType) =>
+    EQUITY_RESULT_SOURCE_TYPES.has(sourceType) ? "period_result"
+    : sourceType === "capital_contribution" ? "capital_contributions"
+    : sourceType === "equity_distribution" ? "distributions"
+    : "other";
+
+const buildEquityMovementRow = (openingBalance, movements) => {
+    const periodResult = round2(movements.period_result);
+    const capitalContributions = round2(movements.capital_contributions);
+    const distributions = round2(movements.distributions);
+    const other = round2(movements.other);
+    return {
+        opening_balance: round2(openingBalance),
+        capital_contributions: capitalContributions,
+        period_result: periodResult,
+        distributions,
+        other_movements: other,
+        closing_balance: round2(openingBalance + periodResult + capitalContributions + distributions + other),
+    };
+};
+
+// Estado de cambios en el patrimonio (Fase 6). Shows every equity account -
+// including one with no activity at all, same "list the whole chart"
+// criterion as getTrialBalance - with where it started the period, how it
+// moved (bucketed into the 4 categories above), and where it ended. A
+// synthetic "current earnings not yet closed" row (getCurrentEarningsPlug,
+// computed at both ends of the range so its own movement lands correctly in
+// period_result) is appended the same way getBalanceSheet appends
+// current_earnings to its equity table - by the caller, not here (this
+// returns bare numbers, no code/name, matching that same convention) - so
+// that totals.closing_balance always reconciles exactly with
+// getBalanceSheet({ asOfDate: endDate }).total_equity: the same number,
+// reached two different ways.
+export const getEquityChangesStatement = async ({ accountId, startDate, endDate }) => {
+    const accounts = await prisma.chartAccount.findMany({ where: { createdById: accountId, accountType: "equity" }, orderBy: { code: "asc" } });
+
+    const priorRows = startDate
+        ? await prisma.journalEntryLine.groupBy({
+              by: ["chartAccountId"],
+              where: { chartAccount: { createdById: accountId, accountType: "equity" }, journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
+              _sum: { debit: true, credit: true },
+          })
+        : [];
+    const priorById = new Map(priorRows.map((r) => [r.chartAccountId, r]));
+
+    const rangeLines = await prisma.journalEntryLine.findMany({
+        where: {
+            chartAccount: { createdById: accountId, accountType: "equity" },
+            journalEntry: {
+                period: { createdById: accountId },
+                ...(startDate || endDate ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } } : {}),
+            },
+        },
+        select: { chartAccountId: true, debit: true, credit: true, journalEntry: { select: { sourceType: true } } },
+    });
+
+    const movementsByAccount = new Map();
+    for (const line of rangeLines) {
+        const bucket = movementsByAccount.get(line.chartAccountId) || { period_result: 0, capital_contributions: 0, distributions: 0, other: 0 };
+        // Equity is credit-normal (see balanceForType above).
+        bucket[equityMovementCategory(line.journalEntry.sourceType)] += Number(line.credit) - Number(line.debit);
+        movementsByAccount.set(line.chartAccountId, bucket);
+    }
+
+    const rows = accounts.map((account) => {
+        const prior = priorById.get(account.id);
+        const openingBalance = prior ? Number(prior._sum.credit || 0) - Number(prior._sum.debit || 0) : 0;
+        const movements = movementsByAccount.get(account.id) || { period_result: 0, capital_contributions: 0, distributions: 0, other: 0 };
+        return { id: account.id, code: account.code, name: account.name, ...buildEquityMovementRow(openingBalance, movements) };
+    });
+
+    const openingAsOf = startDate ? new Date(startDate.getTime() - 1) : null;
+    const [openingPlug, closingPlug] = await Promise.all([
+        openingAsOf ? getCurrentEarningsPlug(accountId, openingAsOf) : 0,
+        getCurrentEarningsPlug(accountId, endDate),
+    ]);
+    const currentEarningsRow = openingPlug !== 0 || closingPlug !== 0
+        ? buildEquityMovementRow(openingPlug, { period_result: round2(closingPlug - openingPlug), capital_contributions: 0, distributions: 0, other: 0 })
+        : null;
+
+    const allRows = currentEarningsRow ? [...rows, currentEarningsRow] : rows;
+    const totals = allRows.reduce(
+        (acc, row) => ({
+            opening_balance: round2(acc.opening_balance + row.opening_balance),
+            capital_contributions: round2(acc.capital_contributions + row.capital_contributions),
+            period_result: round2(acc.period_result + row.period_result),
+            distributions: round2(acc.distributions + row.distributions),
+            other_movements: round2(acc.other_movements + row.other_movements),
+            closing_balance: round2(acc.closing_balance + row.closing_balance),
+        }),
+        { opening_balance: 0, capital_contributions: 0, period_result: 0, distributions: 0, other_movements: 0, closing_balance: 0 }
+    );
+
+    return { start_date: startDate ?? null, end_date: endDate ?? null, accounts: rows, current_earnings_row: currentEarningsRow, totals };
 };
 
 // Builds the reversing lines for a period-close entry: one line per

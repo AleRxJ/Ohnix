@@ -16,6 +16,7 @@ import * as accountsReceivableService from "../services/accountsReceivable.servi
 import * as paymentAllocationService from "../services/paymentAllocation.service.js";
 import * as paymentCreditService from "../services/paymentCredit.service.js";
 import * as paymentMethodService from "../services/paymentMethod.service.js";
+import * as equityMovementService from "../services/equityMovement.service.js";
 
 const scope = (req) => ({
     accountId: req.user.prismaId,
@@ -315,6 +316,46 @@ export const registerManualIncome = asyncHandler(async (req, res, next) => {
         cash_movement_id: result.movement.id,
         balance_after: Number(result.movement.balanceAfter),
     }, "Manual income registered successfully"));
+});
+
+// --- Equity movements (Fase 6 - estado de cambios en el patrimonio) ---
+
+export const registerCapitalContribution = asyncHandler(async (req, res, next) => {
+    const { amount, cash_account_id, description, contribution_date, statement_entry_id } = req.body || {};
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_capital_contribution_account_required"));
+    const result = await equityMovementService.registerCapitalContribution({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        amount,
+        cashAccountId: cash_account_id,
+        description,
+        contributionDate: contribution_date,
+        statementEntryId: statement_entry_id || null,
+    });
+    return res.status(201).json(new ApiResponse(201, {
+        journal_entry_id: result.entry.id,
+        cash_movement_id: result.movement.id,
+        balance_after: Number(result.movement.balanceAfter),
+    }, "Capital contribution registered successfully"));
+});
+
+export const registerEquityDistribution = asyncHandler(async (req, res, next) => {
+    const { amount, cash_account_id, description, distribution_date, statement_entry_id } = req.body || {};
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_equity_distribution_account_required"));
+    const result = await equityMovementService.registerEquityDistribution({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        amount,
+        cashAccountId: cash_account_id,
+        description,
+        distributionDate: distribution_date,
+        statementEntryId: statement_entry_id || null,
+    });
+    return res.status(201).json(new ApiResponse(201, {
+        journal_entry_id: result.entry.id,
+        cash_movement_id: result.movement.id,
+        balance_after: Number(result.movement.balanceAfter),
+    }, "Equity distribution registered successfully"));
 });
 
 export const transferCash = asyncHandler(async (req, res) => {

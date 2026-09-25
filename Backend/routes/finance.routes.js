@@ -42,6 +42,8 @@ import {
     createPaymentMethod,
     updatePaymentMethod,
     setPaymentMethodActive,
+    registerCapitalContribution,
+    registerEquityDistribution,
 } from "../controllers/finance.controller.js";
 
 const router = Router();
@@ -129,5 +131,13 @@ router.route("/payment-methods/:id")
     .patch(requireModulePermission("finance", "admin"), updatePaymentMethod);
 router.route("/payment-methods/:id/active")
     .patch(requireModulePermission("finance", "admin"), setPaymentMethodActive);
+
+// Equity movements (Fase 6 - estado de cambios en el patrimonio) - same
+// permission level as manual income/expense, since these are just another
+// kind of cash-affecting entry, not a config change.
+router.route("/equity/contributions")
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.capital-contribution"), registerCapitalContribution);
+router.route("/equity/distributions")
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.equity-distribution"), registerEquityDistribution);
 
 export default router;
