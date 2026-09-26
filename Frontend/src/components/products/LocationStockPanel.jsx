@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Typography, Spin, Button, Popconfirm, Steps, Tooltip } from "antd";
 import {
     SwapOutlined,
@@ -18,6 +18,8 @@ import {
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import useSubscription from "../../hooks/useSubscription";
+import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
 import useCountUp from "../../hooks/useCountUp";
 import { useDataInvalidation } from "../../hooks/useDataInvalidation";
 import { api } from "../../api/api";
@@ -138,6 +140,13 @@ const formatTransferDate = (value, language) =>
 const LocationStockPanel = ({ product }) => {
     const { t, currentLanguage } = useI18n();
     const { can } = useSubscription();
+    const { user } = useContext(AuthContext);
+    const { hasPermission, isTeamMember } = useTeam();
+    // Approving a request, and quick/direct transfers (which approve
+    // themselves), are products:"admin" on the backend - and a team member
+    // can't approve a request they created (stockTransfer.controller.js).
+    const canApproveTransfers = hasPermission("products", "admin");
+    const isOwnRequest = (tr) => isTeamMember && tr.requested_by?._id === user?.id;
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [summary, setSummary] = useState(null);
     const [transfers, setTransfers] = useState([]);
@@ -451,7 +460,7 @@ const LocationStockPanel = ({ product }) => {
                         actor could actually submit, so the button would only
                         ever lead to a 403. "Solicitar traslado" stays
                         available either way: it only needs the destination. */}
-                    {visiblePointsOfSale.length > 1 && (
+                    {visiblePointsOfSale.length > 1 && canApproveTransfers && (
                         <Button
                             size="small"
                             icon={<ThunderboltOutlined />}
@@ -624,7 +633,7 @@ const LocationStockPanel = ({ product }) => {
                                                 />
 
                                                 <div className="flex gap-2 flex-wrap justify-end">
-                                                    {tr.status === "requested" && hasSourceAccess(tr) && (
+                                                    {tr.status === "requested" && hasSourceAccess(tr) && canApproveTransfers && !isOwnRequest(tr) && (
                                                         <Button
                                                             size="small"
                                                             icon={<CheckOutlined />}

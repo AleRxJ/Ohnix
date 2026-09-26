@@ -26,6 +26,7 @@ import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
 import { resolveApiErrorMessage } from "../utils/apiError";
+import { useAssistantPageContext } from "../components/assistant/assistantPageContext";
 
 // Codes from chartOfAccounts.service.js's default PUC seed - matched by code
 // (not name) so a renamed-but-not-recoded account still nets correctly.
@@ -295,6 +296,10 @@ const SOURCE_TYPE_LABEL_KEYS = {
     ica_declaration: "accounting.source_ica_declaration",
     ica_declaration_void: "accounting.source_ica_declaration_void",
     ica_payment: "accounting.source_ica_payment",
+    receivable_write_off: "accounting.source_receivable_write_off",
+    receivable_write_off_reversal: "accounting.source_receivable_write_off_reversal",
+    loan_interest_accrual: "accounting.source_loan_interest_accrual",
+    loan_extra_payment: "accounting.source_loan_extra_payment",
 };
 
 // Automatic descriptions are persisted for auditability. Translate only
@@ -617,7 +622,7 @@ const ChartOfAccountsTab = () => {
             <AccountingSectionGuide sectionKey="chart" title={t("accounting.guide_chart_title")} summary={t("accounting.tab_chart_of_accounts_caption")} steps={[t("accounting.guide_chart_step_1"), t("accounting.guide_chart_step_2"), t("accounting.guide_chart_step_3")]} result={t("accounting.guide_chart_result")} concepts={[{ label: t("accounting.col_type"), help: t("accounting.guide_chart_type_help") }, { label: t("accounting.ledger_view_button"), help: t("accounting.guide_ledger_help") }]} />
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                 <span />
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewAccountOpen(true)} className="shrink-0">
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewAccountOpen(true)} className="shrink-0" data-assistant-anchor="accounting-chart-new-account">
                     {t("accounting.new_account_button")}
                 </Button>
             </div>
@@ -838,7 +843,7 @@ const CostCentersTab = () => {
 
     return <>
         <AccountingSectionGuide sectionKey="cost-centers" title={t("accounting.guide_cost_centers_title")} summary={t("accounting.tab_cost_centers_caption")} steps={[t("accounting.guide_cost_centers_step_1"), t("accounting.guide_cost_centers_step_2"), t("accounting.guide_cost_centers_step_3")]} result={t("accounting.guide_cost_centers_result")} concepts={[{ label: t("accounting.cost_center"), help: t("accounting.cost_center_help") }]} />
-        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.cost_center_new")}</Button>}</div>
+        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()} data-assistant-anchor="accounting-cost-centers-new">{t("accounting.cost_center_new")}</Button>}</div>
         <Table className="module-dark-table" loading={loading} rowKey="_id" dataSource={centers} pagination={{ pageSize: 15 }} locale={{ emptyText: <EmptyState compact title={t("accounting.empty_cost_centers_title")} subtitle={t("accounting.empty_cost_centers_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.cost_center_new")}</Button> : null} /> }} columns={[
             { title: t("accounting.col_code"), dataIndex: "code", width: 150 },
             { title: t("accounting.col_name"), dataIndex: "name" },
@@ -957,7 +962,7 @@ const RecurringExpensesTab = () => {
 
     return <>
         <AccountingSectionGuide sectionKey="recurring-expenses" title={t("accounting.guide_recurring_title")} summary={t("accounting.tab_recurring_expenses_caption")} steps={[t("accounting.guide_recurring_step_1"), t("accounting.guide_recurring_step_2")]} result={t("accounting.guide_recurring_result")} concepts={[{ label: t("accounting.recurring_expense_day_of_month"), help: t("accounting.recurring_expense_day_of_month_help") }]} />
-        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.recurring_expense_new")}</Button>}</div>
+        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()} data-assistant-anchor="accounting-recurring-expenses-new">{t("accounting.recurring_expense_new")}</Button>}</div>
         <Table
             className="module-dark-table"
             loading={loading}
@@ -1141,7 +1146,7 @@ const RecurringJournalsTab = () => {
 
     return <>
         <AccountingSectionGuide sectionKey="recurring-journals" title={t("accounting.guide_recurring_journal_title")} summary={t("accounting.tab_recurring_journals_caption")} steps={[t("accounting.guide_recurring_journal_step_1"), t("accounting.guide_recurring_journal_step_2")]} result={t("accounting.guide_recurring_journal_result")} concepts={[{ label: t("accounting.recurring_expense_day_of_month"), help: t("accounting.recurring_expense_day_of_month_help") }]} />
-        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.recurring_journal_new")}</Button>}</div>
+        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()} data-assistant-anchor="accounting-recurring-journals-new">{t("accounting.recurring_journal_new")}</Button>}</div>
         <Table
             className="module-dark-table"
             loading={loading}
@@ -1335,7 +1340,7 @@ const FixedAssetsTab = () => {
     };
     return <>
         <AccountingSectionGuide sectionKey="fixed-assets" title={t("accounting.guide_fixed_assets_title")} summary={t("accounting.tab_fixed_assets_caption")} steps={[t("accounting.guide_fixed_assets_step_1"), t("accounting.guide_fixed_assets_step_2"), t("accounting.guide_fixed_assets_step_3")]} result={t("accounting.guide_fixed_assets_result")} concepts={[{ label: t("accounting.fixed_asset_salvage_value"), help: t("accounting.guide_fixed_assets_salvage_help") }, { label: t("accounting.fixed_asset_useful_life"), help: t("accounting.guide_fixed_assets_life_help") }]} />
-        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.fixed_asset_new")}</Button>}</div>
+        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()} data-assistant-anchor="accounting-fixed-assets-new">{t("accounting.fixed_asset_new")}</Button>}</div>
         <Table
             className="module-dark-table"
             loading={loading}
@@ -1580,7 +1585,7 @@ const ManualVouchersTab = () => {
             <AccountingSectionGuide sectionKey="vouchers" title={t("accounting.guide_vouchers_title")} summary={t("accounting.tab_vouchers_caption")} steps={[t("accounting.guide_voucher_step_1"), t("accounting.guide_voucher_step_2"), t("accounting.guide_voucher_step_3")]} result={t("accounting.guide_voucher_result")} concepts={[{ label: t("accounting.voucher_status_draft"), help: t("accounting.guide_draft_help") }, { label: t("accounting.voucher_status_posted"), help: t("accounting.guide_posted_help") }, { label: t("accounting.voucher_maker_checker_label"), help: t("accounting.voucher_maker_checker_help") }]} />
             <div className="flex items-center justify-between gap-3 mb-4">
                 <span />
-                {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.voucher_new")}</Button>}
+                {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()} data-assistant-anchor="accounting-vouchers-new">{t("accounting.voucher_new")}</Button>}
             </div>
             <Table
                 className="module-dark-table"
@@ -1856,6 +1861,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
 
 const PeriodsTab = () => {
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
     const { hasPermission } = useTeam();
     const canClose = hasPermission("accounting", "admin");
     const [periods, setPeriods] = useState([]);
@@ -2015,6 +2021,10 @@ const PeriodsTab = () => {
                     )}
                     {(warnings.accounting_differences || []).length > 0 && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_accounting_title")} description={t("accounting.close_readiness_accounting_desc", { count: warnings.accounting_differences.length })} />}
                     {warnings.unsettled_vat_period && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_vat_title")} description={t("accounting.close_readiness_vat_desc", { period: warnings.unsettled_vat_period.period_number, year: warnings.unsettled_vat_period.year, periodicity: t(`accounting.vat_periodicity_${warnings.unsettled_vat_period.periodicity}`).toLowerCase() })} />}
+                    {warnings.unsettled_ica_period && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_ica_title")} description={t("accounting.close_readiness_ica_desc", { period: warnings.unsettled_ica_period.periodicity === "annual" ? warnings.unsettled_ica_period.year : `${warnings.unsettled_ica_period.period_number}/${warnings.unsettled_ica_period.year}` })} />}
+                    {warnings.prepaid_pending && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_prepaid_title")} description={t("accounting.close_readiness_prepaid_desc", { count: warnings.prepaid_pending.count, amount: formatCurrency(warnings.prepaid_pending.amount) })} />}
+                    {warnings.overdue_loan_installments && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_loans_title")} description={t("accounting.close_readiness_loans_desc", { count: warnings.overdue_loan_installments.count, amount: formatCurrency(warnings.overdue_loan_installments.amount) })} />}
+                    {warnings.impairment_outdated && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_impairment_title")} description={t("accounting.close_readiness_impairment_desc", { required: formatCurrency(warnings.impairment_outdated.required), recorded: formatCurrency(warnings.impairment_outdated.recorded) })} />}
                     <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{t("accounting.close_readiness_footer")}</p>
                 </div>,
                 okText: blockers.length > 0 ? t("accounting.close_readiness_blocked_cta") : t("accounting.close_period"),
@@ -2128,7 +2138,7 @@ const PeriodsTab = () => {
                             onChange={setSelectedYear}
                             options={closableYears.map((year) => ({ value: year, label: year }))}
                         />
-                        <Button type="primary" disabled={!selectedYear} loading={checkingYear === selectedYear} onClick={() => reviewAndCloseYear(selectedYear)}>
+                        <Button type="primary" disabled={!selectedYear} loading={checkingYear === selectedYear} onClick={() => reviewAndCloseYear(selectedYear)} data-assistant-anchor="accounting-periods-close-year">
                             {t("accounting.fiscal_year_verify_and_close")}
                         </Button>
                     </div>
@@ -3719,7 +3729,7 @@ const OpeningBalanceTab = () => {
                 <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({})}>{t("accounting.opening_balance_add_line")}</Button>
             </div>}</Form.List>
             <Alert className="mt-5" type={balanced ? "success" : "warning"} showIcon message={`${t("accounting.lines_col_debit")}: ${formatCurrency(totals.debit)} · ${t("accounting.lines_col_credit")}: ${formatCurrency(totals.credit)}`} description={balanced ? t("accounting.opening_balance_balanced") : t("accounting.opening_balance_unbalanced")} />
-            <div className="flex justify-end mt-5"><Button type="primary" htmlType="submit" loading={saving} disabled={!balanced}>{t("accounting.opening_balance_post")}</Button></div>
+            <div className="flex justify-end mt-5"><Button type="primary" htmlType="submit" loading={saving} disabled={!balanced} data-assistant-anchor="accounting-opening-balance-post">{t("accounting.opening_balance_post")}</Button></div>
         </Form></Card>}
     </>;
 };
@@ -3765,6 +3775,16 @@ const Accounting = () => {
     const [activeTab, setActiveTab] = useState(deepLink.tab || "overview");
     const [status, setStatus] = useState(null);
     const hasAccounting = can("accounting");
+    useAssistantPageContext({ tab: activeTab });
+
+    // useState above only reads the deep link on mount - a navigate() to
+    // /accounting while already on it (the assistant's "Ir a" / "Muéstrame"
+    // buttons) keeps this component mounted, so the tab has to follow each
+    // new navigation's state too. location.key changes on every navigate,
+    // even to the same tab the user has since clicked away from.
+    useEffect(() => {
+        if (location.state?.tab) setActiveTab(location.state.tab);
+    }, [location.key, location.state?.tab]);
 
     useEffect(() => {
         if (!hasAccounting) return;
@@ -3822,7 +3842,7 @@ const Accounting = () => {
                                 />
                             )}
                             <Card className="accounting-workspace">
-                                <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="accounting-tabs" destroyInactiveTabPane={false} />
+                                <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems.map((item) => ({ ...item, label: <span data-assistant-anchor={`accounting-tab-${item.key}`}>{item.label}</span> }))} className="accounting-tabs" destroyInactiveTabPane={false} />
                             </Card>
                         </>
                     )}

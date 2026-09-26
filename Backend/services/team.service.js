@@ -16,6 +16,7 @@ import {
     COUPLED_MODULES,
     DEFAULT_MEMBER_ROLE_PERMISSIONS,
     OWNER_ROLE_PERMISSIONS,
+    normalizeCapabilities,
 } from "../middleware/team.permissions.js";
 import {
     notifyInvitationCreated,
@@ -312,7 +313,7 @@ export const listRoles = (team) =>
         orderBy: { createdAt: "asc" },
     });
 
-export const createRole = async ({ team, actorId, name, permissions }) => {
+export const createRole = async ({ team, actorId, name, permissions, capabilities }) => {
     const trimmed = `${name || ""}`.trim();
     if (!trimmed) {
         throw new ApiError(400, "El nombre del rol es obligatorio");
@@ -330,6 +331,8 @@ export const createRole = async ({ team, actorId, name, permissions }) => {
         data: {
             teamId: team.id,
             name: trimmed,
+            // Omitted = none granted (deny by default, like module levels).
+            capabilities: normalizeCapabilities(capabilities),
             permissions: {
                 create: MODULE_KEYS.map((moduleKey) => ({
                     moduleKey,
@@ -344,7 +347,7 @@ export const createRole = async ({ team, actorId, name, permissions }) => {
     return role;
 };
 
-export const updateRole = async ({ team, actorId, roleId, name, permissions }) => {
+export const updateRole = async ({ team, actorId, roleId, name, permissions, capabilities }) => {
     const role = await prisma.teamRole.findFirst({
         where: { id: roleId, teamId: team.id },
         include: { permissions: true },
@@ -367,6 +370,12 @@ export const updateRole = async ({ team, actorId, roleId, name, permissions }) =
     // nothing happened to the member who lost access.
     const previousLevels = Object.fromEntries(role.permissions.map((p) => [p.moduleKey, p.level]));
     let permissionChanges = [];
+    // Same audit idea for capabilities: key: old -> new, only what changed.
+    const previousCapabilities = normalizeCapabilities(role.capabilities);
+    const nextCapabilities = capabilities !== undefined ? normalizeCapabilities(capabilities) : previousCapabilities;
+    const capabilityChanges = Object.keys(nextCapabilities)
+        .filter((key) => previousCapabilities[key] !== nextCapabilities[key])
+        .map((key) => ({ key, from: previousCapabilities[key], to: nextCapabilities[key] }));
 
     const updated = await prisma.$transaction(async (tx) => {
         if (permissions) {
@@ -391,7 +400,7 @@ export const updateRole = async ({ team, actorId, roleId, name, permissions }) =
         }
         return tx.teamRole.update({
             where: { id: role.id },
-            data: { name: trimmed },
+            data: { name: trimmed, capabilities: nextCapabilities },
             include: { permissions: true },
         });
     });
@@ -401,6 +410,7 @@ export const updateRole = async ({ team, actorId, roleId, name, permissions }) =
         fromName: role.name,
         toName: trimmed,
         permissionChanges,
+        capabilityChanges,
     });
     return updated;
 };

@@ -75,7 +75,9 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
         },
         {
             key: "quotations",
-            moduleKey: "purchases",
+            // Purchase tab -> "purchases", sales tab -> "orders" (see
+            // pages/Quotations.jsx) - visible with either.
+            moduleKey: ["purchases", "orders"],
             icon: <TagsOutlined />,
             label: (
                 <Link to="/quotations" className="relative flex items-center pr-4">
@@ -199,12 +201,14 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <UsergroupAddOutlined />,
             label: <Link to="/team">{t("common.team_nav")}</Link>,
         }] : []),
-        // Same gate as billing (moduleKey filter below) - API keys/
-        // integrations/webhooks are account-wide, owner-only, same as
-        // billing itself (see App.jsx#RequireBillingAccess).
+        // API keys/integrations/webhooks are account-wide and hard owner-only
+        // (blockTeamMembers on the backend) - NOT tied to the grantable
+        // "billing" module. "integrations" is deliberately not a role module
+        // key: hasPermission always passes for the owner/solo users and finds
+        // no row (= "none") for any member, which is exactly owner-only.
         {
             key: "integrations",
-            moduleKey: "billing",
+            moduleKey: "integrations",
             icon: <ApiOutlined />,
             label: (
                 <Link to="/integrations" className="relative flex items-center pr-4">
@@ -235,7 +239,8 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/billing">{t("common.billing")}</Link>,
         },
     ]
-        .filter((item) => !item.moduleKey || canAccess(item.moduleKey))
+        // moduleKey may be a list - the item shows if any of them is granted.
+        .filter((item) => !item.moduleKey || [].concat(item.moduleKey).some((key) => canAccess(key)))
         // moduleKey is only for the permission filter above - antd's Menu
         // items don't recognize it, and any unrecognized property on an
         // items-array entry gets spread straight onto the rendered <li> as

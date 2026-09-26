@@ -162,7 +162,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
         try {
             if (forkingFor) {
                 const forkedName = `${permissionsRole.name} — ${forkingFor.username}`;
-                const forked = await teamService.createRole(team.id, { name: forkedName, permissions: values.permissions });
+                const forked = await teamService.createRole(team.id, { name: forkedName, permissions: values.permissions, capabilities: values.capabilities });
                 await teamService.changeMemberRole(team.id, forkingFor.userId, forked.data.id);
                 toast.success(t("team.role_forked", { name: forkingFor.username }));
                 load();

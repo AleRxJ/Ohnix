@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { AUTH_COOKIE_OPTIONS } from "../utils/authTokens.js";
 import * as teamService from "../services/team.service.js";
+import { getPermissionCatalog as buildPermissionCatalog } from "../middleware/team.permissions.js";
 
 // ─── Route-level guards (loadTeam + requireTeamOwnerActor) ────────────────
 // Applied by team.routes.js before these handlers run. actorId (the real
@@ -55,6 +56,13 @@ export const createTeam = asyncHandler(async (req, res) => {
 
 // Lets both an owner and a member resolve "my team" without knowing its id
 // up front - used by the frontend on load to bootstrap the team UI.
+// Which modules/levels a role can hold - static per deploy, no team needed
+// (the role editor only renders for an owner, but knowing the catalog
+// itself grants nothing).
+export const getPermissionCatalog = asyncHandler(async (_req, res) =>
+    res.status(200).json(new ApiResponse(200, buildPermissionCatalog(), "Permission catalog fetched successfully"))
+);
+
 export const getCurrentTeam = asyncHandler(async (req, res) => {
     const team = await teamService.resolveRequestTeam(req.user);
     const isOwner = team.ownerId === req.user.actorId;
@@ -124,6 +132,7 @@ export const createRole = asyncHandler(async (req, res) => {
         actorId: req.user.actorId,
         name: req.body?.name,
         permissions: req.body?.permissions,
+        capabilities: req.body?.capabilities,
     });
     return res.status(201).json(new ApiResponse(201, role, "Role created successfully"));
 });
@@ -135,6 +144,7 @@ export const updateRole = asyncHandler(async (req, res) => {
         roleId: req.params.roleId,
         name: req.body?.name,
         permissions: req.body?.permissions,
+        capabilities: req.body?.capabilities,
     });
     return res.status(200).json(new ApiResponse(200, role, "Role updated successfully"));
 });

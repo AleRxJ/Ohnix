@@ -51,9 +51,11 @@ router
 
 router.route("/periods/:id").get(requireModulePermission("payroll", "view"), getPayrollPeriod);
 router.route("/periods/:id/calculate").patch(requireModulePermission("payroll", "edit"), idempotent("payroll-period.calculate"), calculatePayrollPeriod);
-router.route("/periods/:id/approve").patch(requireModulePermission("payroll", "edit"), idempotent("payroll-period.approve"), approvePayrollPeriod);
-router.route("/periods/:id/pay").patch(requireModulePermission("payroll", "edit"), idempotent("payroll-period.pay"), payPayrollPeriod);
-router.route("/periods/:id/cancel").patch(requireModulePermission("payroll", "edit"), idempotent("payroll-period.cancel"), cancelPayrollPeriod);
+// Approve/pay/cancel and termination settlements are "admin" - segregation
+// of duties: "edit" prepares and calculates, someone with "admin" signs off.
+router.route("/periods/:id/approve").patch(requireModulePermission("payroll", "admin"), idempotent("payroll-period.approve"), approvePayrollPeriod);
+router.route("/periods/:id/pay").patch(requireModulePermission("payroll", "admin"), idempotent("payroll-period.pay"), payPayrollPeriod);
+router.route("/periods/:id/cancel").patch(requireModulePermission("payroll", "admin"), idempotent("payroll-period.cancel"), cancelPayrollPeriod);
 
 router.route("/documents/:documentId/worked-days").patch(requireModulePermission("payroll", "edit"), updateDocumentWorkedDays);
 router.route("/documents/:documentId/payslip.pdf").get(requireModulePermission("payroll", "view"), getPayslipPdf);
@@ -76,7 +78,7 @@ router.route("/benefit-settlements").post(requireModulePermission("payroll", "ed
 // terminates the employee, same idempotent-POST convention as every other
 // money-moving payroll action above.
 router.route("/terminations/preview").post(requireModulePermission("payroll", "edit"), previewTermination);
-router.route("/terminations").post(requireModulePermission("payroll", "edit"), idempotent("payroll-termination.settle"), settleTermination);
+router.route("/terminations").post(requireModulePermission("payroll", "admin"), idempotent("payroll-termination.settle"), settleTermination);
 router.route("/terminations/:employeeId/pdf").get(requireModulePermission("payroll", "view"), getTerminationSettlementPdf);
 
 export default router;

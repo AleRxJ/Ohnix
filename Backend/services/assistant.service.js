@@ -1,19 +1,16 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { searchKnowledge } from "./assistantKnowledge.service.js";
-import { generateAssistantReply } from "./assistantModel.service.js";
+import { callAssistantModel } from "./assistantModel.service.js";
+import { runAssistantAgent } from "./assistantAgent.service.js";
 
 const MAX_MESSAGE_LENGTH = 2000;
 
-// Two distinct "the assistant didn't answer" cases, deliberately worded
-// differently: one means "this isn't in Ohnix's knowledge base yet" (a
-// content gap), the other means "the model call itself failed" (a transient
-// outage). Conflating them would make a real product-content gap look like a
-// flaky service, and vice versa.
-const NO_MATCH_MESSAGE = {
-    es: "No tengo información confirmada sobre esto todavía. Te recomiendo contactar a soporte para que te ayuden directamente.",
-    en: "I don't have confirmed information about this yet. I'd recommend contacting support so they can help you directly.",
-};
+// Only the "the model call itself failed" case is canned now - "this isn't
+// in Ohnix's knowledge base" is handled by the agent itself (an empty
+// search result tells it to say so and suggest support, or to ask a
+// narrowing question), since a guided conversation can often recover from a
+// bad first search where a fixed fallback message just dead-ends.
 const PROVIDER_ERROR_MESSAGE = {
     es: "El asistente no está disponible en este momento. Intenta de nuevo en unos minutos o contacta a soporte.",
     en: "The assistant isn't available right now. Please try again in a few minutes or contact support.",
@@ -21,6 +18,21 @@ const PROVIDER_ERROR_MESSAGE = {
 const GREETING_MESSAGE = {
     es: "¡Hola! Soy el asistente de Ohnix. Puedo ayudarte a entender cómo funciona la plataforma: productos, ventas, compras, clientes, contabilidad o facturación DIAN. ¿En qué necesitas ayuda?",
     en: "Hi! I'm the Ohnix assistant. I can help you understand how the platform works: products, sales, purchases, customers, accounting, or DIAN invoicing. What do you need help with?",
+};
+
+// Offered with the greeting so the very first turn already steers toward a
+// concrete starting point instead of an open "what do you need?". The
+// accounting set is its own because that module is where people most often
+// don't know what to ask in the first place.
+const GREETING_CHOICES = {
+    accounting: {
+        es: ["Estoy empezando con la contabilidad", "No entiendo esta pantalla", "Algo no me cuadra", "Quiero cerrar el mes"],
+        en: ["I'm just getting started with accounting", "I don't understand this screen", "Something doesn't add up", "I want to close the month"],
+    },
+    default: {
+        es: ["¿Qué puedo hacer en esta pantalla?", "Cómo registro una venta", "Quiero entender la contabilidad", "Facturación electrónica DIAN"],
+        en: ["What can I do on this screen?", "How do I record a sale?", "I want to understand accounting", "DIAN electronic invoicing"],
+    },
 };
 
 // A plain "Hola" has no article about greetings, so it used to fall through
@@ -45,40 +57,6 @@ const isGreetingOnly = (text) => {
 
 const normalizeLocale = (locale) => (locale === "en" ? "en" : "es");
 
-const buildSystemPrompt = ({ locale, module }) => `Eres el Asistente de Ohnix, un ERP/contable para pequeñas y medianas empresas en Colombia (inventario, ventas, compras, clientes, proveedores, contabilidad y facturación electrónica DIAN).
-
-Reglas estrictas, sin excepción:
-1. Responde ÚNICAMENTE con base en el CONTEXTO que se entrega junto con la pregunta. No uses conocimiento externo ni supongas nada que no esté ahí.
-2. Si el CONTEXTO no contiene la respuesta, dilo explícitamente y sugiere contactar a soporte. Nunca inventes procedimientos, cifras, normativa tributaria, requisitos DIAN o comportamiento de la plataforma que no esté en el CONTEXTO.
-3. En temas de DIAN, impuestos, IVA o contabilidad sé especialmente conservador: cíñete a lo que dice el CONTEXTO y aclara que esto no reemplaza asesoría contable o tributaria profesional.
-4. Nunca afirmes que una funcionalidad está disponible si el CONTEXTO no lo confirma.
-5. Eres puramente informativo: nunca digas que vas a crear, modificar o eliminar algo dentro de Ohnix, ni que puedes hacerlo.
-6. Responde en ${locale === "en" ? "inglés" : "español"}, de forma breve, clara y en un tono cercano y profesional.
-7. No uses formato Markdown (nada de asteriscos, guiones de lista, encabezados o bloques de cita). Escribe en texto plano; para pasos numerados usa líneas simples como "1. ..." sin negritas. La interfaz que muestra tu respuesta no interpreta Markdown, así que cualquier símbolo de ese tipo se vería literalmente.
-8. No repitas el título de la fuente dentro de tu respuesta - la interfaz ya muestra por separado de qué artículo salió la información.
-${module ? `\nEl usuario está actualmente en la sección "${module}" de Ohnix - prioriza esa sección si es relevante para la pregunta.` : ""}`;
-
-const buildUserPrompt = (question, chunks) => {
-    const context = chunks
-        .map((chunk) => `[${chunk.title}]\n${chunk.body}`)
-        .join("\n\n---\n\n");
-    return `CONTEXTO:\n${context}\n\nPREGUNTA DEL USUARIO:\n${question}`;
-};
-
-// Belt-and-suspenders for rule 7 in the system prompt: models on the free
-// Groq tier reliably ignore a plain "don't use Markdown" instruction and
-// keep emitting **bold**/#headers/> quotes, which the chat bubble renders as
-// literal asterisks and symbols (it's plain text, not a Markdown viewer).
-// Stripping the common markers here means a future model swap that's worse
-// at following that instruction still renders cleanly.
-const stripMarkdown = (text) =>
-    text
-        .replace(/^#{1,6}\s+/gm, "")
-        .replace(/^>\s?/gm, "")
-        .replace(/\*\*(.+?)\*\*/g, "$1")
-        .replace(/__(.+?)__/g, "$1")
-        .replace(/(?<![\w*])\*(?!\*)(.+?)(?<!\*)\*(?![\w*])/g, "$1");
-
 const assertOwnedConversation = async (conversationId, userId) => {
     const conversation = await prisma.chatConversation.findFirst({
         where: { id: conversationId, userId },
@@ -90,7 +68,10 @@ const assertOwnedConversation = async (conversationId, userId) => {
     return conversation;
 };
 
-export const askAssistant = async ({ userId, conversationId, message, module, locale }) => {
+const MODULE_KEY_PATTERN = /^[a-z0-9_-]{1,60}$/;
+const cleanPageKey = (value) => (typeof value === "string" && MODULE_KEY_PATTERN.test(value) ? value : null);
+
+export const askAssistant = async ({ userId, conversationId, message, module, tab, locale }) => {
     const trimmed = message?.trim();
     if (!trimmed) {
         throw new ApiError(400, "Message is required");
@@ -99,6 +80,8 @@ export const askAssistant = async ({ userId, conversationId, message, module, lo
         throw new ApiError(400, `Message must be at most ${MAX_MESSAGE_LENGTH} characters`);
     }
     const safeLocale = normalizeLocale(locale);
+    const safeModule = cleanPageKey(module);
+    const safeTab = cleanPageKey(tab);
 
     const conversation = conversationId
         ? await assertOwnedConversation(conversationId, userId)
@@ -107,38 +90,53 @@ export const askAssistant = async ({ userId, conversationId, message, module, lo
               select: { id: true },
           });
 
+    // Read before this turn's user message is written, so it's exactly the
+    // prior turns. Newest-first + reverse to only pull the tail of a long
+    // conversation.
+    const history = conversationId
+        ? (
+              await prisma.chatMessage.findMany({
+                  where: { conversationId: conversation.id },
+                  orderBy: { createdAt: "desc" },
+                  take: 10,
+                  select: { role: true, content: true, actions: true },
+              })
+          ).reverse()
+        : [];
+
     await prisma.chatMessage.create({
         data: {
             conversationId: conversation.id,
             role: "user",
             content: trimmed,
-            module: module || null,
+            module: safeModule,
         },
     });
 
     let content;
     let sources = null;
+    let actions = null;
 
     if (isGreetingOnly(trimmed)) {
         content = GREETING_MESSAGE[safeLocale];
+        actions = { choices: (GREETING_CHOICES[safeModule] || GREETING_CHOICES.default)[safeLocale] };
     } else {
-        const chunks = await searchKnowledge({ query: trimmed, module, locale: safeLocale });
-
-        if (chunks.length === 0) {
-            content = NO_MATCH_MESSAGE[safeLocale];
-        } else {
-            sources = chunks.map((chunk) => ({ id: chunk.id, title: chunk.title }));
-            try {
-                const rawContent = await generateAssistantReply(
-                    buildSystemPrompt({ locale: safeLocale, module }),
-                    buildUserPrompt(trimmed, chunks)
-                );
-                content = stripMarkdown(rawContent);
-            } catch (error) {
-                console.error("[assistant] model call failed:", error);
-                content = PROVIDER_ERROR_MESSAGE[safeLocale];
-                sources = null;
-            }
+        try {
+            const result = await runAssistantAgent({
+                message: trimmed,
+                history,
+                locale: safeLocale,
+                module: safeModule,
+                tab: safeTab,
+                callModel: callAssistantModel,
+                searchKnowledge,
+            });
+            content = result.content;
+            actions = result.actions;
+            sources = result.sources.length ? result.sources : null;
+        } catch (error) {
+            console.error("[assistant] agent failed:", error);
+            content = PROVIDER_ERROR_MESSAGE[safeLocale];
         }
     }
 
@@ -147,8 +145,11 @@ export const askAssistant = async ({ userId, conversationId, message, module, lo
             conversationId: conversation.id,
             role: "assistant",
             content,
-            module: module || null,
-            sources,
+            module: safeModule,
+            // Prisma rejects a plain null for a Json column - undefined
+            // omits it, leaving the column's own NULL.
+            sources: sources ?? undefined,
+            actions: actions ?? undefined,
         },
     });
 
@@ -166,6 +167,7 @@ export const askAssistant = async ({ userId, conversationId, message, module, lo
             role: assistantMessage.role,
             content: assistantMessage.content,
             sources: assistantMessage.sources,
+            actions: assistantMessage.actions,
             createdAt: assistantMessage.createdAt,
         },
     };
@@ -189,6 +191,7 @@ export const getConversationMessages = async (userId, conversationId) => {
             role: true,
             content: true,
             sources: true,
+            actions: true,
             createdAt: true,
             feedback: { select: { rating: true } },
         },

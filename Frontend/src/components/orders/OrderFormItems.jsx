@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Form, Row, Col, Select, InputNumber, Button } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 import { getCurrencyInputProps, getCurrencyConfig } from "../../utils/currency";
 
 const { Option } = Select;
@@ -16,6 +17,19 @@ const OrderFormItems = ({ products, onRemove, name, restField, locked, currencyC
     const { t } = useI18n();
     const currency = getCurrencyConfig(currencyCode);
     const currencyInputProps = getCurrencyInputProps(currency.code);
+    // Sale-price floor for roles without salesPriceOverride - mirrors
+    // Backend utils/salePriceControl.js (which is what actually enforces it,
+    // including foreign-currency orders after conversion). Checked here only
+    // for COP, where the product's list price is directly comparable.
+    const { hasCapability, getCapability } = useTeam();
+    const canOverridePrice = hasCapability("salesPriceOverride");
+    const maxDiscountPct = getCapability("salesMaxDiscountPct") || 0;
+    const minAllowedPrice = () => {
+        if (canOverridePrice || currencyCode !== "COP") return null;
+        const productId = form.getFieldValue(["orderItems", name, "product_id"]);
+        const listPrice = Number(products.find((p) => p._id === productId)?.selling_price);
+        return listPrice > 0 ? listPrice * (1 - maxDiscountPct / 100) : null;
+    };
 
     const initialProductId = form.getFieldValue(["orderItems", name, "product_id"]);
     const [availableStock, setAvailableStock] = useState(() => {
@@ -191,6 +205,19 @@ const OrderFormItems = ({ products, onRemove, name, restField, locked, currencyC
                                 {
                                     required: true,
                                     message: t("orders.enter_unit_price_message"),
+                                },
+                                {
+                                    validator: (_, value) => {
+                                        const floor = minAllowedPrice();
+                                        if (floor === null || value === undefined || value === null || Number(value) + 0.01 >= floor) {
+                                            return Promise.resolve();
+                                        }
+                                        return Promise.reject(new Error(
+                                            maxDiscountPct > 0
+                                                ? t("orders.price_below_allowed_discount", { pct: maxDiscountPct })
+                                                : t("orders.price_below_list_not_allowed")
+                                        ));
+                                    },
                                 },
                             ]}
                             className="mb-0"

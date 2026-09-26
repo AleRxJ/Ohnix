@@ -66,6 +66,9 @@ const OrdersTable = ({
     // Invoice download only needs orders:view (matches the backend route),
     // but changing status is an orders:edit action.
     const canEdit = hasPermission("orders", "edit");
+    // Cancelling a completed sale reverses stock/cash/ledger - orders:"admin"
+    // on the backend (order.service.js#updateOrderStatus).
+    const canCancelCompleted = hasPermission("orders", "admin");
 
     const columns = [
         {
@@ -180,12 +183,12 @@ const OrdersTable = ({
                         </Tooltip>
 
                         {record.order_status === "completed" && (
-                            <Tooltip title={canEdit ? t("orders.cancel_completed_order") : t("common.no_permission_to_edit")}>
+                            <Tooltip title={canCancelCompleted ? t("orders.cancel_completed_order") : t("common.no_permission_to_edit")}>
                                 <Popconfirm
                                     title={t("orders.confirm_cancel_completed_title")}
                                     description={t("orders.confirm_cancel_completed_desc")}
                                     onConfirm={() => onUpdateStatus(record._id, "cancelled")}
-                                    disabled={!canEdit}
+                                    disabled={!canCancelCompleted}
                                     okText={t("common.yes")}
                                     cancelText={t("common.no")}
                                 >
@@ -194,7 +197,7 @@ const OrdersTable = ({
                                         danger
                                         loading={isUpdating}
                                         icon={<StopOutlined />}
-                                        disabled={!canEdit}
+                                        disabled={!canCancelCompleted}
                                         className="hover:bg-[var(--ohnix-hover-overlay)]"
                                     />
                                 </Popconfirm>
@@ -276,7 +279,7 @@ const OrdersTable = ({
                             title={t("orders.confirm_cancel_completed_title")}
                             description={t("orders.confirm_cancel_completed_desc")}
                             onConfirm={() => onUpdateStatus(order._id, "cancelled")}
-                            disabled={!canEdit}
+                            disabled={!canCancelCompleted}
                             okText={t("common.yes")}
                             cancelText={t("common.no")}
                         >
@@ -284,7 +287,7 @@ const OrdersTable = ({
                                 icon={<StopOutlined />}
                                 danger
                                 size="middle"
-                                disabled={!canEdit}
+                                disabled={!canCancelCompleted}
                                 loading={updatingOrderId === order._id}
                             />
                         </Popconfirm>

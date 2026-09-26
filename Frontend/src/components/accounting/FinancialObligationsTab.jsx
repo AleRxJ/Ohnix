@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Progress, Row, Select, Switch, Table, Tag } from "antd";
-import { DollarOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
+import { Alert, Button, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Progress, Radio, Row, Select, Switch, Table, Tag } from "antd";
+import { DollarOutlined, EyeOutlined, PlusOutlined, RiseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import EmptyState from "../common/EmptyState";
@@ -15,6 +15,7 @@ const ERROR_CODES = {
     loan_insufficient_balance: "accounting.loan_error_insufficient_balance",
     loan_concurrent_change: "accounting.loan_error_concurrent_change",
     loan_first_payment_date_invalid: "accounting.loan_error_first_payment",
+    loan_extra_exceeds_outstanding: "accounting.loan_error_extra_exceeds",
     accounting_period_closed: "accounting.error_period_closed",
 };
 const errorMessage = (error, t) => resolveApiErrorMessage(error, t, ERROR_CODES, "accounting.failed");
@@ -39,6 +40,9 @@ const FinancialObligationsTab = () => {
     const [detail, setDetail] = useState(null);
     const [payTarget, setPayTarget] = useState(null);
     const [paying, setPaying] = useState(false);
+    const [extraForm] = Form.useForm();
+    const [extraTarget, setExtraTarget] = useState(null);
+    const [extraSaving, setExtraSaving] = useState(false);
     const disburseHere = Form.useWatch("disburse_here", form);
 
     const load = async () => {
@@ -119,6 +123,24 @@ const FinancialObligationsTab = () => {
         } finally { setPaying(false); }
     };
 
+    const openExtra = (row) => {
+        setExtraTarget(row);
+        extraForm.setFieldsValue({ amount: undefined, cash_account_id: undefined, payment_date: dayjs(), strategy: "reduce_installment" });
+    };
+    const confirmExtra = async () => {
+        const values = await extraForm.validateFields();
+        setExtraSaving(true);
+        try {
+            const response = await accountingService.payObligationExtra(extraTarget._id, { amount: values.amount, cash_account_id: values.cash_account_id, payment_date: values.payment_date.toISOString(), strategy: values.strategy });
+            toast.success(t("accounting.loan_extra_success"));
+            setExtraTarget(null);
+            if (detail?._id === extraTarget._id) setDetail(response?.data || null);
+            await load();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(errorMessage(error, t));
+        } finally { setExtraSaving(false); }
+    };
+
     const scheduleColumns = [
         { title: "#", dataIndex: "number", width: 50 },
         { title: t("accounting.loan_col_due"), dataIndex: "due_date", render: (v) => dayjs(v).format("DD/MM/YYYY") },
@@ -152,6 +174,7 @@ const FinancialObligationsTab = () => {
                         <div className="flex gap-2">
                             <Button size="small" icon={<EyeOutlined />} onClick={() => setDetail(row)}>{t("accounting.loan_schedule")}</Button>
                             {canEdit && row.status === "active" && <Button size="small" type="primary" ghost icon={<DollarOutlined />} onClick={() => openPay(row)}>{t("accounting.loan_pay_cta")}</Button>}
+                            {canEdit && row.status === "active" && <Button size="small" icon={<RiseOutlined />} onClick={() => openExtra(row)}>{t("accounting.loan_extra_cta")}</Button>}
                         </div>
                     ),
                 },
@@ -200,8 +223,23 @@ const FinancialObligationsTab = () => {
             </Form>
         </Modal>
 
+        <Modal className="accounting-modal" title={extraTarget ? t("accounting.loan_extra_title", { lender: extraTarget.lender_name }) : ""} open={Boolean(extraTarget)} onCancel={() => setExtraTarget(null)} onOk={confirmExtra} confirmLoading={extraSaving} okText={t("accounting.loan_extra_cta")} destroyOnHidden>
+            {extraTarget && <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("accounting.loan_extra_help", { outstanding: formatCurrency(extraTarget.outstanding_principal) })} />}
+            <Form form={extraForm} layout="vertical">
+                <Form.Item name="amount" label={t("accounting.loan_extra_amount")} rules={[{ required: true, type: "number", min: 0.01, max: extraTarget?.outstanding_principal }]}><InputNumber min={0.01} max={extraTarget?.outstanding_principal} className="w-full" /></Form.Item>
+                <Form.Item name="strategy" label={t("accounting.loan_extra_strategy")} rules={[{ required: true }]}>
+                    <Radio.Group options={[{ value: "reduce_installment", label: t("accounting.loan_extra_reduce_installment") }, { value: "reduce_term", label: t("accounting.loan_extra_reduce_term") }]} />
+                </Form.Item>
+                <Row gutter={12}>
+                    <Col xs={24} sm={14}><Form.Item name="cash_account_id" label={t("accounting.vat_pay_cash_account")} rules={[{ required: true, message: t("validation.required_field") }]}><Select options={cashAccounts.map((a) => ({ value: a._id, label: `${a.name} · ${formatCurrency(a.balance)}` }))} /></Form.Item></Col>
+                    <Col xs={24} sm={10}><Form.Item name="payment_date" label={t("accounting.vat_pay_date")} rules={[{ required: true }]}><DatePicker className="w-full" format="DD/MM/YYYY" /></Form.Item></Col>
+                </Row>
+            </Form>
+        </Modal>
+
         <Drawer title={detail ? `${detail.lender_name} · ${formatCurrency(detail.principal)}` : ""} open={Boolean(detail)} onClose={() => setDetail(null)} width={760}>
-            {detail && <Table className="module-dark-table" size="small" rowKey="number" dataSource={detail.schedule} pagination={false} scroll={{ x: "max-content" }} columns={[...scheduleColumns, { title: t("accounting.col_status"), render: (_, row) => row.paid ? <Tag color="success">{t("accounting.loan_installment_paid", { date: dayjs(row.paid_at).format("DD/MM/YYYY") })}</Tag> : <Tag>{t("accounting.loan_installment_pending")}</Tag> }]} />}
+            {detail?.extra_payments?.length > 0 && <div className="flex flex-wrap gap-2 mb-3">{detail.extra_payments.map((p) => <Tag key={p._id} color="blue">{t("accounting.loan_extra_tag", { amount: formatCurrency(p.amount), date: dayjs(p.paid_at).format("DD/MM/YYYY") })}</Tag>)}</div>}
+            {detail && <Table className="module-dark-table" size="small" rowKey="number" dataSource={detail.schedule} pagination={false} scroll={{ x: "max-content" }} columns={[...scheduleColumns, { title: t("accounting.col_status"), render: (_, row) => row.paid ? <Tag color="success">{t("accounting.loan_installment_paid", { date: dayjs(row.paid_at).format("DD/MM/YYYY") })}</Tag> : row.accrued ? <Tag color="warning">{t("accounting.loan_installment_accrued")}</Tag> : <Tag>{t("accounting.loan_installment_pending")}</Tag> }]} />}
         </Drawer>
     </>;
 };

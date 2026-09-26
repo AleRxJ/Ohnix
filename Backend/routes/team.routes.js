@@ -11,6 +11,7 @@ import {
     requireTeamAccess,
     createTeam,
     getCurrentTeam,
+    getPermissionCatalog,
     getTeam,
     updateTeam,
     listRoles,
@@ -41,6 +42,8 @@ router.use(verifyJWT);
 
 router.route("/teams").post(createTeam);
 router.route("/teams/current").get(getCurrentTeam);
+// Declared before the "/teams/:id" loader below, same as /teams/current.
+router.route("/teams/permission-catalog").get(getPermissionCatalog);
 
 // Every /teams/:id route below needs the team loaded + membership checked
 // first (see team.controller.js).

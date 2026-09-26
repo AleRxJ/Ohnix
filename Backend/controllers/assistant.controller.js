@@ -9,14 +9,15 @@ import {
 } from "../services/assistant.service.js";
 
 const sendChatMessage = asyncHandler(async (req, res, next) => {
-    const { message, conversation_id, module, locale } = req.body;
+    const { message, conversation_id, module, tab, locale } = req.body;
 
     try {
         const result = await askAssistant({
-            userId: req.user.prismaId,
+            userId: req.user.actorId,
             conversationId: conversation_id || null,
             message,
             module,
+            tab,
             locale,
         });
         return res
@@ -31,7 +32,7 @@ const sendChatMessage = asyncHandler(async (req, res, next) => {
 
 const getConversations = asyncHandler(async (req, res, next) => {
     try {
-        const conversations = await listConversations(req.user.prismaId);
+        const conversations = await listConversations(req.user.actorId);
         return res
             .status(200)
             .json(new ApiResponse(200, conversations, "Conversations fetched successfully"));
@@ -44,7 +45,7 @@ const getConversations = asyncHandler(async (req, res, next) => {
 const getConversation = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     try {
-        const messages = await getConversationMessages(req.user.prismaId, id);
+        const messages = await getConversationMessages(req.user.actorId, id);
         return res
             .status(200)
             .json(new ApiResponse(200, messages, "Conversation fetched successfully"));
@@ -63,7 +64,7 @@ const postFeedback = asyncHandler(async (req, res, next) => {
     }
 
     try {
-        const feedback = await submitFeedback(req.user.prismaId, message_id, rating, comment);
+        const feedback = await submitFeedback(req.user.actorId, message_id, rating, comment);
         return res
             .status(200)
             .json(new ApiResponse(200, feedback, "Feedback recorded successfully"));

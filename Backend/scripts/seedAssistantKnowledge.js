@@ -33,7 +33,7 @@ const ENTRIES = [
         title: "Equipos, roles y permisos",
         sourceType: "concept",
         tags: ["equipo", "permisos", "roles"],
-        body: "El dueño de una cuenta Ohnix siempre tiene acceso total. Puede invitar personas a un equipo y crear roles personalizados en la sección Equipo, otorgando a cada rol un nivel de acceso por módulo: sin acceso, ver, editar o administrar. Algunas acciones (como llaves de API o la configuración DIAN de la empresa) quedan reservadas exclusivamente al dueño de la cuenta, sin importar el rol del equipo.",
+        body: "El dueño de una cuenta Ohnix siempre tiene acceso total. Puede invitar personas a un equipo y crear roles personalizados en la sección Equipo, otorgando a cada rol un nivel de acceso por módulo: sin acceso, ver, editar o administrar. Las acciones de mayor impacto exigen 'administrar' y no solo 'editar': aprobar, pagar o anular un periodo de nómina y liquidar despidos; registrar aportes o distribuciones a socios y ajustes de caja; emitir notas crédito o cancelar una venta ya completada; enviar aceptación expresa o reclamo (RADIAN) sobre facturas de proveedores; y aprobar traslados de inventario o hacer traslados directos. Además, un miembro del equipo no puede aprobar un traslado que él mismo solicitó. Algunas acciones (como llaves de API o la configuración DIAN de la empresa) quedan reservadas exclusivamente al dueño de la cuenta, sin importar el rol del equipo.",
     },
     {
         module: "products",

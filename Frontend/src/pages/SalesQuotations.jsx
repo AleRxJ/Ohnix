@@ -8,6 +8,7 @@ import { useCurrency } from "../context/CurrencyContext";
 import { printSalesQuotation } from "../utils/printSalesQuotation.js";
 import PointOfSaleField from "../components/common/PointOfSaleField";
 import useSubscription from "../hooks/useSubscription";
+import { useTeam } from "../context/TeamContext";
 import PlanGate from "../components/common/PlanGate";
 import { getConnectivityState } from "../offline/connectivity";
 import { subscribeSyncCompleted } from "../offline/syncEngine";
@@ -21,6 +22,10 @@ const SalesQuotations = () => {
     const { formatCurrency, currency } = useCurrency();
     const { can, loading: planLoading } = useSubscription();
     const canUseSalesQuotations = can("salesQuotations");
+    // Sales quotations are gated by the "orders" module on the backend
+    // (salesQuotation.routes.js) - create/send/convert need "edit".
+    const { hasPermission, getCapability } = useTeam();
+    const canEdit = hasPermission("orders", "edit");
     const [quotations, setQuotations] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -179,8 +184,15 @@ const SalesQuotations = () => {
                 setModalOpen(false);
                 await loadData();
             }
-        } catch {
-            toast.error(t("sales_quotations.create_failed"));
+        } catch (error) {
+            // Backend sale-price floor (utils/salePriceControl.js) - say why
+            // instead of the generic failure, so the seller can fix the price.
+            if (error?.response?.data?.code === "sale_price_below_allowed") {
+                const maxPct = getCapability("salesMaxDiscountPct") || 0;
+                toast.error(maxPct > 0 ? t("orders.price_below_allowed_discount", { pct: maxPct }) : t("orders.price_below_list_not_allowed"));
+            } else {
+                toast.error(t("sales_quotations.create_failed"));
+            }
         } finally {
             setSubmitting(false);
         }
@@ -262,8 +274,8 @@ const SalesQuotations = () => {
                     <Tooltip title={t("sales_quotations.view_details")}><Button icon={<EyeOutlined />} onClick={() => setDetailQuotation(quotation)} /></Tooltip>
                     <Tooltip title={t("sales_quotations.print")}><Button icon={<PrinterOutlined />} onClick={() => printSalesQuotation({ quotation, company: quotation.point_of_sale?.account?.company, formatCurrency, currentLanguage })} /></Tooltip>
                     <Tooltip title={t("sales_quotations.share_whatsapp")}><Button icon={<ShareAltOutlined />} onClick={() => handleWhatsApp(quotation)} /></Tooltip>
-                    <Tooltip title={t("sales_quotations.send_email")}><Button icon={<SendOutlined />} onClick={() => handleSendEmail(quotation)} disabled={!quotation.customer?.email || ["accepted", "rejected", "expired", "converted"].includes(quotation.status)} /></Tooltip>
-                    {quotation.status === "accepted" && <Popconfirm title={t("sales_quotations.confirm_convert")} onConfirm={() => handleConvert(quotation)}><Tooltip title={t("sales_quotations.convert")}><Button icon={<FileTextOutlined />} /></Tooltip></Popconfirm>}
+                    <Tooltip title={canEdit ? t("sales_quotations.send_email") : t("common.no_permission_to_edit")}><Button icon={<SendOutlined />} onClick={() => handleSendEmail(quotation)} disabled={!canEdit || !quotation.customer?.email || ["accepted", "rejected", "expired", "converted"].includes(quotation.status)} /></Tooltip>
+                    {quotation.status === "accepted" && <Popconfirm title={t("sales_quotations.confirm_convert")} onConfirm={() => handleConvert(quotation)} disabled={!canEdit}><Tooltip title={canEdit ? t("sales_quotations.convert") : t("common.no_permission_to_edit")}><Button icon={<FileTextOutlined />} disabled={!canEdit} /></Tooltip></Popconfirm>}
                 </Space>
             ),
         },
@@ -276,9 +288,11 @@ const SalesQuotations = () => {
                     <Title level={1} className="flex items-center gap-2 !mb-1 !text-4xl !text-[var(--ohnix-text-primary)]"><span>{t("sales_quotations.title")}</span><TagsOutlined className="text-[#44F3F0]" /></Title>
                     <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("sales_quotations.description")}</Text>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} size="large" onClick={handleOpen} className="bg-[#29D8D5] text-[#021314]">
-                    {t("sales_quotations.new")}
-                </Button>
+                <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                    <Button type="primary" icon={<PlusOutlined />} size="large" onClick={handleOpen} disabled={!canEdit} className="bg-[#29D8D5] text-[#021314]">
+                        {t("sales_quotations.new")}
+                    </Button>
+                </Tooltip>
             </div>
 
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

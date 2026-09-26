@@ -29,7 +29,9 @@ const downloadBlob = (blob, filename) => {
 // Full detail (documents + lines) for one PayrollPeriod - fetched on open
 // since the list view (usePayrollPeriods.js) only carries each document's
 // totals, not its lines, to keep the list endpoint light.
-const PayrollPeriodDetailDrawer = ({ periodId, canEdit, onClose, onCalculate, onApprove, onOpenPay, onCancel }) => {
+// canAdmin: approve/pay/cancel are payroll:"admin" on the backend
+// (payroll.routes.js) - "edit" only prepares and calculates.
+const PayrollPeriodDetailDrawer = ({ periodId, canEdit, canAdmin = false, onClose, onCalculate, onApprove, onOpenPay, onCancel }) => {
     const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
     const [period, setPeriod] = useState(null);
@@ -174,19 +176,19 @@ const PayrollPeriodDetailDrawer = ({ periodId, canEdit, onClose, onCalculate, on
                                     {t("payroll.calculate_period")}
                                 </Button>
                             )}
-                            {period.status === "calculated" && (
+                            {canAdmin && period.status === "calculated" && (
                                 <Popconfirm title={t("payroll.approve_period_confirm")} okText={t("common.yes")} cancelText={t("common.no")} onConfirm={() => runAction(() => onApprove(period._id))}>
                                     <Button icon={<CheckOutlined />} loading={actionLoading} className="h-9 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium">
                                         {t("payroll.approve_period")}
                                     </Button>
                                 </Popconfirm>
                             )}
-                            {period.status === "approved" && (
+                            {canAdmin && period.status === "approved" && (
                                 <Button icon={<BankOutlined />} loading={actionLoading} onClick={() => onOpenPay(period)} className="h-9 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium">
                                     {t("payroll.pay_period")}
                                 </Button>
                             )}
-                            {["draft", "calculated"].includes(period.status) && (
+                            {canAdmin && ["draft", "calculated"].includes(period.status) && (
                                 <Popconfirm title={t("payroll.cancel_period_confirm")} okText={t("common.yes")} cancelText={t("common.no")} onConfirm={() => runAction(() => onCancel(period._id))}>
                                     <Button danger icon={<CloseOutlined />} loading={actionLoading} className="h-9 rounded-md">
                                         {t("common.cancel")}

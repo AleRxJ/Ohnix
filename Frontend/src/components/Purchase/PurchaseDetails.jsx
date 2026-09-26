@@ -76,7 +76,10 @@ const PurchaseDetails = ({
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const { user } = useContext(AuthContext);
-    const { team } = useTeam();
+    const { team, hasPermission } = useTeam();
+    // Aceptación expresa / reclamo are binding RADIAN events - purchases:"admin"
+    // on the backend (purchase.routes.js); the acuse de recibo stays "edit".
+    const canSendBindingRadianEvents = hasPermission("purchases", "admin");
     const financials = calculatePurchaseFinancials(details, purchase?.retentions || [], purchasePayments);
     // View-only presence, same reasoning as OrderDetailsDrawer.
     const { viewers } = useResourcePresence({
@@ -665,7 +668,7 @@ const PurchaseDetails = ({
                                         <Tag>{t("purchase_acknowledgment.tacita_not_applicable")}</Tag>
                                     )}
                                 </div>
-                                {tacitaWindowOpen && (
+                                {tacitaWindowOpen && canSendBindingRadianEvents && (
                                     <Space wrap className="pt-2">
                                         <Button loading={receiptBusy === "aceptacion"} onClick={handleTriggerAceptacion}>
                                             {t("purchase_acknowledgment.action_aceptacion")}

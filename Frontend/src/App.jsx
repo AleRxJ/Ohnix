@@ -220,6 +220,15 @@ const RequireBillingAccess = ({ children }) => {
         : <Navigate to="/dashboard" replace />;
 };
 
+// Hard owner-only surfaces (backend blockTeamMembers) - no module grant
+// unlocks these for a team member.
+const RequireOwnerAccess = ({ children }) => {
+    const { loading: authLoading } = useContext(AuthContext);
+    const { isTeamMember, loading: teamLoading } = useTeam();
+    if (authLoading || teamLoading) return <RouteLoadingFallback />;
+    return !isTeamMember ? children : <Navigate to="/dashboard" replace />;
+};
+
 // Fiscal configuration is account-wide: it belongs to the business owner,
 // not to a team role. Solo customers are owners too, so this deliberately
 // does not require a Team to exist. Same ELECTRONIC_INVOICING_ENABLED +
@@ -273,6 +282,16 @@ const RequireCategoriesAccess = requireModuleAccess("categories");
 const RequireFinanceAccess = requireModuleAccess("finance");
 const RequireAccountingAccess = requireModuleAccess("accounting");
 const RequirePayrollAccess = requireModuleAccess("payroll");
+// Quotations page holds both purchase ("purchases") and sales ("orders")
+// quotations as tabs - either grant lets you in; the page hides the other tab.
+const RequireQuotationsAccess = ({ children }) => {
+    const { loading: authLoading } = useContext(AuthContext);
+    const { hasPermission, loading: teamLoading } = useTeam();
+    if (authLoading || teamLoading) return <RouteLoadingFallback />;
+    return hasPermission("purchases", "view") || hasPermission("orders", "view")
+        ? children
+        : <Navigate to="/dashboard" replace />;
+};
 
 // AntdConfigProvider pulls in the whole "vendor-antd" chunk (see
 // vite.config.js) - the marketing pages below (LandingPage, Precios, Demo,
@@ -404,7 +423,7 @@ function App() {
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
                                 <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />
                                 <Route path="warranties" element={<RequireWarrantiesAccess><Warranties /></RequireWarrantiesAccess>} />
-                                <Route path="quotations" element={<RequirePurchasesAccess><Quotations /></RequirePurchasesAccess>} />
+                                <Route path="quotations" element={<RequireQuotationsAccess><Quotations /></RequireQuotationsAccess>} />
                                 <Route path="sales-quotations" element={<Navigate to="/quotations?type=sales" replace />} />
                                 <Route path="customers" element={<RequireCustomersAccess><Customers /></RequireCustomersAccess>} />
                                 <Route path="suppliers" element={<RequireSuppliersAccess><Suppliers /></RequireSuppliersAccess>} />
@@ -416,10 +435,10 @@ function App() {
                                 <Route path="accounting" element={<RequireAccountingAccess><OfflineGate><Accounting /></OfflineGate></RequireAccountingAccess>} />
                                 <Route path="team" element={<OfflineGate><Team /></OfflineGate>} />
                                 <Route path="billing" element={<RequireBillingAccess><OfflineGate><Billing /></OfflineGate></RequireBillingAccess>} />
-                                {/* Same owner-only gate as Billing (see RequireBillingAccess's comment) -
-                                    API keys/integrations/webhooks are account-wide credentials/config,
-                                    blocked for team members at the backend too (blockTeamMembers). */}
-                                <Route path="integrations" element={<RequireBillingAccess><OfflineGate><Integrations /></OfflineGate></RequireBillingAccess>} />
+                                {/* API keys/integrations/webhooks are account-wide credentials/config,
+                                    blocked for team members at the backend (blockTeamMembers) regardless
+                                    of role - so owner-only here too, not tied to the billing grant. */}
+                                <Route path="integrations" element={<RequireOwnerAccess><OfflineGate><Integrations /></OfflineGate></RequireOwnerAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-checkout" element={<RequireBillingAccess><EpaycoCheckout /></RequireBillingAccess>} />
                                 <Route path="billing/card-checkout" element={<RequireBillingAccess><OfflineGate><CardCheckout /></OfflineGate></RequireBillingAccess>} />

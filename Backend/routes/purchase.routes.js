@@ -77,8 +77,10 @@ router.route("/:id/support-document/sync").post(requireModulePermission("purchas
 router.route("/:id/receipt-acknowledgment").get(requireModulePermission("purchases", "view"), getPurchaseReceiptAcknowledgment);
 router.route("/:id/receipt-acknowledgment/reference").post(requireModulePermission("purchases", "edit"), idempotent("purchase.receipt_reference"), recordPurchaseSupplierInvoiceReference);
 router.route("/:id/receipt-acknowledgment/acuse").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseAcuseDeRecibo);
-router.route("/:id/receipt-acknowledgment/aceptacion-expresa").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseAceptacionExpresa);
-router.route("/:id/receipt-acknowledgment/reclamo").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseReclamo);
+// Aceptación expresa / reclamo are binding RADIAN events on the supplier's
+// invoice - "admin". The acuse de recibo above is routine and stays "edit".
+router.route("/:id/receipt-acknowledgment/aceptacion-expresa").post(requireModulePermission("purchases", "admin"), requireActiveSubscription, triggerPurchaseAceptacionExpresa);
+router.route("/:id/receipt-acknowledgment/reclamo").post(requireModulePermission("purchases", "admin"), requireActiveSubscription, triggerPurchaseReclamo);
 router.route("/:id/receipt-acknowledgment/sync").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, syncPurchaseReceiptAcknowledgment);
 
 export default router;

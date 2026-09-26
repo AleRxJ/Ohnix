@@ -2,6 +2,8 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import transporter, { isMailConfigured } from "../utils/nodemailer.js";
 import crypto from "node:crypto";
+import { getCapabilities } from "../middleware/team.permissions.js";
+import { assertSalePricesAllowed } from "../utils/salePriceControl.js";
 
 const findCustomerByAnyId = (id) =>
     prisma.customer.findFirst({
@@ -12,7 +14,7 @@ const findCustomerByAnyId = (id) =>
 const findProductByAnyId = (id) =>
     prisma.product.findFirst({
         where: { OR: [{ id }, { legacyMongoId: id }] },
-        select: { id: true, createdById: true, sellingPrice: true, taxRate: true, taxTreatment: true },
+        select: { id: true, createdById: true, productName: true, sellingPrice: true, taxRate: true, taxTreatment: true },
     });
 
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -61,6 +63,9 @@ const buildDetails = async (details, userId, userRole, companyVatResponsible) =>
             taxAmount,
             lineTotal: roundMoney(lineBase + taxAmount),
             lineBase,
+            // For the sale-price floor only - stripped before persisting.
+            listPrice: Number(product.sellingPrice),
+            productName: product.productName,
         };
     });
 
@@ -72,7 +77,9 @@ const buildDetails = async (details, userId, userRole, companyVatResponsible) =>
 };
 
 class SalesQuotationService {
-    async createQuotation(data, userId, userRole, pointOfSaleId) {
+    // actingUser: enforces the sale-price floor (salePriceControl.js) for a
+    // team member without salesPriceOverride.
+    async createQuotation(data, userId, userRole, pointOfSaleId, actingUser = null) {
         const { customer_id, quotation_no, valid_until, notes, discount_mode = "percentage", discount_rate = 0, discount_value = 0, details } = data;
         if (!customer_id || !quotation_no) throw new ApiError(400, "Customer and quotation number are required");
 
@@ -94,6 +101,19 @@ class SalesQuotationService {
         const calculated = await buildDetails(details, userId, userRole, owner?.company?.vatResponsible);
         const headerDiscount = discount_mode === "fixed" ? roundMoney(Math.min(requestedDiscountValue, calculated.subtotal)) : roundMoney(calculated.subtotal * headerDiscountRate / 100);
         const subtotalAfterDiscount = Math.max(0, calculated.subtotal - headerDiscount);
+        if (actingUser) {
+            // Header discount spread proportionally over every line, so each
+            // line's effective price reflects everything the customer gets.
+            const headerFactor = calculated.subtotal > 0 ? subtotalAfterDiscount / calculated.subtotal : 1;
+            assertSalePricesAllowed(
+                calculated.details.map((detail) => ({
+                    listPrice: detail.listPrice,
+                    effectivePrice: (detail.lineBase / detail.quantity) * headerFactor,
+                    label: detail.productName,
+                })),
+                await getCapabilities(actingUser)
+            );
+        }
         const total = roundMoney(subtotalAfterDiscount + calculated.tax);
         const quotationNo = String(quotation_no).trim();
         const existing = await prisma.salesQuotation.findUnique({ where: { quotationNo }, select: { id: true } });
@@ -117,7 +137,7 @@ class SalesQuotationService {
                         total,
                         createdById: userId,
                         updatedById: userId,
-                        details: { create: calculated.details.map(({ lineBase, ...detail }) => detail) },
+                        details: { create: calculated.details.map(({ lineBase, listPrice, productName, ...detail }) => detail) },
                     },
                     include: { details: true },
                 });

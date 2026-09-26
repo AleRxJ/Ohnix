@@ -129,6 +129,22 @@ export const accountingService = {
         const response = await api.post(`/accounting/financial-obligations/${id}/pay`, payload);
         return response.data;
     },
+    async payObligationExtra(id, payload) {
+        const response = await api.post(`/accounting/financial-obligations/${id}/extra-payment`, payload);
+        return response.data;
+    },
+    async listWriteOffs() {
+        const response = await api.get("/accounting/receivable-write-offs");
+        return response.data;
+    },
+    async writeOffReceivable(payload) {
+        const response = await api.post("/accounting/receivable-write-offs", payload);
+        return response.data;
+    },
+    async reverseWriteOff(id, reason) {
+        const response = await api.post(`/accounting/receivable-write-offs/${id}/reverse`, { reason });
+        return response.data;
+    },
     async getInventoryValuation(params = {}) {
         const response = await api.get("/accounting/reports/inventory-valuation", { params });
         return response.data;

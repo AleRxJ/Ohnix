@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { emitAccountEvent } from "../live/dataEvents.js";
 import { enqueueWebhookEvent } from "../services/webhookDispatch.service.js";
 import { resolveOrAssertPointOfSaleId } from "../middleware/pos.permissions.js";
+import { getCapabilities } from "../middleware/team.permissions.js";
 import { findProductByAnyId } from "./product.controller.js";
 import {
     mapVariant,
@@ -62,7 +63,10 @@ const loadOwnedVariant = async (req) => {
 export const patchVariant = asyncHandler(async (req, res, next) => {
     try {
         const { variant, product } = await loadOwnedVariant(req);
-        const updated = await updateVariant(variant.id, req.body || {});
+        const body = { ...(req.body || {}) };
+        // Same rule as updateProduct: no cost visibility, no cost edits.
+        if (!(await getCapabilities(req.user)).catalogViewCosts) delete body.buying_price;
+        const updated = await updateVariant(variant.id, body);
         notifyProductUpdated(product);
         return res.status(200).json(new ApiResponse(200, mapVariant(updated), "Variant updated successfully"));
     } catch (error) {

@@ -56,9 +56,12 @@ router.route("/:id/electronic-invoice").get(requireModulePermission("orders", "v
 router.route("/:id/electronic-invoice/pdf").get(requireModulePermission("orders", "view"), downloadOrderElectronicInvoicePdf);
 router.route("/:id/electronic-invoice/issue").post(requireModulePermission("orders", "edit"), requireActiveSubscription, issueOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/sync").post(requireModulePermission("orders", "edit"), requireActiveSubscription, syncOrderElectronicInvoice);
+// Issuing a credit note is a DIAN-facing, irreversible fiscal document -
+// "admin". The retry below stays "edit": it only finishes the local
+// stock/ledger effect of a credit note someone with "admin" already issued.
 router.route("/:id/electronic-invoice/credit-notes")
     .get(requireModulePermission("orders", "view"), getOrderCreditNotes)
-    .post(requireModulePermission("orders", "edit"), requireActiveSubscription, idempotent("credit-note.issue"), issueOrderCreditNote);
+    .post(requireModulePermission("orders", "admin"), requireActiveSubscription, idempotent("credit-note.issue"), issueOrderCreditNote);
 router.post(
     "/:id/electronic-invoice/credit-notes/:creditNoteId/retry-local-effect",
     requireModulePermission("orders", "edit"),

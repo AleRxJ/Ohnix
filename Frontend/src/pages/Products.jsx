@@ -46,8 +46,11 @@ const Products = () => {
     const { units } = useUnits();
     const { t } = useI18n();
     const { can, loading: subscriptionLoading } = useSubscription();
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     const canEdit = hasPermission("products", "edit");
+    // Without catalogViewCosts the backend strips buying_price and ignores it
+    // on update - so the edit form hides it (a new product still needs one).
+    const hideCostOnEdit = !hasCapability("catalogViewCosts") && Boolean(editingProduct);
     const { isOpen: isTutorialActive, notifyAction, effectiveSteps, stepIndex, createdRefs } = useInventoryTour();
     const currentTourStepId = effectiveSteps[stepIndex]?.id;
 
@@ -229,7 +232,7 @@ const Products = () => {
         try {
             const values = await form.validateFields();
 
-            const validation = validateProductData(values, t);
+            const validation = validateProductData(values, t, { skipBuyingPrice: hideCostOnEdit });
             if (!validation.isValid) {
                 Object.keys(validation.errors).forEach((key) => {
                     message.error(validation.errors[key]);
@@ -466,6 +469,7 @@ const Products = () => {
                         units={units}
                         allProducts={products}
                         editingProduct={editingProduct}
+                        hideBuyingPrice={hideCostOnEdit}
                         imageUrl={imageUrl}
                         onSave={handleSaveProduct}
                         onCancel={() => {

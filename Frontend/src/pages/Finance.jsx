@@ -28,6 +28,9 @@ const Finance = () => {
     const { hasPermission } = useTeam();
     const navigate = useNavigate();
     const canEdit = hasPermission("finance", "edit");
+    // Equity movements and balance adjustments are finance:"admin" on the
+    // backend (finance.routes.js), unlike routine income/expense/transfers.
+    const canAdminFinance = hasPermission("finance", "admin");
     const { accounts, loading, submitting, load: reloadAccounts, createAccount, updateAccount, deactivateAccount, transferCash, adjustCash } = useCashAccounts();
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [assetAccounts, setAssetAccounts] = useState([]);
@@ -161,8 +164,8 @@ const Finance = () => {
                         icon={<WalletOutlined />}
                         actionButton={
                             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                <Tooltip title={accounts.length === 0 ? t("finance.no_accounts") : canEdit ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<RiseOutlined />} onClick={() => openEquityModal("contribution")} size="large" className="w-full" disabled={!canEdit || accounts.length === 0}>{t("finance.capital_contribution_cta")}</Button></span></Tooltip>
-                                <Tooltip title={accounts.length === 0 ? t("finance.no_accounts") : canEdit ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<FallOutlined />} onClick={() => openEquityModal("distribution")} size="large" className="w-full" disabled={!canEdit || accounts.length === 0}>{t("finance.equity_distribution_cta")}</Button></span></Tooltip>
+                                <Tooltip title={accounts.length === 0 ? t("finance.no_accounts") : canAdminFinance ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<RiseOutlined />} onClick={() => openEquityModal("contribution")} size="large" className="w-full" disabled={!canAdminFinance || accounts.length === 0}>{t("finance.capital_contribution_cta")}</Button></span></Tooltip>
+                                <Tooltip title={accounts.length === 0 ? t("finance.no_accounts") : canAdminFinance ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<FallOutlined />} onClick={() => openEquityModal("distribution")} size="large" className="w-full" disabled={!canAdminFinance || accounts.length === 0}>{t("finance.equity_distribution_cta")}</Button></span></Tooltip>
                                 <Tooltip title={accounts.length < 2 ? t("finance.transfer_requires_accounts") : canEdit ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<SwapOutlined />} onClick={openTransfer} size="large" className="w-full" disabled={!canEdit || accounts.length < 2}>{t("finance.transfer_cta")}</Button></span></Tooltip>
                                 <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
                                 <span className="w-full sm:w-auto inline-block">
@@ -240,7 +243,7 @@ const Finance = () => {
                                                 {t("finance.view_movements")}
                                             </Button>
                                             <Tooltip title={t("finance.reconcile_cta")}><Button icon={<FileSearchOutlined />} onClick={() => navigate(`/finance/reconciliation?account=${record._id}`)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] transition-all duration-200" /></Tooltip>
-                                            {canEdit && (
+                                            {canAdminFinance && (
                                                 <Tooltip title={t("finance.adjustment_cta")}><Button icon={<AuditOutlined />} onClick={() => openAdjustment(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] transition-all duration-200" /></Tooltip>
                                             )}
                                             <Tooltip title={t("finance.mapping_history_cta")}><Button icon={<HistoryOutlined />} onClick={() => openConfigurationHistory(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] transition-all duration-200" /></Tooltip>

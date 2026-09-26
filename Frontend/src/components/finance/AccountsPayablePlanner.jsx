@@ -18,7 +18,7 @@ import {
     ReloadOutlined,
     WalletOutlined,
 } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import { financeService } from "../../services/financeService";
@@ -35,8 +35,14 @@ const STATUS_COLORS = {
     unscheduled: "default",
 };
 
+// Rows other than purchases (loan installments, IVA/ICA por pagar - see
+// Backend/services/accountsPayable.service.js#loadOtherObligations) share
+// the same cash plan but are paid from their own Accounting tab.
+const KIND_COLORS = { purchase: "default", loan_installment: "blue", vat: "purple", ica: "geekblue" };
+
 const AccountsPayablePlanner = ({ canEdit }) => {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const { formatCurrency } = useCurrency();
     const [plan, setPlan] = useState({ summary: {}, documents: [] });
     const [loading, setLoading] = useState(false);
@@ -98,8 +104,17 @@ const AccountsPayablePlanner = ({ canEdit }) => {
         {
             title: t("finance.payables_purchase"),
             dataIndex: "number",
-            width: 125,
-            render: (value) => <strong>{value}</strong>,
+            width: 150,
+            render: (value, row) => (
+                <div>
+                    <strong>{value}</strong>
+                    {row.kind && row.kind !== "purchase" && (
+                        <Tag className="mt-1 block w-fit" color={KIND_COLORS[row.kind]}>
+                            {t(`finance.payables_kind_${row.kind}`)}
+                        </Tag>
+                    )}
+                </div>
+            ),
         },
         {
             title: t("finance.payables_supplier"),
@@ -110,7 +125,11 @@ const AccountsPayablePlanner = ({ canEdit }) => {
             title: t("finance.payables_due_date"),
             dataIndex: "due_date",
             width: 145,
-            render: (value, row) => (
+            render: (value, row) => row.kind && row.kind !== "purchase" ? (
+                <span className="text-sm">
+                    {value ? dayjs(value).format("DD/MM/YYYY") : t("finance.payables_tax_due_unset")}
+                </span>
+            ) : (
                 <Button
                     type="link"
                     disabled={!canEdit}
@@ -177,6 +196,16 @@ const AccountsPayablePlanner = ({ canEdit }) => {
                     {t(`finance.payables_coverage_${value}`)}
                 </Tag>
             ),
+        },
+        {
+            title: "",
+            key: "manage",
+            width: 110,
+            render: (_, row) => row.link ? (
+                <Button size="small" onClick={() => navigate(row.link.path, { state: { tab: row.link.tab } })}>
+                    {t("finance.payables_manage")}
+                </Button>
+            ) : null,
         },
     ];
 
@@ -261,13 +290,13 @@ const AccountsPayablePlanner = ({ canEdit }) => {
                     ))}
                 </Row>
                 <Table
-                    expandable={{ expandedRowRender: (row) => <PaymentDetailsTable payments={row.payment_details} documentId={row.id} payable pending={row.pending} canEdit={canEdit} onApplied={load} /> }}
+                    expandable={{ rowExpandable: (row) => !row.kind || row.kind === "purchase", expandedRowRender: (row) => <PaymentDetailsTable payments={row.payment_details} documentId={row.id} payable pending={row.pending} canEdit={canEdit} onApplied={load} /> }}
                     className="module-dark-table"
                     rowKey="id"
                     loading={loading}
                     columns={columns}
                     dataSource={plan.documents || []}
-                    scroll={{ x: 1050 }}
+                    scroll={{ x: 1180 }}
                     pagination={{ pageSize: 8, hideOnSinglePage: true }}
                     locale={{
                         emptyText: (

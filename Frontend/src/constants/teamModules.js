@@ -10,6 +10,7 @@ export const MODULE_KEYS = [
     "purchases",
     "reports",
     "billing",
+    "pointsOfSale",
     "finance",
     "accounting",
     "payroll",

@@ -62,29 +62,28 @@ const LEVEL_ORDER = { none: 0, view: 1, edit: 2, admin: 3 };
 export const hasSufficientLevel = (level, minLevel) =>
     (LEVEL_ORDER[level] ?? 0) >= (LEVEL_ORDER[minLevel] ?? 0);
 
+// Single source of truth for the role editor (GET /teams/permission-catalog,
+// team.routes.js) - the frontend builds its module list from this instead of
+// a hand-copied MODULE_KEYS, which is how "pointsOfSale" once went missing
+// from the editor and got silently reset to "none" on every role save.
+export const getPermissionCatalog = () => ({
+    modules: MODULE_KEYS.filter((key) => !COUPLED_MODULES[key]),
+    coupled: COUPLED_MODULES,
+    levels: Object.keys(LEVEL_ORDER),
+    // CAPABILITIES is declared further down - only read when this runs.
+    capabilities: Object.entries(CAPABILITIES).map(([key, def]) => ({ key, type: def.type, module: def.module })),
+});
+
 // Default permission set applied to the auto-created "Miembro" role when a
 // team is first created - deny by default. A brand-new invited member sees
 // nothing (not even the dashboard, since it's coupled to "reports") until
 // the owner explicitly grants access to specific modules (Team > Roles).
 // The owner can edit this role or add more roles afterwards
 // (PATCH /teams/:id/roles/:roleId).
-export const DEFAULT_MEMBER_ROLE_PERMISSIONS = {
-    dashboard: "none",
-    products: "none",
-    categories: "none",
-    units: "none",
-    customers: "none",
-    suppliers: "none",
-    orders: "none",
-    purchases: "none",
-    reports: "none",
-    billing: "none",
-    pointsOfSale: "none",
-    finance: "none",
-    accounting: "none",
-    payroll: "none",
-    warranties: "none",
-};
+export const DEFAULT_MEMBER_ROLE_PERMISSIONS = MODULE_KEYS.reduce(
+    (acc, key) => ({ ...acc, [key]: "none" }),
+    {}
+);
 
 export const OWNER_ROLE_PERMISSIONS = MODULE_KEYS.reduce(
     (acc, key) => ({ ...acc, [key]: "admin" }),
@@ -121,7 +120,7 @@ export const canAccessModule = async (user, moduleKey, minLevel = "view") =>
 // t("team.module_X")/t("team.permission_X") keys (constants/teamModules.js)
 // so the wording matches what the owner sees in the role editor.
 const LEVEL_LABELS_ES = { none: "sin acceso", view: "ver", edit: "editar", admin: "administrar" };
-const MODULE_LABELS_ES = {
+export const MODULE_LABELS_ES = {
     dashboard: "el panel de control",
     products: "productos",
     categories: "categorías",
@@ -135,6 +134,7 @@ const MODULE_LABELS_ES = {
     pointsOfSale: "puntos de venta",
     finance: "finanzas",
     accounting: "contabilidad",
+    payroll: "nómina",
     warranties: "garantías",
 };
 
@@ -151,3 +151,112 @@ export const requireModulePermission = (moduleKey, minLevel = "view") =>
 
         return next();
     });
+
+// ---------------------------------------------------------------------------
+// Capabilities: action-level grants that don't fit the module x level ladder
+// (stored as TeamRole.capabilities JSON). Same owner rule as modules - the
+// owner and solo users always get FULL_CAPABILITIES; only an invited
+// member's role is read. A missing key is denied, so a role created after
+// this shipped starts with none of them (roles that existed before got them
+// all enabled by the 20260926190000_team_role_capabilities migration).
+export const CAPABILITIES = {
+    // Sell (order / sales quotation) below the product's list price beyond
+    // salesMaxDiscountPct. Without it the backend rejects the line.
+    salesPriceOverride: { type: "boolean", module: "orders" },
+    // Max discount (0-100 %) under list price allowed WITHOUT
+    // salesPriceOverride. 0 = must sell at list price or above.
+    salesMaxDiscountPct: { type: "percent", module: "orders" },
+    // See buying prices, inventory valuation and margins. Without it those
+    // fields are stripped from product/inventory/report responses
+    // (stripCostFieldsUnlessAllowed) and the margin report is blocked.
+    catalogViewCosts: { type: "boolean", module: "products" },
+};
+
+export const FULL_CAPABILITIES = {
+    salesPriceOverride: true,
+    salesMaxDiscountPct: 100,
+    catalogViewCosts: true,
+};
+
+export const normalizeCapabilities = (raw) => {
+    const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    const out = {};
+    for (const [key, def] of Object.entries(CAPABILITIES)) {
+        if (def.type === "boolean") {
+            out[key] = source[key] === true;
+        } else {
+            const value = Number(source[key]);
+            out[key] = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
+        }
+    }
+    return out;
+};
+
+// Memoized per request user object - a single request can check more than
+// one capability (e.g. every line of an order) without re-querying.
+const capabilityCache = new WeakMap();
+
+export const getCapabilities = async (user) => {
+    if (!user?.isTeamMember) {
+        return FULL_CAPABILITIES;
+    }
+    if (capabilityCache.has(user)) {
+        return capabilityCache.get(user);
+    }
+    const role = user.teamRoleId
+        ? await prisma.teamRole.findUnique({ where: { id: user.teamRoleId }, select: { capabilities: true } })
+        : null;
+    const capabilities = normalizeCapabilities(role?.capabilities);
+    capabilityCache.set(user, capabilities);
+    return capabilities;
+};
+
+export const requireCapability = (key, message) =>
+    asyncHandler(async (req, _res, next) => {
+        const capabilities = await getCapabilities(req.user);
+        if (capabilities[key] !== true) {
+            return next(new ApiError(403, message || "Tu rol no tiene este permiso."));
+        }
+        return next();
+    });
+
+// Response keys that reveal cost: buying prices, weighted-average cost,
+// inventory valuation and cost basis. Both snake_case (mapped responses)
+// and camelCase (raw Prisma rows some endpoints return) spellings. NOTE:
+// OrderDetail's "unitcost" is the SALE price (legacy name), not listed.
+const COST_FIELD_KEYS = new Set([
+    "buying_price", "buyingPrice",
+    "inventory_value", "inventoryValue",
+    "unit_cost_applied", "unitCostApplied",
+    "value_delta", "valueDelta",
+    "value_balance_after", "valueBalanceAfter",
+    "average_unit_cost", "averageUnitCost",
+    "cost_basis_applied", "costBasisApplied",
+    "incoming_unit_cost", "incomingUnitCost",
+]);
+
+export const stripCostFields = (value) => {
+    if (Array.isArray(value)) return value.map(stripCostFields);
+    // Anything with its own toJSON (Prisma Decimal, Date) serializes to a
+    // scalar - leave it whole instead of walking its internals.
+    if (value && typeof value === "object" && typeof value.toJSON !== "function") {
+        const out = {};
+        for (const [key, inner] of Object.entries(value)) {
+            if (!COST_FIELD_KEYS.has(key)) out[key] = stripCostFields(inner);
+        }
+        return out;
+    }
+    return value;
+};
+
+// Route middleware: for a member without catalogViewCosts, scrub cost keys
+// out of whatever this route responds with. Wraps res.json once, so every
+// controller behind it is covered without touching each serializer.
+export const stripCostFieldsUnlessAllowed = asyncHandler(async (req, res, next) => {
+    const capabilities = await getCapabilities(req.user);
+    if (!capabilities.catalogViewCosts) {
+        const originalJson = res.json.bind(res);
+        res.json = (body) => originalJson(stripCostFields(body));
+    }
+    return next();
+});

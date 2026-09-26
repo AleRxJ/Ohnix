@@ -19,12 +19,15 @@ import {
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforcePlanFeature } from "../middleware/pricing.middleware.js";
-import { requireModulePermission } from "../middleware/team.permissions.js";
+import { requireModulePermission, requireCapability, stripCostFieldsUnlessAllowed } from "../middleware/team.permissions.js";
 import { reportExportRateLimiter } from "../middleware/rateLimit.middleware.js";
 
 const router = express.Router();
 
 router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
+// Buying prices / inventory valuation hidden from members without the
+// catalogViewCosts capability (team.permissions.js).
+router.use(stripCostFieldsUnlessAllowed);
 
 // Dashboard metrics live under their own "dashboard" module (not "reports")
 // so a freshly invited team member with the default Miembro role - which
@@ -49,7 +52,8 @@ router.route("/top-products").get(requireModulePermission("reports", "view"), en
 router.route("/low-stock-alerts").get(requireModulePermission("reports", "view"), getLowStockAlerts);
 
 // Advanced reports — Escala ($99) and above
-router.route("/profit-margin").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getProfitMarginReport);
+// The margin report IS cost data - blocked outright rather than scrubbed.
+router.route("/profit-margin").get(requireModulePermission("reports", "view"), requireCapability("catalogViewCosts", "Tu rol no tiene permiso para ver costos y márgenes."), enforcePlanFeature("advancedReports"), getProfitMarginReport);
 router.route("/top-customers").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getTopCustomersReport);
 router.route("/sales-by-team").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getSalesByTeamReport);
 router.route("/period-comparison").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getPeriodComparisonReport);

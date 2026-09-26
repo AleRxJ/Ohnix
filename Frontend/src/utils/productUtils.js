@@ -44,7 +44,9 @@ export const getStockStatus = (stock, lowStockThreshold = DEFAULT_LOW_STOCK_THRE
     return { status: "success", text: "In Stock", color: "green" };
 };
 
-export const validateProductData = (productData, t) => {
+// skipBuyingPrice: editing as a member who can't see costs (the field is
+// hidden and the backend ignores it) - see Products.jsx#hideCostOnEdit.
+export const validateProductData = (productData, t, { skipBuyingPrice = false } = {}) => {
     const errors = {};
     let isValid = true;
 
@@ -68,7 +70,7 @@ export const validateProductData = (productData, t) => {
         isValid = false;
     }
 
-    if (!productData.buying_price || productData.buying_price <= 0) {
+    if (!skipBuyingPrice && (!productData.buying_price || productData.buying_price <= 0)) {
         errors.buying_price = t("products.price_must_be_positive");
         isValid = false;
     }
@@ -230,7 +232,7 @@ export const calculateInventoryStats = (products) => {
     };
 
     products.forEach((product) => {
-        stats.totalStockValue += product.buying_price * product.stock;
+        stats.totalStockValue += (Number(product.buying_price) || 0) * product.stock;
         stats.totalSellingValue += product.selling_price * product.stock;
 
         const threshold = product.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD;

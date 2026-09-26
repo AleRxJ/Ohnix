@@ -5,10 +5,41 @@ import AuthContext from "./AuthContext";
 import useI18n from "../hooks/useI18n";
 import { teamService } from "../services/teamService";
 import { connectSocket, disconnectSocket, getSocket } from "../live/socketClient";
+import { subscribeConnectivity } from "../offline/connectivity";
 
 const TeamContext = createContext();
 
 const LEVEL_ORDER = { none: 0, view: 1, edit: 2, admin: 3 };
+
+const NO_TEAM_STATE = { team: null, isOwner: false, myRole: null };
+
+// Mirror of Backend FULL_CAPABILITIES - what the owner/solo users always get.
+const FULL_CAPABILITIES = { salesPriceOverride: true, salesMaxDiscountPct: 100, catalogViewCosts: true };
+
+// Last confirmed team/role per user, so a reload while offline renders the
+// member's real permissions instead of the full UI - the team half of the
+// snapshot AuthContext's LAST_KNOWN_USER_KEY already keeps for the user
+// (see OFFLINE_ARCHITECTURE.md section 8). Keyed by user id so a shared
+// browser never hands one person's role to another. UX-only, like
+// hasPermission itself: the backend re-checks every queued write on sync.
+const teamSnapshotKey = (userId) => `ohnix:lastKnownTeam:${userId}`;
+const persistTeamSnapshot = (userId, state) => {
+    if (!userId) return;
+    try {
+        localStorage.setItem(teamSnapshotKey(userId), JSON.stringify(state));
+    } catch {
+        // Storage full/unavailable - offline reload just falls back below.
+    }
+};
+const readTeamSnapshot = (userId) => {
+    if (!userId) return null;
+    try {
+        const raw = localStorage.getItem(teamSnapshotKey(userId));
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+};
 
 export const TeamProvider = ({ children }) => {
     const { user, authenticated, logout } = useContext(AuthContext);
@@ -23,23 +54,58 @@ export const TeamProvider = ({ children }) => {
     const hasWarnedSessionReplaced = useRef(false);
     const pendingPosScopeReconnect = useRef(false);
 
+    // True while team/role come from the last-known snapshot instead of the
+    // server - lets the connectivity effect below re-confirm once back online.
+    const restoredFromSnapshot = useRef(false);
+
+    const applyTeamState = useCallback((state) => {
+        setTeam(state.team);
+        setIsOwner(state.isOwner);
+        setMyRole(state.myRole);
+    }, []);
+
     const refreshTeam = useCallback(async () => {
         setLoading(true);
+        const userId = user?.id;
         try {
             const res = await teamService.getCurrentTeam();
-            setTeam(res?.data?.team ?? null);
-            setIsOwner(Boolean(res?.data?.isOwner));
-            setMyRole(res?.data?.myRole ?? null);
+            const state = {
+                team: res?.data?.team ?? null,
+                isOwner: Boolean(res?.data?.isOwner),
+                myRole: res?.data?.myRole ?? null,
+            };
+            applyTeamState(state);
+            persistTeamSnapshot(userId, state);
+            restoredFromSnapshot.current = false;
         } catch (err) {
-            // 404 just means "no team yet" (solo user or hasn't created one) -
-            // not an error state worth surfacing.
-            setTeam(null);
-            setIsOwner(false);
-            setMyRole(null);
+            if (err?.response?.status === 404) {
+                // 404 is the server's real answer: "no team" (solo user or
+                // hasn't created one) - not an error state worth surfacing.
+                applyTeamState(NO_TEAM_STATE);
+                persistTeamSnapshot(userId, NO_TEAM_STATE);
+                restoredFromSnapshot.current = false;
+                return;
+            }
+            // Anything else (offline, timeout, 5xx) only means "couldn't
+            // confirm right now". Falling back to NO_TEAM_STATE here made
+            // hasPermission pass everything, so a restricted member reloading
+            // offline saw the owner's full UI. Restore their last confirmed
+            // role instead. With no snapshot at all (device never loaded the
+            // team online since this shipped) there is nothing better to
+            // go on than the old behavior - the backend still enforces.
+            const snapshot = readTeamSnapshot(userId);
+            applyTeamState(snapshot || NO_TEAM_STATE);
+            restoredFromSnapshot.current = true;
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user?.id, applyTeamState]);
+
+    // Back online after restoring from the snapshot - replace it with the
+    // server's answer (the role may have changed while this device was away).
+    useEffect(() => subscribeConnectivity((online) => {
+        if (online && restoredFromSnapshot.current) refreshTeam();
+    }), [refreshTeam]);
 
     useEffect(() => {
         if (!authenticated || !user) {
@@ -140,6 +206,22 @@ export const TeamProvider = ({ children }) => {
         [team, isOwner, myRole]
     );
 
+    // Action-level grants (TeamRole.capabilities - see Backend
+    // team.permissions.js#CAPABILITIES). Same owner/solo rule as
+    // hasPermission; for a member a missing key is denied. getCapability
+    // returns the raw value (e.g. salesMaxDiscountPct as a number).
+    const getCapability = useCallback(
+        (key) => {
+            if (!team || isOwner) return FULL_CAPABILITIES[key];
+            const value = myRole?.capabilities?.[key];
+            if (typeof FULL_CAPABILITIES[key] === "boolean") return value === true;
+            const number = Number(value);
+            return Number.isFinite(number) ? Math.min(100, Math.max(0, number)) : 0;
+        },
+        [team, isOwner, myRole]
+    );
+    const hasCapability = useCallback((key) => getCapability(key) === true, [getCapability]);
+
     const value = {
         team,
         isOwner,
@@ -148,6 +230,8 @@ export const TeamProvider = ({ children }) => {
         loading,
         refreshTeam,
         hasPermission,
+        hasCapability,
+        getCapability,
         socketConnected,
         getSocket,
     };

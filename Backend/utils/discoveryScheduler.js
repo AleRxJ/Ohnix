@@ -23,6 +23,8 @@ import { runNewPatternReturnRateDetector } from "../services/detectors/newPatter
 import { runCrossFactorCorrelationDetector } from "../services/detectors/crossFactorCorrelation.detector.js";
 import { writeEinvoiceRejectionRateMetric } from "../services/metrics/einvoiceRejectionRate.metric.js";
 import { writeMonthlyPurchaseSpendMetric } from "../services/metrics/monthlyPurchaseSpend.metric.js";
+import { writeWarrantyClaimRateMetric } from "../services/metrics/warrantyClaimRate.metric.js";
+import { writeReceivableImpairmentRateMetric } from "../services/metrics/receivableImpairmentRate.metric.js";
 import { checkDuePredictions } from "../services/discoveryLearning.service.js";
 
 // New detectors register here as Fase 2 adds them - each just needs to
@@ -44,7 +46,12 @@ const DETECTORS = [
 // itself here - a one-line registration, not a new detector - see
 // services/metrics/einvoiceRejectionRate.metric.js's header comment for
 // the exact shape a new entry should take.
-const METRIC_WRITERS = [writeEinvoiceRejectionRateMetric, writeMonthlyPurchaseSpendMetric];
+const METRIC_WRITERS = [
+    writeEinvoiceRejectionRateMetric,
+    writeMonthlyPurchaseSpendMetric,
+    writeWarrantyClaimRateMetric,
+    writeReceivableImpairmentRateMetric,
+];
 
 // "Has activity" is approximated by "has placed at least one Order ever",
 // so brand-new/empty accounts aren't scanned for nothing every night.

@@ -1,11 +1,12 @@
 import { api } from "../api/api";
 
 export const assistantService = {
-    sendMessage: async ({ conversationId, message, module, locale }) => {
+    sendMessage: async ({ conversationId, message, module, tab, locale }) => {
         const response = await api.post("/assistant/chat", {
             conversation_id: conversationId || undefined,
             message,
             module,
+            tab: tab || undefined,
             locale,
         });
         return response.data.data;

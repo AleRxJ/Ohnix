@@ -2399,6 +2399,12 @@ model TeamRole {
   teamId      String   @map("team_id")
   name        String
   isOwnerRole Boolean  @default(false) @map("is_owner_role")
+  // Action-level grants that don't fit the module x level ladder (see
+  // CAPABILITIES in team.permissions.js): { salesPriceOverride: bool,
+  // salesMaxDiscountPct: 0-100, catalogViewCosts: bool }. Missing key =
+  // denied. Roles that existed before this column got every capability
+  // enabled by the migration so nobody lost access on deploy.
+  capabilities Json    @default("{}")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -4247,6 +4253,11 @@ model ChatMessage {
   // frontend can show "fuentes" links. Null for user messages and for the
   // fixed no-match fallback (nothing was actually retrieved).
   sources        Json?
+  // UI directives the assistant attached to this reply (quick-reply
+  // choices, a screen to open, a control to spotlight) - already resolved
+  // against services/assistantNavigation.js, so the widget can render them
+  // as-is when reloading history. Null for user messages and plain replies.
+  actions        Json?
   createdAt      DateTime        @default(now()) @map("created_at")
 
   conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

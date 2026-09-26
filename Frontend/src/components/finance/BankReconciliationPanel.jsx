@@ -4,6 +4,7 @@ import { BankOutlined, BulbOutlined, CalculatorOutlined, FileSearchOutlined, Plu
 import * as XLSX from "xlsx";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
 import { useCashAccountMovements } from "../../hooks/finance/useCashAccounts";
@@ -45,6 +46,11 @@ const isGmfEntry = (entry) => Number(entry.amount) < 0 && GMF_PATTERN.test(Strin
 
 const BankReconciliationPanel = ({ account }) => {
     const { t, currentLanguage } = useI18n();
+    // Reading statements/reports needs finance:view (the route gate); every
+    // write here (import, add entry, match, unmatch, classify) is finance:edit
+    // on the backend (finance.routes.js), so disable those for view-only roles.
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("finance", "edit");
     const { formatCurrency, currency } = useCurrency();
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const [entryForm] = Form.useForm();
@@ -396,7 +402,7 @@ const BankReconciliationPanel = ({ account }) => {
             title: "",
             key: "actions",
             width: 230,
-            render: (_, record) => <div className="flex gap-1"><Button size="small" onClick={() => openMatchModal(record)}>{t("finance.match_cta")}</Button>{record.amount < 0 ? <Button size="small" type="primary" ghost onClick={() => openBankCharge([record])}>{t("finance.bank_charge_cta")}</Button> : <Button size="small" type="primary" ghost onClick={() => openBankIncome([record])}>{t("finance.bank_income_cta")}</Button>}</div>,
+            render: (_, record) => <div className="flex gap-1"><Button size="small" disabled={!canEdit} onClick={() => openMatchModal(record)}>{t("finance.match_cta")}</Button>{record.amount < 0 ? <Button size="small" type="primary" ghost disabled={!canEdit} onClick={() => openBankCharge([record])}>{t("finance.bank_charge_cta")}</Button> : <Button size="small" type="primary" ghost disabled={!canEdit} onClick={() => openBankIncome([record])}>{t("finance.bank_income_cta")}</Button>}</div>,
         },
     ];
 
@@ -437,8 +443,8 @@ const BankReconciliationPanel = ({ account }) => {
 
             <div className="rounded-2xl border border-dashed border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div><strong className="text-[var(--ohnix-text-primary)]">{t("finance.import_title")}</strong><p className="text-xs text-[var(--ohnix-text-muted)] mt-1 mb-0">{t("finance.import_help")}</p></div>
-                <Upload accept=".csv,.xlsx,.xls,.ofx,.qfx" showUploadList={false} beforeUpload={readStatementFile} disabled={submitting || importReading}>
-                    <Button icon={<UploadOutlined />} loading={importReading}>{t("finance.import_cta")}</Button>
+                <Upload accept=".csv,.xlsx,.xls,.ofx,.qfx" showUploadList={false} beforeUpload={readStatementFile} disabled={!canEdit || submitting || importReading}>
+                    <Button icon={<UploadOutlined />} loading={importReading} disabled={!canEdit}>{t("finance.import_cta")}</Button>
                 </Upload>
             </div>
 
@@ -464,6 +470,7 @@ const BankReconciliationPanel = ({ account }) => {
                     htmlType="submit"
                     icon={<PlusOutlined />}
                     loading={submitting}
+                    disabled={!canEdit}
                     className="mt-3"
                 >
                     {t("finance.add_entry_cta")}
@@ -475,12 +482,12 @@ const BankReconciliationPanel = ({ account }) => {
             </h4>
             <div className="flex flex-wrap items-center gap-2 mb-3">
                 {unmatchedEntries.length > 0 && <Button icon={<ThunderboltOutlined />} onClick={openSuggestions}>{t("finance.suggestions_cta")}</Button>}
-                {gmfEntries.length > 0 && <Button icon={<BankOutlined />} onClick={() => openBankCharge(gmfEntries)}>{t("finance.gmf_classify_cta", { count: gmfEntries.length })}</Button>}
+                {gmfEntries.length > 0 && <Button icon={<BankOutlined />} disabled={!canEdit} onClick={() => openBankCharge(gmfEntries)}>{t("finance.gmf_classify_cta", { count: gmfEntries.length })}</Button>}
                 {selectedRowKeys.length > 0 && (
                     <>
                         <Tag className="m-0">{t("finance.bulk_selected_count", { count: selectedRowKeys.length })}</Tag>
-                        <Button size="small" type="primary" ghost disabled={!canBulkCharge} onClick={() => openBankCharge(selectedEntries)}>{t("finance.bank_charge_cta")}</Button>
-                        <Button size="small" type="primary" ghost disabled={!canBulkIncome} onClick={() => openBankIncome(selectedEntries)}>{t("finance.bank_income_cta")}</Button>
+                        <Button size="small" type="primary" ghost disabled={!canEdit || !canBulkCharge} onClick={() => openBankCharge(selectedEntries)}>{t("finance.bank_charge_cta")}</Button>
+                        <Button size="small" type="primary" ghost disabled={!canEdit || !canBulkIncome} onClick={() => openBankIncome(selectedEntries)}>{t("finance.bank_income_cta")}</Button>
                         {!canBulkCharge && !canBulkIncome && <span className="text-xs text-[var(--ohnix-text-dim)]">{t("finance.bulk_mixed_sign_hint")}</span>}
                     </>
                 )}
@@ -582,7 +589,7 @@ const BankReconciliationPanel = ({ account }) => {
                     )}
                 </>}
             </Modal>
-            <Modal title={t("finance.suggestions_title")} open={Array.isArray(suggestions)} onCancel={() => setSuggestions(null)} onOk={confirmSuggestions} confirmLoading={submitting} okButtonProps={{ disabled: selectedSuggestions.length === 0 }} okText={t("finance.suggestions_confirm")} width={820}>
+            <Modal title={t("finance.suggestions_title")} open={Array.isArray(suggestions)} onCancel={() => setSuggestions(null)} onOk={confirmSuggestions} confirmLoading={submitting} okButtonProps={{ disabled: !canEdit || selectedSuggestions.length === 0 }} okText={t("finance.suggestions_confirm")} width={820}>
                 <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.suggestions_help_title")} description={t("finance.suggestions_help_desc")} />
                 <Table className="module-dark-table" size="small" pagination={false} rowKey={(row) => row.entry._id} dataSource={suggestions || []} locale={{ emptyText: t("finance.suggestions_empty") }} columns={[{ title: "", width: 44, render: (_, row) => <Checkbox checked={selectedSuggestions.includes(row.entry._id)} onChange={(event) => setSelectedSuggestions((current) => event.target.checked ? [...current, row.entry._id] : current.filter((id) => id !== row.entry._id))} /> }, { title: t("finance.suggestions_statement"), render: (_, row) => <div><strong>{dayjs(row.entry.entry_date).format("DD/MM/YYYY")}</strong><small className="block text-[var(--ohnix-text-muted)]">{row.entry.description || t("common.na")}</small></div> }, { title: t("finance.suggestions_internal"), render: (_, row) => <div><strong>{dayjs(row.movement.createdAt).format("DD/MM/YYYY")}</strong><small className="block text-[var(--ohnix-text-muted)]">{row.movement.reason || t(SOURCE_LABEL_KEYS[row.movement.source_type] || row.movement.source_type)}</small></div> }, { title: t("finance.col_amount"), align: "right", render: (_, row) => formatCurrency(row.entry.amount) }, { title: t("finance.suggestions_confidence"), render: (_, row) => <Tag color={row.ambiguous ? "warning" : row.score >= 90 ? "success" : "processing"}>{row.ambiguous ? t("finance.suggestions_ambiguous") : `${row.score}%`}</Tag> }]} />
             </Modal>
@@ -639,7 +646,7 @@ const BankReconciliationPanel = ({ account }) => {
                     </div>
                     <ReportExportButtons hasData={reportRows.length > 0} onExportCsv={exportReportCsv} onExportExcel={exportReportExcel} onExportPdf={exportReportPdf} />
                 </div>
-                <Table loading={reportLoading} className="module-dark-table" size="small" rowKey="_id" dataSource={reportRows} pagination={{ pageSize: 10 }} scroll={{ x: 760 }} locale={{ emptyText: t("finance.reconciliation_report_empty") }} columns={[{ title: t("finance.col_date"), dataIndex: "entry_date", width: 110, render: (value) => dayjs(value).format("DD/MM/YYYY") }, { title: t("finance.entry_description_label"), dataIndex: "description", ellipsis: true, render: (value) => value || t("common.na") }, { title: t("finance.col_amount"), dataIndex: "amount", align: "right", render: (value) => formatCurrency(value) }, { title: t("finance.reconciliation_report_status"), dataIndex: "status", render: (value) => <Tag color={value === "matched" ? "success" : "warning"}>{t(`finance.reconciliation_status_${value}`)}</Tag> }, { title: t("finance.col_source"), render: (_, row) => row.movement ? t(SOURCE_LABEL_KEYS[row.movement.source_type] || row.movement.source_type) : t("common.na") }, { title: t("finance.reconciliation_report_reconciled_at"), render: (_, row) => row.movement?.reconciled_at ? dayjs(row.movement.reconciled_at).format("DD/MM/YYYY HH:mm") : t("common.na") }, { title: "", key: "actions", width: 120, render: (_, row) => row.status === "matched" ? <Popconfirm title={t("finance.unmatch_confirm_title")} description={t("finance.unmatch_confirm_desc")} okText={t("finance.unmatch_cta")} cancelText={t("common.cancel")} onConfirm={() => handleUnmatch(row)}><Button size="small" icon={<UndoOutlined />} disabled={submitting}>{t("finance.unmatch_cta")}</Button></Popconfirm> : null }]} />
+                <Table loading={reportLoading} className="module-dark-table" size="small" rowKey="_id" dataSource={reportRows} pagination={{ pageSize: 10 }} scroll={{ x: 760 }} locale={{ emptyText: t("finance.reconciliation_report_empty") }} columns={[{ title: t("finance.col_date"), dataIndex: "entry_date", width: 110, render: (value) => dayjs(value).format("DD/MM/YYYY") }, { title: t("finance.entry_description_label"), dataIndex: "description", ellipsis: true, render: (value) => value || t("common.na") }, { title: t("finance.col_amount"), dataIndex: "amount", align: "right", render: (value) => formatCurrency(value) }, { title: t("finance.reconciliation_report_status"), dataIndex: "status", render: (value) => <Tag color={value === "matched" ? "success" : "warning"}>{t(`finance.reconciliation_status_${value}`)}</Tag> }, { title: t("finance.col_source"), render: (_, row) => row.movement ? t(SOURCE_LABEL_KEYS[row.movement.source_type] || row.movement.source_type) : t("common.na") }, { title: t("finance.reconciliation_report_reconciled_at"), render: (_, row) => row.movement?.reconciled_at ? dayjs(row.movement.reconciled_at).format("DD/MM/YYYY HH:mm") : t("common.na") }, { title: "", key: "actions", width: 120, render: (_, row) => row.status === "matched" ? <Popconfirm title={t("finance.unmatch_confirm_title")} description={t("finance.unmatch_confirm_desc")} okText={t("finance.unmatch_cta")} cancelText={t("common.cancel")} onConfirm={() => handleUnmatch(row)} disabled={!canEdit}><Button size="small" icon={<UndoOutlined />} disabled={!canEdit || submitting}>{t("finance.unmatch_cta")}</Button></Popconfirm> : null }]} />
             </Modal>
         </div>
     );

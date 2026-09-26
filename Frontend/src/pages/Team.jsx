@@ -44,7 +44,7 @@ const StatTile = ({ icon, label, value, accent = "#29D8D5" }) => (
 const Team = () => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
-    const { team, isOwner, loading: teamLoading } = useTeam();
+    const { team, isOwner, hasPermission, loading: teamLoading } = useTeam();
     const { plan, loading: planLoading } = useSubscription();
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get("tab") || "members";
@@ -148,6 +148,14 @@ const Team = () => {
                 <div className="mt-6">
                     <MemberOverview />
                 </div>
+                {/* pointsOfSale is the one team-console area a member can be
+                    granted (create/rename/deactivate needs "admin", see
+                    pointOfSale.routes.js) - everything else here stays owner-only. */}
+                {hasPermission("pointsOfSale", "admin") && (
+                    <div className="mt-6">
+                        <PointsOfSaleTab />
+                    </div>
+                )}
             </div>
         );
     }

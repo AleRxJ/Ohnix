@@ -14,6 +14,11 @@ export const teamService = {
         return response.data;
     },
 
+    async getPermissionCatalog() {
+        const response = await api.get("/teams/permission-catalog");
+        return response.data;
+    },
+
     async updateTeam(teamId, payload) {
         const response = await api.patch(`/teams/${teamId}`, payload);
         return response.data;

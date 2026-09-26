@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import StatCard from "../dashboard/StatCard";
 import EmptyState from "../common/EmptyState";
+import ReceivableWriteOffPanel from "./ReceivableWriteOffPanel";
 import { accountingService } from "../../services/accountingService";
 import { useCurrency } from "../../context/CurrencyContext";
 import { useTeam } from "../../context/TeamContext";
@@ -124,6 +125,7 @@ const ReceivableImpairmentTab = () => {
                 { title: t("accounting.impairment_col_run_at"), dataIndex: "created_at", render: (v) => dayjs(v).format("DD/MM/YYYY HH:mm") },
             ]}
         />
+        <ReceivableWriteOffPanel />
     </>;
 };
 

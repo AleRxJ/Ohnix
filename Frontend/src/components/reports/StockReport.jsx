@@ -27,6 +27,7 @@ import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 import ReportExportButtons from "./ReportExportButtons";
 import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 import { getConnectivityState } from "../../offline/connectivity";
@@ -75,6 +76,11 @@ const StockReport = () => {
     const [offlineSyncedAt, setOfflineSyncedAt] = useState(null);
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
+    // Without catalogViewCosts the backend strips buying_price/inventory_value
+    // - drop those columns/exports/cards instead of showing $0 everywhere.
+    const { hasCapability } = useTeam();
+    const canViewCosts = hasCapability("catalogViewCosts");
+    const costOnly = (value) => (canViewCosts ? [value] : []);
     const { formatCurrency } = useCurrency();
 
     const statusLabelByValue = {
@@ -159,10 +165,12 @@ const StockReport = () => {
         rows.push([t("reports.products_in_stock"), summary.inStock]);
         rows.push([t("reports.products_low_stock"), summary.lowStock]);
         rows.push([t("reports.products_out_of_stock"), summary.outOfStock]);
-        rows.push([
-            t("reports.total_inventory_value"),
-            formatCurrency(summary.totalInventoryValue),
-        ]);
+        if (canViewCosts) {
+            rows.push([
+                t("reports.total_inventory_value"),
+                formatCurrency(summary.totalInventoryValue),
+            ]);
+        }
         rows.push([""]);
 
         rows.push([
@@ -171,9 +179,9 @@ const StockReport = () => {
             t("common.category"),
             t("common.unit"),
             t("common.stock_quantity"),
-            t("reports.buying_price"),
+            ...costOnly(t("reports.buying_price")),
             t("reports.selling_price"),
-            t("reports.inventory_value"),
+            ...costOnly(t("reports.inventory_value")),
             t("common.status"),
         ]);
 
@@ -184,9 +192,9 @@ const StockReport = () => {
                 item.category_name,
                 item.unit_name,
                 item.stock,
-                formatCurrency(item.buying_price),
+                ...costOnly(formatCurrency(item.buying_price)),
                 formatCurrency(item.selling_price),
-                formatCurrency(item.inventory_value),
+                ...costOnly(formatCurrency(item.inventory_value)),
                 getStatusLabel(item.status),
             ]);
         });
@@ -236,7 +244,7 @@ const StockReport = () => {
                         [t("reports.in_stock"), String(summary.inStock)],
                         [t("reports.low_stock"), String(summary.lowStock)],
                         [t("reports.out_of_stock"), String(summary.outOfStock)],
-                        [t("reports.total_inventory_value"), formatCurrency(summary.totalInventoryValue)],
+                        ...costOnly([t("reports.total_inventory_value"), formatCurrency(summary.totalInventoryValue)]),
                     ],
                     table: {
                         headers: [
@@ -245,9 +253,9 @@ const StockReport = () => {
                             t("common.category"),
                             t("common.unit"),
                             t("common.stock_quantity"),
-                            t("reports.buying_price"),
+                            ...costOnly(t("reports.buying_price")),
                             t("reports.selling_price"),
-                            t("reports.inventory_value"),
+                            ...costOnly(t("reports.inventory_value")),
                             t("common.status"),
                         ],
                         rows: filteredData.map((item) => [
@@ -256,9 +264,9 @@ const StockReport = () => {
                             item.category_name,
                             item.unit_name,
                             String(item.stock),
-                            formatCurrency(item.buying_price),
+                            ...costOnly(formatCurrency(item.buying_price)),
                             formatCurrency(item.selling_price),
-                            formatCurrency(item.inventory_value),
+                            ...costOnly(formatCurrency(item.inventory_value)),
                             getStatusLabel(item.status),
                         ]),
                     },
@@ -548,6 +556,7 @@ const StockReport = () => {
             </Row>
 
             {/* Total Inventory Value */}
+            {canViewCosts && (
             <Row gutter={[16, 16]} className="mb-4 sm:mb-6">
                 <Col xs={24}>
                     <StatCard
@@ -567,6 +576,7 @@ const StockReport = () => {
                     />
                 </Col>
             </Row>
+            )}
 
             {/* Stock Report Table */}
             <Card
@@ -580,7 +590,7 @@ const StockReport = () => {
             className="module-shell overflow-hidden hover-lift">
                 <div className="overflow-x-auto">
                     <Table
-                        columns={columns}
+                        columns={canViewCosts ? columns : columns.filter((col) => !["buying_price", "inventory_value"].includes(col.key))}
                         dataSource={filteredData}
                         rowKey="_id"
                         loading={loading}

@@ -39,6 +39,7 @@ import { StatusPill, ELECTRONIC_INVOICE_STATUS_COLORS as STATUS_COLORS } from ".
 import { useCurrency } from "../context/CurrencyContext";
 import { getCurrencyInputProps } from "../utils/currency";
 import useI18n from "../hooks/useI18n";
+import { useTeam } from "../context/TeamContext";
 import useIsMobile from "../hooks/useIsMobile";
 import useCountUp from "../hooks/useCountUp";
 import { resolveApiErrorMessage } from "../utils/apiError";
@@ -475,6 +476,10 @@ const InvoiceDetailDrawer = ({
 }) => {
     const { t } = useI18n();
     const isMobile = useIsMobile();
+    // A credit note is an irreversible DIAN document - orders:"admin" on the
+    // backend (order.routes.js), not the "edit" that issuing a sale needs.
+    const { hasPermission } = useTeam();
+    const canIssueCreditNote = hasPermission("orders", "admin");
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     if (!invoice) return null;
     const issuedAt = invoice.issuedAt ? new Date(invoice.issuedAt) : null;
@@ -625,7 +630,7 @@ const InvoiceDetailDrawer = ({
                     </Button>
                 )}
 
-                {invoice.status === "accepted" && (
+                {invoice.status === "accepted" && canIssueCreditNote && (
                     <Button
                         block
                         icon={<PlusOutlined />}

@@ -56,8 +56,12 @@ const parseAsOf = (asOf) => {
 
 // Receivables as they stood at the cutoff: sales dated on or before it,
 // payments received on or before it (a later payment doesn't un-age a debt
-// that was overdue at that date).
-const loadReceivablesAsOf = async (db, accountId, asOfDate) => {
+// that was overdue at that date). Exported for
+// metrics/receivableImpairmentRate.metric.js, which reuses this same aging
+// logic to snapshot "% of receivables impaired" every month for
+// trajectoryShift.detector.js - independent of whether the merchant ever
+// actually runs the impairment tool itself (runImpairment below).
+export const loadReceivablesAsOf = async (db, accountId, asOfDate) => {
     const orders = await db.order.findMany({
         where: { createdById: accountId, orderStatus: { in: ["completed", "returned"] }, orderDate: { lte: asOfDate } },
         select: {

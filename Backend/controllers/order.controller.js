@@ -132,7 +132,8 @@ const createOrder = asyncHandler(async (req, res, next) => {
             req.body,
             req.user.prismaId,
             req.user.role,
-            pointOfSaleId
+            pointOfSaleId,
+            req.user
         );
         return res
             .status(201)

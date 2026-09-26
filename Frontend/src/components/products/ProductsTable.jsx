@@ -295,9 +295,12 @@ const ProductsTable = ({
                     <Text strong className="text-sm text-[var(--ohnix-text-primary)]">
                         {formatCurrency(record.selling_price)}
                     </Text>
-                    <Text className="text-xs text-[var(--ohnix-text-muted)]">
-                        {t("products.buying_price")}: {formatCurrency(record.buying_price)}
-                    </Text>
+                    {/* Absent when the role can't see costs (catalogViewCosts). */}
+                    {record.buying_price != null && (
+                        <Text className="text-xs text-[var(--ohnix-text-muted)]">
+                            {t("products.buying_price")}: {formatCurrency(record.buying_price)}
+                        </Text>
+                    )}
                 </div>
             ),
             sorter: (a, b) => a.selling_price - b.selling_price,

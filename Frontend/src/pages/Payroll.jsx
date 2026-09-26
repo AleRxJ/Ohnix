@@ -22,7 +22,7 @@ const { Content } = Layout;
 
 const PERIOD_STATUS_COLORS = { draft: "#8b98a0", calculated: "#7c6af7", approved: "#f59e0b", paid: "#44f3f0", cancelled: "#fb7185" };
 
-const EmployeesPanel = ({ canEdit }) => {
+const EmployeesPanel = ({ canEdit, canAdmin }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const { employees, loading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
@@ -83,7 +83,7 @@ const EmployeesPanel = ({ canEdit }) => {
                     />
                     {row.status !== "terminated" && (
                         <Tooltip title={t("payroll.terminate_employee")}>
-                            <Button type="text" size="small" icon={<StopOutlined />} disabled={!canEdit} onClick={() => setTerminating(row)} />
+                            <Button type="text" size="small" icon={<StopOutlined />} disabled={!canAdmin} onClick={() => setTerminating(row)} />
                         </Tooltip>
                     )}
                     <Popconfirm title={t("common.warning")} okText={t("common.yes")} cancelText={t("common.no")} onConfirm={() => deleteEmployee(row._id)} disabled={!canEdit}>
@@ -143,7 +143,7 @@ const EmployeesPanel = ({ canEdit }) => {
     );
 };
 
-const PeriodsPanel = ({ canEdit }) => {
+const PeriodsPanel = ({ canEdit, canAdmin }) => {
     const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
     const { periods, loading, createPeriod, calculatePeriod, approvePeriod, payPeriod, cancelPeriod } = usePayrollPeriods();
@@ -229,6 +229,7 @@ const PeriodsPanel = ({ canEdit }) => {
             <PayrollPeriodDetailDrawer
                 periodId={detailPeriodId}
                 canEdit={canEdit}
+                canAdmin={canAdmin}
                 onClose={() => setDetailPeriodId(null)}
                 onCalculate={calculatePeriod}
                 onApprove={approvePeriod}
@@ -262,11 +263,13 @@ const Payroll = () => {
     const { user } = useContext(AuthContext);
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("payroll", "edit");
+    // Approve/pay/cancel a period and settle a termination need "admin".
+    const canAdmin = hasPermission("payroll", "admin");
     const isAdmin = user?.role === "admin";
 
     const items = [
-        { key: "employees", label: t("payroll.tab_employees"), children: <EmployeesPanel canEdit={canEdit} /> },
-        { key: "periods", label: t("payroll.tab_periods"), children: <PeriodsPanel canEdit={canEdit} /> },
+        { key: "employees", label: t("payroll.tab_employees"), children: <EmployeesPanel canEdit={canEdit} canAdmin={canAdmin} /> },
+        { key: "periods", label: t("payroll.tab_periods"), children: <PeriodsPanel canEdit={canEdit} canAdmin={canAdmin} /> },
         { key: "benefits", label: t("payroll.tab_benefits"), children: <BenefitsPanel canEdit={canEdit} /> },
         ...(isAdmin ? [{ key: "legal", label: <span className="inline-flex items-center gap-1"><SettingOutlined />{t("payroll.tab_legal_parameters")}</span>, children: <LegalParametersPanel /> }] : []),
     ];

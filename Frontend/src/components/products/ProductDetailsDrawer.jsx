@@ -120,6 +120,7 @@ const ProductDetailsDrawer = ({
     };
 
     const stockStatus = getStockStatus(product.stock);
+    const hasCost = product.buying_price != null;
     const profitMargin = (product.selling_price - product.buying_price)?.toFixed(2);
     const profitPercentage =
         product.selling_price > 0
@@ -219,7 +220,7 @@ const ProductDetailsDrawer = ({
                     )}
                 </Image.PreviewGroup>
 
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className={`grid ${hasCost ? "grid-cols-3" : "grid-cols-1"} gap-2 sm:gap-3`}>
                     <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">
                         <div className="flex flex-col items-center text-center">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-1.5 sm:mb-2">
@@ -230,6 +231,8 @@ const ProductDetailsDrawer = ({
                         </div>
                     </div>
 
+                    {hasCost && (
+                        <>
                     <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">
                         <div className="flex flex-col items-center text-center">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#44F3F0]/10 flex items-center justify-center mb-1.5 sm:mb-2">
@@ -249,6 +252,8 @@ const ProductDetailsDrawer = ({
                             <Text className="text-base sm:text-xl font-bold text-[var(--ohnix-text-primary)] truncate max-w-full">{profitPercentage}%</Text>
                         </div>
                     </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
@@ -299,13 +304,18 @@ const ProductDetailsDrawer = ({
                     </div>
                     <div className="p-5">
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.buying_price")}</Text>
-                                <Text className="text-base font-semibold text-[var(--ohnix-text-primary)]">
-                                    {formatCurrency(product.buying_price)}
-                                </Text>
-                            </div>
-                            <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                            {/* Absent when the role can't see costs (catalogViewCosts). */}
+                            {hasCost && (
+                                <>
+                                    <div className="flex items-center justify-between">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.buying_price")}</Text>
+                                        <Text className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                            {formatCurrency(product.buying_price)}
+                                        </Text>
+                                    </div>
+                                    <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                                </>
+                            )}
                             <div className="flex items-center justify-between">
                                 <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.selling_price")}</Text>
                                 <Text className="text-base font-semibold text-[#44F3F0]">

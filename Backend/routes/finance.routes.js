@@ -77,8 +77,10 @@ router.route("/income")
     .post(requireModulePermission("finance", "edit"), idempotent("finance.income"), registerManualIncome);
 router.route("/transfers")
     .post(requireModulePermission("finance", "edit"), idempotent("finance.cash-transfer"), transferCash);
+// Adjustments rewrite a balance to match a count - "admin", unlike routine
+// income/expense/transfer entries.
 router.route("/adjustments")
-    .post(requireModulePermission("finance", "edit"), idempotent("finance.cash-adjustment"), adjustCash);
+    .post(requireModulePermission("finance", "admin"), idempotent("finance.cash-adjustment"), adjustCash);
 router.route("/integrity")
     .get(requireModulePermission("finance", "view"), getCashIntegrity);
 
@@ -145,12 +147,12 @@ router.route("/payment-methods/:id")
 router.route("/payment-methods/:id/active")
     .patch(requireModulePermission("finance", "admin"), setPaymentMethodActive);
 
-// Equity movements (Fase 6 - estado de cambios en el patrimonio) - same
-// permission level as manual income/expense, since these are just another
-// kind of cash-affecting entry, not a config change.
+// Equity movements (Fase 6 - estado de cambios en el patrimonio) - "admin":
+// capital contributions and distributions to partners are owner/accountant
+// decisions, not a routine cash entry like manual income/expense.
 router.route("/equity/contributions")
-    .post(requireModulePermission("finance", "edit"), idempotent("finance.capital-contribution"), registerCapitalContribution);
+    .post(requireModulePermission("finance", "admin"), idempotent("finance.capital-contribution"), registerCapitalContribution);
 router.route("/equity/distributions")
-    .post(requireModulePermission("finance", "edit"), idempotent("finance.equity-distribution"), registerEquityDistribution);
+    .post(requireModulePermission("finance", "admin"), idempotent("finance.equity-distribution"), registerEquityDistribution);
 
 export default router;

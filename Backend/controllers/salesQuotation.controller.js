@@ -50,7 +50,7 @@ const mapQuotation = (quotation) => ({
 export const createSalesQuotation = asyncHandler(async (req, res, next) => {
     try {
         const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
-        const quotation = await salesQuotationService.createQuotation(req.body, req.user.prismaId, req.user.role, pointOfSaleId);
+        const quotation = await salesQuotationService.createQuotation(req.body, req.user.prismaId, req.user.role, pointOfSaleId, req.user);
         const full = await prisma.salesQuotation.findUnique({ where: { id: quotation.id }, include: INCLUDE });
         return res.status(201).json(new ApiResponse(201, mapQuotation(full), "Sales quotation created successfully"));
     } catch (error) {

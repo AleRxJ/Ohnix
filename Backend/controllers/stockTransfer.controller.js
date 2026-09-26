@@ -155,6 +155,12 @@ export const getTransfer = asyncHandler(async (req, res) => {
 export const approveTransfer = asyncHandler(async (req, res) => {
     const transfer = await loadTransfer(req);
     assertSourceAccess(req.user, transfer.fromPointOfSaleId);
+    // Four-eyes rule for team members: the approval step means nothing if
+    // the requester can sign off on their own request. The owner (and solo
+    // accounts, where there's nobody else to ask) are exempt.
+    if (req.user.isTeamMember && transfer.requestedById === req.user.actorId) {
+        throw new ApiError(403, "No puedes aprobar un traslado que tú mismo solicitaste.");
+    }
     const updated = await stockTransferService.approveTransfer({ transfer, actorId: req.user.actorId });
     return res.status(200).json(new ApiResponse(200, mapStockTransfer(updated), "Transfer approved"));
 });

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { MenuOutlined, GlobalOutlined, CloseOutlined } from "@ant-design/icons";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import useI18n from "../../hooks/useI18n";
 import useScrollLock from "../../hooks/useScrollLock";
@@ -240,7 +241,11 @@ const Navbar = () => {
                 </div>
             </div>
 
-            {visible && (
+            {/* Portaled to <body>: the <header> is `fixed z-50`, which makes it
+                its own stacking context, so the drawer's z-[70] only competed
+                inside the header and the landing's mobile support bar / sticky
+                CTA (also z-50, later in the DOM) painted over the drawer. */}
+            {visible && typeof document !== "undefined" && createPortal(
                 <>
                     <div
                         className="fixed inset-0 z-[60] bg-black/45"
@@ -274,7 +279,7 @@ const Navbar = () => {
                             </button>
                         </div>
                         <div className="flex flex-1 flex-col p-6 text-white overflow-y-auto ohnix-scrollbar-thin">
-                            <nav className="flex-1">
+                            <nav className="-mx-4 flex-1">
                                 {navLinks.map((link) => (
                                     <div key={link.path} className="mb-1">
                                         <a
@@ -341,7 +346,8 @@ const Navbar = () => {
                             </div>
                         </div>
                     </div>
-                </>
+                </>,
+                document.body
             )}
         </header>
     );

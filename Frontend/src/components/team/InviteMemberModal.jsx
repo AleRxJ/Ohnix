@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Modal, Form, Input, Select, Tag } from "antd";
 import { UserAddOutlined, MailOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
-import { VISIBLE_MODULE_KEYS } from "../../constants/teamModules";
+import usePermissionCatalog from "../../hooks/usePermissionCatalog";
 
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
@@ -20,9 +20,10 @@ const darkModalStyles = {
 const InviteMemberModal = ({ open, onCancel, onSubmit, submitting, form, roles }) => {
     const { t } = useI18n();
     const [selectedRoleId, setSelectedRoleId] = useState(null);
+    const { moduleKeys } = usePermissionCatalog();
     const selectedRole = (roles || []).find((r) => r.id === selectedRoleId);
     const grantedModules = (selectedRole?.permissions || []).filter(
-        (p) => p.level !== "none" && VISIBLE_MODULE_KEYS.includes(p.moduleKey)
+        (p) => p.level !== "none" && moduleKeys.includes(p.moduleKey)
     );
 
     const handleCancel = () => {

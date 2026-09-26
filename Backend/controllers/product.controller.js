@@ -22,6 +22,7 @@ import { emitAccountEvent, emitPosEvent } from "../live/dataEvents.js";
 import { enqueueWebhookEvent } from "../services/webhookDispatch.service.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 import { resolveOrAssertPointOfSaleId, assertPosAccess } from "../middleware/pos.permissions.js";
+import { getCapabilities } from "../middleware/team.permissions.js";
 import { normalizeProductImage } from "../utils/productImage.js";
 import { attachImage, replacePrimaryImage } from "../services/productImage.service.js";
 
@@ -924,6 +925,13 @@ const getAllProducts = asyncHandler(async (req, res, next) => {
 const updateProduct = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     const updateData = req.body;
+
+    // A member who can't see costs (catalogViewCosts) can't change them
+    // either - their form never had the real value, so whatever arrives
+    // (blank, stale) must not overwrite it.
+    if (!(await getCapabilities(req.user)).catalogViewCosts) {
+        delete updateData.buying_price;
+    }
 
     if (
         updateData.tax_treatment !== undefined &&

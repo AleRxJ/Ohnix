@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Tag } from "antd";
 import { DownOutlined, UpOutlined } from "@ant-design/icons";
-import { VISIBLE_MODULE_KEYS } from "../../constants/teamModules";
+import usePermissionCatalog from "../../hooks/usePermissionCatalog";
 
 const LEVEL_ORDER = ["admin", "edit", "view"];
 
@@ -15,9 +15,10 @@ const COLLAPSE_THRESHOLD = 5;
 // read-only view) so "what does this role grant" always renders identically.
 const RolePermissionTags = ({ role, t }) => {
     const [expanded, setExpanded] = useState(false);
+    const { moduleKeys } = usePermissionCatalog();
 
     const granted = (role?.permissions || []).filter(
-        (p) => p.level !== "none" && VISIBLE_MODULE_KEYS.includes(p.moduleKey)
+        (p) => p.level !== "none" && moduleKeys.includes(p.moduleKey)
     );
 
     if (granted.length === 0) {

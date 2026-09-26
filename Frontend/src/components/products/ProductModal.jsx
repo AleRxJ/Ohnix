@@ -39,6 +39,7 @@ const ProductModal = ({
     deleteProductImage,
     setPrimaryProductImage,
     reorderProductImages,
+    hideBuyingPrice = false,
 }) => {
     const { t } = useI18n();
     const { currency } = useCurrency();
@@ -612,6 +613,7 @@ const ProductModal = ({
                                     </h3>
                                 </div>
                                 <Row gutter={12}>
+                                    {!hideBuyingPrice && (
                                     <Col xs={24} sm={12}>
                                         <Form.Item
                                             name="buying_price"
@@ -646,6 +648,7 @@ const ProductModal = ({
                                             />
                                         </Form.Item>
                                     </Col>
+                                    )}
 
                                     <Col xs={24} sm={12}>
                                         <Form.Item

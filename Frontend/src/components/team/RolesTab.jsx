@@ -6,10 +6,11 @@ import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
 import { teamService } from "../../services/teamService";
 import RoleFormModal from "./RoleFormModal";
-import { VISIBLE_MODULE_KEYS } from "../../constants/teamModules";
+import usePermissionCatalog from "../../hooks/usePermissionCatalog";
 
 const RolesTab = ({ roles, members = [], onRolesChanged }) => {
     const { t } = useI18n();
+    const { moduleKeys } = usePermissionCatalog();
     const { team, isOwner } = useTeam();
     const [modalOpen, setModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
@@ -131,7 +132,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                                 <p className="mb-2 text-xs text-[var(--ohnix-text-muted)]">{t("team.role_owner_locked")}</p>
                             )}
                             <div className="flex flex-wrap gap-1.5">
-                                {VISIBLE_MODULE_KEYS.map((moduleKey) => {
+                                {moduleKeys.map((moduleKey) => {
                                     const level = role.permissions?.find((p) => p.moduleKey === moduleKey)?.level ?? "none";
                                     if (level === "none") return null;
                                     return (

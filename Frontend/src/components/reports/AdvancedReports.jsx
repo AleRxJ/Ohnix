@@ -19,6 +19,7 @@ import StatCard from "../dashboard/StatCard";
 import ReportExportButtons from "./ReportExportButtons";
 import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const { RangePicker } = DatePicker;
 
@@ -62,6 +63,10 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
+    // The margin report is cost data - the backend 403s it without
+    // catalogViewCosts, so don't request it or show its tab.
+    const { hasCapability } = useTeam();
+    const canViewCosts = hasCapability("catalogViewCosts");
 
     const dateParams = (range = dateRange) => ({
         start_date: range[0].format("YYYY-MM-DD"),
@@ -84,7 +89,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
             { key: "comparison_tab", url: "/reports/period-comparison", setData: setComparisonData },
             { key: "vat_tab", url: "/reports/vat", setData: setVatData },
             { key: "cartera_tab", url: "/reports/cartera", setData: setCarteraData },
-        ];
+        ].filter((request) => canViewCosts || request.key !== "margin_tab");
         const results = await Promise.allSettled(requests.map((r) => api.get(r.url, { params })));
 
         const failedLabels = [];
@@ -631,12 +636,14 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
             ),
         },
     ];
+    const visibleTabItems = canViewCosts ? tabItems : tabItems.filter((item) => item.key !== "margin");
+    const resolvedActiveTab = visibleTabItems.some((item) => item.key === activeTab) ? activeTab : visibleTabItems[0]?.key;
 
     return (
         <div className="space-y-4">
             {filterBar}
             <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden">
-                <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="custom-tabs" />
+                <Tabs activeKey={resolvedActiveTab} onChange={setActiveTab} items={visibleTabItems} className="custom-tabs" />
             </Card>
         </div>
     );

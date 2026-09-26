@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
-import { Modal, Form, Input, Select } from "antd";
+import { Modal, Form, Input, Select, Switch, InputNumber } from "antd";
 import { InfoCircleOutlined, TeamOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
-import { VISIBLE_MODULE_KEYS, PERMISSION_LEVELS } from "../../constants/teamModules";
+import usePermissionCatalog from "../../hooks/usePermissionCatalog";
 
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
@@ -23,6 +23,10 @@ const darkModalStyles = {
 // role; a fresh independent copy is created for targetName instead (see
 // MembersTab's handleOpenPermissions). Informational, not a warning, since
 // nothing shared actually changes.
+// New roles start with no special grants - same deny-by-default as modules
+// (Backend normalizeCapabilities treats a missing key as denied).
+const EMPTY_CAPABILITIES = { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false };
+
 const RoleFormModal = ({
     open,
     onCancel,
@@ -35,6 +39,9 @@ const RoleFormModal = ({
     forkNotice = null,
 }) => {
     const { t } = useI18n();
+    const { moduleKeys, levels } = usePermissionCatalog();
+    // The discount cap only applies while free pricing is off.
+    const priceOverride = Form.useWatch(["capabilities", "salesPriceOverride"], form);
 
     useEffect(() => {
         if (!open) return;
@@ -45,13 +52,13 @@ const RoleFormModal = ({
                 permissions[perm.moduleKey] = perm.level;
             }
             const name = duplicatingRole ? t("team.role_copy_suffix", { name: duplicatingRole.name }) : sourceRole.name;
-            form.setFieldsValue({ name, permissions });
+            form.setFieldsValue({ name, permissions, capabilities: { ...EMPTY_CAPABILITIES, ...(sourceRole.capabilities || {}) } });
         } else {
             const permissions = {};
-            for (const key of VISIBLE_MODULE_KEYS) permissions[key] = "none";
-            form.setFieldsValue({ name: "", permissions });
+            for (const key of moduleKeys) permissions[key] = "none";
+            form.setFieldsValue({ name: "", permissions, capabilities: EMPTY_CAPABILITIES });
         }
-    }, [open, editingRole, duplicatingRole, form, t]);
+    }, [open, editingRole, duplicatingRole, form, t, moduleKeys]);
 
     return (
         <Modal
@@ -110,14 +117,14 @@ const RoleFormModal = ({
                 </div>
 
                 <div className="rounded-xl border border-[var(--ohnix-line-4)] divide-y divide-[var(--ohnix-line-4)] overflow-hidden">
-                    {VISIBLE_MODULE_KEYS.map((moduleKey) => (
+                    {moduleKeys.map((moduleKey) => (
                         <div key={moduleKey} className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--ohnix-line-1)]">
                             <span className="text-sm text-[var(--ohnix-text-primary)]">{t(`team.module_${moduleKey}`)}</span>
                             <Form.Item name={["permissions", moduleKey]} className="m-0" initialValue="none">
                                 <Select
                                     size="small"
                                     style={{ width: 130 }}
-                                    options={PERMISSION_LEVELS.map((level) => ({
+                                    options={levels.map((level) => ({
                                         value: level,
                                         label: t(`team.permission_${level}`),
                                     }))}
@@ -125,6 +132,37 @@ const RoleFormModal = ({
                             </Form.Item>
                         </div>
                     ))}
+                </div>
+
+                <div className="mt-5 mb-2 text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("team.capabilities_title")}</div>
+                <div className="rounded-xl border border-[var(--ohnix-line-4)] divide-y divide-[var(--ohnix-line-4)] overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--ohnix-line-1)]">
+                        <div className="min-w-0">
+                            <div className="text-sm text-[var(--ohnix-text-primary)]">{t("team.capability_salesPriceOverride")}</div>
+                            <div className="text-[11px] text-[var(--ohnix-text-dim)]">{t("team.capability_salesPriceOverride_hint")}</div>
+                        </div>
+                        <Form.Item name={["capabilities", "salesPriceOverride"]} valuePropName="checked" className="m-0" initialValue={false}>
+                            <Switch size="small" />
+                        </Form.Item>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--ohnix-line-1)]">
+                        <div className="min-w-0">
+                            <div className="text-sm text-[var(--ohnix-text-primary)]">{t("team.capability_salesMaxDiscountPct")}</div>
+                            <div className="text-[11px] text-[var(--ohnix-text-dim)]">{t("team.capability_salesMaxDiscountPct_hint")}</div>
+                        </div>
+                        <Form.Item name={["capabilities", "salesMaxDiscountPct"]} className="m-0" initialValue={0}>
+                            <InputNumber size="small" min={0} max={100} precision={2} addonAfter="%" style={{ width: 120 }} disabled={Boolean(priceOverride)} />
+                        </Form.Item>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--ohnix-line-1)]">
+                        <div className="min-w-0">
+                            <div className="text-sm text-[var(--ohnix-text-primary)]">{t("team.capability_catalogViewCosts")}</div>
+                            <div className="text-[11px] text-[var(--ohnix-text-dim)]">{t("team.capability_catalogViewCosts_hint")}</div>
+                        </div>
+                        <Form.Item name={["capabilities", "catalogViewCosts"]} valuePropName="checked" className="m-0" initialValue={false}>
+                            <Switch size="small" />
+                        </Form.Item>
+                    </div>
                 </div>
             </Form>
         </Modal>

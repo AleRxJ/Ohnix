@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Input, Spin, Tooltip } from "antd";
 import {
     CloseOutlined,
@@ -10,6 +10,9 @@ import {
     DislikeOutlined,
     DislikeFilled,
     PlusOutlined,
+    ArrowRightOutlined,
+    AimOutlined,
+    DisconnectOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
@@ -17,9 +20,19 @@ import useIsMobile from "../../hooks/useIsMobile";
 import { assistantService } from "../../services/assistantService";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { useTeam } from "../../context/TeamContext";
+import { getAssistantPageContext, spotlightAnchor } from "./assistantPageContext";
+import { getConnectivityState, subscribeConnectivity } from "../../offline/connectivity";
 
 const CONVERSATION_STORAGE_KEY = "ohnix.assistant.conversationId";
 const SUGGESTION_KEYS = ["suggestion_1", "suggestion_2", "suggestion_3", "suggestion_4"];
+// Accounting gets its own openers: people there most often don't know what
+// to ask yet, so these start a guided conversation rather than a lookup.
+const ACCOUNTING_SUGGESTION_KEYS = [
+    "accounting_suggestion_1",
+    "accounting_suggestion_2",
+    "accounting_suggestion_3",
+    "accounting_suggestion_4",
+];
 
 const FAB_SIZE = 48;
 const EDGE_MARGIN = 8;
@@ -94,6 +107,8 @@ const AssistantWidget = () => {
     const { t, currentLanguage } = useI18n();
     const isMobile = useIsMobile();
     const currentModule = useCurrentModule();
+    const navigate = useNavigate();
+    const location = useLocation();
     // Mirrors InventoryTourFab's own visibility check - that button sits
     // directly below this one (both right-6, so perfectly column-aligned),
     // so whenever it hides itself (tour open/completed/dismissed, team
@@ -125,6 +140,10 @@ const AssistantWidget = () => {
     const [feedbackGiven, setFeedbackGiven] = useState({});
     const [pos, setPos] = useState(() => loadStoredPosition());
     const [dragging, setDragging] = useState(false);
+    // The assistant needs the model on the server, so it can't answer
+    // offline - but the rest of Ohnix keeps working offline, so this says
+    // so plainly instead of letting a send fail into a generic error toast.
+    const [online, setOnline] = useState(() => getConnectivityState());
     const listEndRef = useRef(null);
     const panelRef = useRef(null);
     const wrapRef = useRef(null);
@@ -135,6 +154,8 @@ const AssistantWidget = () => {
     useEffect(() => {
         listEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, sending]);
+
+    useEffect(() => subscribeConnectivity(setOnline), []);
 
     // A dragged position is only meaningful for the viewport it was dragged
     // in - re-clamp on resize so shrinking the window (or rotating a
@@ -194,7 +215,7 @@ const AssistantWidget = () => {
 
     const sendText = async (rawText) => {
         const trimmed = rawText.trim();
-        if (!trimmed || sending) return;
+        if (!trimmed || sending || !online) return;
 
         const userMessage = { id: `local-${Date.now()}`, role: "user", content: trimmed };
         setMessages((prev) => [...prev, userMessage]);
@@ -206,6 +227,7 @@ const AssistantWidget = () => {
                 conversationId,
                 message: trimmed,
                 module: currentModule,
+                tab: getAssistantPageContext().tab,
                 locale: currentLanguage,
             });
             if (result.conversationId && result.conversationId !== conversationId) {
@@ -234,6 +256,34 @@ const AssistantWidget = () => {
                 return next;
             });
         }
+    };
+
+    // "Ir a" and "Muéstrame dónde" both land on a screen resolved by the
+    // backend registry (services/assistantNavigation.js) - path/state are
+    // never free-form model output. Navigating only when needed keeps a
+    // highlight on the current screen from resetting its filters/scroll.
+    const goToScreen = (action) => {
+        const sameTab = (location.state?.tab || null) === (action.state?.tab || null);
+        if (location.pathname !== action.path || (action.state?.tab && !sameTab)) {
+            navigate(action.path, action.state ? { state: action.state } : undefined);
+        }
+        // Full-screen on mobile - the person can't see what they were sent
+        // to until the panel gets out of the way.
+        if (isMobile) setOpen(false);
+    };
+
+    const handleNavigate = (action) => {
+        goToScreen(action);
+        if (action.anchor) spotlightAnchor(action.anchor);
+    };
+
+    const handleHighlight = async (action) => {
+        goToScreen(action);
+        const found = await spotlightAnchor(action.anchor);
+        // Usually a permission gate (e.g. no edit access hides the "new"
+        // buttons) rather than a bug - still worth telling the person why
+        // nothing lit up.
+        if (!found) toast(t("assistant.highlight_not_found"));
     };
 
     const handleNewConversation = () => {
@@ -294,6 +344,12 @@ const AssistantWidget = () => {
         }
         setOpen(true);
     };
+
+    // Quick replies only make sense as answers to the latest question - older
+    // messages' choices would answer something the conversation has already
+    // moved past.
+    const lastMessage = messages[messages.length - 1];
+    const lastChoices = lastMessage?.role === "assistant" ? lastMessage.actions?.choices || [] : [];
 
     // Once dragged, the panel opens anchored to wherever the FAB now sits
     // instead of always the bottom-right corner - preferring upward (its
@@ -418,7 +474,7 @@ const AssistantWidget = () => {
                                 {t("assistant.empty_state")}
                             </div>
                             <div className="flex flex-col gap-2 px-2">
-                                {SUGGESTION_KEYS.map((key) => (
+                                {(currentModule === "accounting" ? ACCOUNTING_SUGGESTION_KEYS : SUGGESTION_KEYS).map((key) => (
                                     <button
                                         key={key}
                                         type="button"
@@ -460,6 +516,31 @@ const AssistantWidget = () => {
                             >
                                 <div>{message.content}</div>
 
+                                {message.role === "assistant" && (message.actions?.navigate || message.actions?.highlight) && (
+                                    <div className="flex flex-wrap gap-2 mt-2.5">
+                                        {message.actions.navigate && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleNavigate(message.actions.navigate)}
+                                                className="assistant-action-btn inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 cursor-pointer"
+                                            >
+                                                <ArrowRightOutlined />
+                                                {t("assistant.go_to", { label: t(message.actions.navigate.labelKey) })}
+                                            </button>
+                                        )}
+                                        {message.actions.highlight && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleHighlight(message.actions.highlight)}
+                                                className="assistant-action-btn inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 cursor-pointer"
+                                            >
+                                                <AimOutlined />
+                                                {t("assistant.show_me", { label: t(message.actions.highlight.labelKey) })}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
                                 {Array.isArray(message.sources) && message.sources.length > 0 && (
                                     <div className="mt-2 pt-2 text-xs opacity-70" style={{ borderTop: "1px solid var(--ohnix-line-4)" }}>
                                         {t("assistant.sources_label")}: {message.sources.map((s) => s.title).join(", ")}
@@ -492,6 +573,27 @@ const AssistantWidget = () => {
                         </div>
                     ))}
 
+                    {!sending && lastChoices.length > 0 && (
+                        <div className="assistant-message-in flex flex-wrap justify-end gap-2 pl-9">
+                            {lastChoices.map((choice) => (
+                                <button
+                                    key={choice}
+                                    type="button"
+                                    onClick={() => sendText(choice)}
+                                    disabled={!online}
+                                    className="assistant-suggestion-chip text-sm rounded-full px-3.5 py-1.5 cursor-pointer transition-colors duration-150 disabled:opacity-40"
+                                    style={{
+                                        background: "var(--ohnix-surface-card-soft)",
+                                        border: "1px solid rgba(41,216,213,0.45)",
+                                        color: "var(--ohnix-text-primary)",
+                                    }}
+                                >
+                                    {choice}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {sending && (
                         <div className="assistant-message-in flex items-end gap-2 justify-start">
                             <div
@@ -512,6 +614,12 @@ const AssistantWidget = () => {
                 </div>
 
                 <div className="px-4 py-3" style={{ borderTop: "1px solid var(--ohnix-line-3)" }}>
+                    {!online && (
+                        <div className="flex items-center gap-2 text-xs rounded-lg px-3 py-2 mb-2" style={{ background: "var(--ohnix-surface-card-soft)", color: "var(--ohnix-text-muted)", border: "1px solid var(--ohnix-line-3)" }}>
+                            <DisconnectOutlined />
+                            {t("assistant.offline_notice")}
+                        </div>
+                    )}
                     <div className="flex items-end gap-2">
                         <Input.TextArea
                             value={input}
@@ -524,12 +632,12 @@ const AssistantWidget = () => {
                             }}
                             placeholder={t("assistant.input_placeholder")}
                             autoSize={{ minRows: 1, maxRows: 4 }}
-                            disabled={sending}
+                            disabled={sending || !online}
                         />
                         <button
                             type="button"
                             onClick={() => sendText(input)}
-                            disabled={sending || !input.trim()}
+                            disabled={sending || !online || !input.trim()}
                             aria-label={t("assistant.send")}
                             className="flex items-center justify-center h-9 w-9 shrink-0 rounded-lg border-0 cursor-pointer disabled:opacity-40"
                             style={{ background: "linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%)", color: "#021314" }}
@@ -568,6 +676,25 @@ const AssistantWidget = () => {
                 .assistant-suggestion-chip:hover {
                     border-color: #29D8D5 !important;
                 }
+                .assistant-action-btn {
+                    background: rgba(41,216,213,0.12);
+                    border: 1px solid rgba(41,216,213,0.4);
+                    color: var(--ohnix-text-primary);
+                    transition: background 150ms ease;
+                }
+                .assistant-action-btn:hover {
+                    background: rgba(41,216,213,0.22);
+                }
+                .assistant-spotlight {
+                    position: relative;
+                    z-index: 2;
+                    border-radius: 8px;
+                    animation: ohnix-assistant-spotlight 1.1s ease-in-out 4;
+                }
+                @keyframes ohnix-assistant-spotlight {
+                    0%, 100% { box-shadow: 0 0 0 2px rgba(41,216,213,0.9), 0 0 0 0 rgba(41,216,213,0.45); }
+                    50% { box-shadow: 0 0 0 2px rgba(41,216,213,0.9), 0 0 0 10px rgba(41,216,213,0); }
+                }
                 .assistant-panel-in {
                     animation: ohnix-assistant-panel-in 200ms ease-out;
                     transform-origin: bottom right;
@@ -598,6 +725,10 @@ const AssistantWidget = () => {
                 @media (prefers-reduced-motion: reduce) {
                     .assistant-fab, .assistant-message-in, .assistant-typing-dot, .assistant-panel-in {
                         animation: none;
+                    }
+                    .assistant-spotlight {
+                        animation: none;
+                        box-shadow: 0 0 0 2px rgba(41,216,213,0.9);
                     }
                     .assistant-fab-wrap.is-draggable { transition: none; }
                 }

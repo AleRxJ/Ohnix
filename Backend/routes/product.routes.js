@@ -32,13 +32,16 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { upload, bulkUpload } from "../middleware/multer.middleware.js";
-import { requireModulePermission } from "../middleware/team.permissions.js";
+import { requireModulePermission, stripCostFieldsUnlessAllowed } from "../middleware/team.permissions.js";
 import { bulkUploadRateLimiter } from "../middleware/rateLimit.middleware.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
 
 router.use(verifyJWT);
+// Buying prices / inventory valuation hidden from members without the
+// catalogViewCosts capability (team.permissions.js).
+router.use(stripCostFieldsUnlessAllowed);
 
 // Bulk upload — Negocio ($49) and above
 router.route("/bulk-upload").post(bulkUploadRateLimiter, requireModulePermission("products", "edit"), enforcePlanFeature("bulkUpload"), bulkUpload.single("file"), bulkUploadProducts);
@@ -98,10 +101,12 @@ router
 router.route("/:id/stock-movements").get(requireModulePermission("products", "view"), getProductStockMovements);
 router.route("/:id/location-stock").get(requireModulePermission("products", "view"), getProductLocationStock);
 router.route("/:id/batches").get(requireModulePermission("products", "view"), getProductBatchesList);
+// Direct move with no approval step - "admin", same as an approved/quick
+// stock transfer (stockTransfer.routes.js).
 router
     .route("/:id/transfer-stock")
     .post(
-        requireModulePermission("products", "edit"),
+        requireModulePermission("products", "admin"),
         enforcePlanFeature("multiLocation"),
         idempotent("product.transfer-stock"),
         transferProductStock

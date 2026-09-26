@@ -54,7 +54,11 @@ const Dashboard = () => {
     const { formatCurrency } = useCurrency();
     const location = useLocation();
     const { user } = useContext(AuthContext);
-    const { hasPermission, isTeamMember, loading: teamLoading } = useTeam();
+    const { hasPermission, hasCapability, isTeamMember, loading: teamLoading } = useTeam();
+    // Inventory value is cost data - stripped by the backend without
+    // catalogViewCosts, so its card is dropped and the row re-balances.
+    const canViewCosts = hasCapability("catalogViewCosts");
+    const topStatSpan = canViewCosts ? 8 : 12;
     const canSeeBilling = hasPermission("billing", "view");
     const canSeeDashboard = hasPermission("dashboard", "view");
     // Same gating useSubscription/getMenuItems use to decide whether this
@@ -517,7 +521,7 @@ const Dashboard = () => {
                         )}
 
                         <Row gutter={[16, 16]}>
-                            <Col xs={24} sm={12} lg={8}>
+                            <Col xs={24} sm={12} lg={topStatSpan}>
                                 <StatCard
                                     title={t("dashboard.total_sales")}
                                     value={dashboardData.totalSales}
@@ -531,7 +535,7 @@ const Dashboard = () => {
                                     }
                                 />
                             </Col>
-                            <Col xs={24} sm={12} lg={8}>
+                            <Col xs={24} sm={12} lg={topStatSpan}>
                                 <StatCard
                                     title={t("dashboard.total_purchases")}
                                     value={dashboardData.totalPurchase}
@@ -545,6 +549,7 @@ const Dashboard = () => {
                                     }
                                 />
                             </Col>
+                            {canViewCosts && (
                             <Col xs={24} sm={24} lg={8}>
                                 <StatCard
                                     title={t("dashboard.inventory_value")}
@@ -560,6 +565,7 @@ const Dashboard = () => {
                                     precision={2}
                                 />
                             </Col>
+                            )}
                             <Col xs={24} sm={8}>
                                 <StatCard
                                     title={t("dashboard.total_products")}

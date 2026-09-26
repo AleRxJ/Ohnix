@@ -11,6 +11,8 @@ import { claimVariantStock, creditVariantStock } from "./variant.service.js";
 import { enqueueWebhookEvent } from "./webhookDispatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
+import { canAccessModule, getCapabilities } from "../middleware/team.permissions.js";
+import { assertSalePricesAllowed } from "../utils/salePriceControl.js";
 import { buildAccountingThirdParty, postOrderSaleJournalEntry, postOrderReturnJournalEntry } from "./accountingPosting.service.js";
 import { calculateExpectedReturnedTax } from "../utils/orderReturnTax.js";
 
@@ -53,6 +55,8 @@ const findProductByAnyId = async (id) =>
             productCode: true,
             createdById: true,
             stock: true,
+            // List price - the floor for salesPriceOverride (salePriceControl.js).
+            sellingPrice: true,
             taxRate: true,
             taxCode: true,
             taxTreatment: true,
@@ -160,7 +164,11 @@ const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trig
 };
 
 class OrderService {
-    async createOrder(orderData, userId, userRole, pointOfSaleId) {
+    // actingUser: the human placing the order (POS / web). Only then is the
+    // sale-price floor enforced - channel orders (integration.service.js)
+    // and quotation conversions (prices already checked at quotation time)
+    // don't pass it and keep their prices as-is.
+    async createOrder(orderData, userId, userRole, pointOfSaleId, actingUser = null) {
         const {
             customer_id,
             due_date,
@@ -262,15 +270,17 @@ class OrderService {
             }
 
             let variantId = null;
+            let variantListPrice = null;
             if (item.variant_id) {
                 const variant = await prisma.productVariant.findFirst({
                     where: { id: item.variant_id, productId: product.id },
-                    select: { id: true },
+                    select: { id: true, sellingPrice: true },
                 });
                 if (!variant) {
                     throw new ApiError(400, "One or more variants not found for their product", [], "", "product_variants_not_found");
                 }
                 variantId = variant.id;
+                variantListPrice = variant.sellingPrice;
             }
 
             // `item.unitcost` arrives in currencyCode's own units - converted
@@ -286,7 +296,19 @@ class OrderService {
                 quantity: Number(item.quantity),
                 unitcost: unitcostCop,
                 unitcostForeign,
+                listPrice: Number(variantListPrice ?? product.sellingPrice),
             });
+        }
+
+        if (actingUser) {
+            assertSalePricesAllowed(
+                resolvedItems.map((item) => ({
+                    listPrice: item.listPrice,
+                    effectivePrice: item.unitcost,
+                    label: item.product.productName,
+                })),
+                await getCapabilities(actingUser)
+            );
         }
 
         if (shouldDeductStock) {
@@ -702,6 +724,13 @@ class OrderService {
         }
 
         if (order.orderStatus === "completed" && newStatus === "cancelled") {
+            // Undoing a completed sale reverses stock, cash and the ledger -
+            // "orders: admin", unlike the routine pending/processing moves
+            // this same endpoint handles at "edit" (order.routes.js).
+            if (actingUser && !(await canAccessModule(actingUser, "orders", "admin"))) {
+                throw new ApiError(403, 'Tu rol no tiene permiso para "administrar" en pedidos (cancelar una venta completada).');
+            }
+
             // An issued/accepted electronic invoice is a DIAN-facing legal
             // document - cancelling the order locally without voiding it
             // properly would desync Ohnix from what was actually reported.
