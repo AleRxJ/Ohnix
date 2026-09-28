@@ -8,6 +8,7 @@
     "start": "node scripts/startup.js",
     "dev": "nodemon server.js",
     "prisma:generate": "prisma generate",
+    "assistant:app-map": "node scripts/generateAssistantAppMap.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
     "prisma:deploy": "prisma migrate deploy",

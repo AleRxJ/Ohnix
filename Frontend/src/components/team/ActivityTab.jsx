@@ -52,6 +52,24 @@ const PermissionChanges = ({ changes, t }) => {
     );
 };
 
+// Role capability edits (team.service.js#updateRole's capabilityChanges):
+// booleans as on/off, the discount cap as a percentage.
+const formatCapabilityValue = (value, t) =>
+    typeof value === "boolean" ? t(value ? "team.capability_on" : "team.capability_off") : `${value}%`;
+
+const CapabilityChanges = ({ changes, t }) => {
+    if (!changes?.length) return null;
+    return (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+            {changes.map((c) => (
+                <Tag key={c.key} className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-muted)] text-[10px] m-0">
+                    {t(`team.capability_${c.key}`)}: {formatCapabilityValue(c.from, t)} → {formatCapabilityValue(c.to, t)}
+                </Tag>
+            ))}
+        </div>
+    );
+};
+
 const avatarSrc = (actor) =>
     actor?.avatar?.trim() ||
     `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${encodeURIComponent(actor?.username || "?")}`;
@@ -99,7 +117,10 @@ const ActivityTab = () => {
                             {describeAction(log, lang, t)}
                         </p>
                         {log.action === "role.updated" && (
-                            <PermissionChanges changes={log.metadata?.permissionChanges} t={t} />
+                            <>
+                                <PermissionChanges changes={log.metadata?.permissionChanges} t={t} />
+                                <CapabilityChanges changes={log.metadata?.capabilityChanges} t={t} />
+                            </>
                         )}
                         <p className="m-0 mt-1 text-xs text-[var(--ohnix-text-muted)]">{new Date(log.createdAt).toLocaleString()}</p>
                     </div>

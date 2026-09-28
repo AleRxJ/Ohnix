@@ -13,6 +13,7 @@ import fixedAssetDepreciationScheduler from "./utils/fixedAssetDepreciationSched
 import prepaidExpenseScheduler from "./utils/prepaidExpenseScheduler.js";
 import loanInterestAccrualScheduler from "./utils/loanInterestAccrualScheduler.js";
 import recurringJournalScheduler from "./utils/recurringJournalScheduler.js";
+import { syncAppMapKnowledge } from "./services/assistantAppMapSync.service.js";
 import receiptTacitaScheduler from "./utils/receiptTacitaScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
 import discoveryScheduler from "./utils/discoveryScheduler.js";
@@ -91,6 +92,14 @@ connectDB()
         httpServer.listen(port, () => {
             console.log(`✅ Server listening on http://localhost:${port}/`);
             console.log(`🔌 Socket.IO live collaboration ready at /api/v1/socket.io`);
+
+            // Teach the assistant the current screens (data/assistantAppMap
+            // .generated.json) - fire-and-forget: a failure here only means
+            // the assistant keeps the previous version of that knowledge,
+            // never a reason to hold up the server.
+            syncAppMapKnowledge()
+                .then((result) => console.log(`🧭 Assistant app map ${result.hash}: +${result.created} ~${result.updated} -${result.removed} (${result.unchanged} unchanged)`))
+                .catch((error) => console.error("[assistant] app map sync failed:", error));
 
             if (process.env.START_SCHEDULER !== "false") {
                 console.log("🚀 Starting low stock alert scheduler...");

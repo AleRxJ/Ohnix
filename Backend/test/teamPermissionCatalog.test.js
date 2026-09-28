@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
     MODULE_KEYS,
     COUPLED_MODULES,
@@ -48,6 +48,35 @@ test("every grantable module has a team.module_* label in es and en", { skip: !h
         const messages = JSON.parse(fs.readFileSync(path.join(frontendSrc, `locales/${locale}/common.json`), "utf8"));
         for (const key of getPermissionCatalog().modules) {
             assert.ok(messages.team?.[`module_${key}`], `missing ${locale} team.module_${key}`);
+        }
+    }
+});
+
+test("module dependencies only reference real grantable modules", () => {
+    const { modules, dependencies } = getPermissionCatalog();
+    for (const [moduleKey, deps] of Object.entries(dependencies)) {
+        assert.ok(modules.includes(moduleKey), `unknown module ${moduleKey}`);
+        for (const dep of deps) assert.ok(modules.includes(dep), `${moduleKey} depends on unknown ${dep}`);
+    }
+});
+
+test("role templates use real modules, include their dependencies and have labels", { skip: !hasFrontend && "Frontend not present" }, async () => {
+    const { ROLE_TEMPLATES } = await import(pathToFileURL(path.join(frontendSrc, "constants/roleTemplates.js")).href);
+    const { modules, dependencies } = getPermissionCatalog();
+    const messages = {
+        es: JSON.parse(fs.readFileSync(path.join(frontendSrc, "locales/es/common.json"), "utf8")),
+        en: JSON.parse(fs.readFileSync(path.join(frontendSrc, "locales/en/common.json"), "utf8")),
+    };
+    for (const template of ROLE_TEMPLATES) {
+        for (const [moduleKey, level] of Object.entries(template.permissions)) {
+            assert.ok(modules.includes(moduleKey), `${template.key}: unknown module ${moduleKey}`);
+            assert.ok(["view", "edit", "admin"].includes(level), `${template.key}: bad level ${level}`);
+            for (const dep of dependencies[moduleKey] || []) {
+                assert.ok(template.permissions[dep], `${template.key}: ${moduleKey} needs ${dep}`);
+            }
+        }
+        for (const locale of ["es", "en"]) {
+            assert.ok(messages[locale].team?.[`template_${template.key}`], `missing ${locale} team.template_${template.key}`);
         }
     }
 });

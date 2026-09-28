@@ -11,11 +11,19 @@ import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 // Plain HTML/Tailwind instead of antd (Layout/Row/Col/Space/Divider) - see
 // Navbar.jsx for why: this is public marketing chrome, and antd's vendor
 // chunk was being pulled into every marketing page just for basic layout.
-const Footer = () => {
+// `clearMobileBars`: the landing stacks two fixed bars at the bottom on
+// phones and small tablets (support bar ~64px on top of the sticky signup
+// CTA ~73px, both below md). Without enough bottom padding the last footer links sit
+// under them at max scroll and can't be tapped. Other pages have no fixed
+// bottom bars, so they only need the safe-area inset.
+const Footer = ({ clearMobileBars = false }) => {
     const { t } = useI18n();
+    const bottomPadding = clearMobileBars
+        ? "pb-[calc(9.5rem+env(safe-area-inset-bottom,0px))] md:pb-8"
+        : "pb-[calc(2rem+env(safe-area-inset-bottom,0px))]";
 
     return (
-        <footer className="border-t border-white/5 bg-[#050505] pt-16 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] text-[#A9B3B8] md:pb-8">
+        <footer className={`border-t border-white/5 bg-[#050505] pt-16 text-[#A9B3B8] ${bottomPadding}`}>
             <div className="container mx-auto max-w-[1440px] px-6">
                 <div className="flex flex-col items-start gap-12 md:flex-row md:items-center md:justify-between">
                     <div>

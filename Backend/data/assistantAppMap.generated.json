@@ -1,0 +1,1457 @@
+{
+  "hash": "daeeb5522019a04c",
+  "chunks": [
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Resumen: cómo funciona",
+      "body": "Contabilidad › Resumen.\nUn vistazo rápido a tus cifras del mes y accesos directos a las herramientas relacionadas (cartera, IVA, conciliación bancaria) que viven en otros módulos.\nGuía de la pantalla:\n- Tu contabilidad en un vistazo\n- Revisa las cifras del mes y detecta valores que necesiten atención.\n- Usa los accesos directos para profundizar en cartera, IVA o bancos.\n- Una lectura rápida de la salud financiera antes de revisar el detalle.\nAyudas y conceptos:\n- Saldos pendientes por cliente y proveedor — se calculan en Reportes a partir de tus pedidos y compras, no aquí.\n- IVA generado y descontable por tarifa y periodo, listo para tu declaración bimestral — en Reportes.\n- Cruza tus movimientos con el extracto bancario — se hace desde Finanzas, cuenta por cuenta.\n- Ventas menos costo de los productos vendidos; no incluye todavía todos los gastos operativos.\n- Diferencia entre el IVA cobrado en ventas y el IVA descontable de compras.\n- Es el saldo acumulado desde el inicio de tu cuenta contable, incluyendo ajustes hechos por comprobante manual. El Reporte de IVA (en Reportes) es por periodo y no incluye esos ajustes manuales — para tu declaración bimestral usa ese reporte, no este número.",
+      "tags": [
+        "accounting",
+        "overview"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Resumen: campos, botones y mensajes",
+      "body": "Contabilidad › Resumen.\nCampos, columnas y botones: Cuentas por cobrar y por pagar · Reporte de IVA · Conciliación bancaria · Margen bruto (mes actual) · IVA neto por pagar · Activos totales · Pasivos totales · Saldo a favor de IVA · Herramientas relacionadas",
+      "tags": [
+        "accounting",
+        "overview"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Plan de cuentas: cómo funciona (1/2)",
+      "body": "Contabilidad › Plan de cuentas.\nOrganiza tus cuentas contables por tipo (activo, pasivo, patrimonio, ingreso, costo, gasto). Ohnix creó el plan base automáticamente y lo usa para clasificar cada venta, compra y pago — normalmente no necesitas tocarlo, pero puedes agregar tus propias cuentas si tu contador te lo pide.\nGuía de la pantalla:\n- La estructura que organiza tus asientos\n- Revisa las cuentas que Ohnix crea automáticamente.\n- Crea cuentas adicionales solo cuando necesites separar un concepto.\n- Abre el libro de una cuenta para entender de dónde viene su saldo.\n- Un catálogo consistente que clasifica cada movimiento y alimenta los reportes.\nAyudas y conceptos:\n- Indica si la cuenta representa recursos, deudas, patrimonio, ingresos, gastos o costos.\n- Muestra todos los débitos y créditos de una cuenta y su saldo acumulado.\n- Aquí aparecerán las cuentas que clasifican tus movimientos. Ohnix genera las principales automáticamente; agrega otra solo si necesitas un nivel de detalle adicional.\n- Crea una cuenta solo si las existentes no representan el concepto que necesitas. El código y el tipo determinan cómo aparecerá en libros y estados financieros.\n- Usa una numeración coherente con tu catálogo actual; el código no puede repetirse.\n- El tipo controla en qué estado financiero aparece la cuenta y cómo se interpreta su saldo.",
+      "tags": [
+        "accounting",
+        "chart"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Plan de cuentas: cómo funciona (2/2)",
+      "body": "Contabilidad › Plan de cuentas.\n- Agrupa esta cuenta bajo otra ya existente, si tu plan de cuentas usa jerarquía. Puedes dejarlo en blanco.\n- Gastos para operar el negocio, no ligados directamente a una venta (arriendo, nómina, servicios).\n- Lo que cuesta producir o comprar lo que vendes (costo de venta).",
+      "tags": [
+        "accounting",
+        "chart"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Plan de cuentas: campos, botones y mensajes (1/2)",
+      "body": "Contabilidad › Plan de cuentas.\nCampos, columnas y botones: Cuenta desactivada · Cuenta activada · Nombre · Activa · Inactiva · Ver movimientos · Desactivar · Activar · Nueva cuenta · Cuenta creada · Nueva cuenta contable · Cuenta padre (opcional) · Activo · Pasivo · Patrimonio · Ingreso · Gasto · Costo · Tipo · Saldo · Saldo inicial · Saldo final · Ingreso manual · Gasto manual · Ajuste de inventario: … · Diferencia del traslado … · Transferencia de … a … · Reapertura del periodo …: … · Venta · Compra · Pago de pedido · Pago de compra\nCampos, columnas y botones: Cancelación de pedido · Devolución de pedido · Devolución de compra · Nota crédito (devolución) · Nota crédito (financiera) · Cierre de periodo · Reapertura de periodo · Nuevo cierre de periodo · Cierre de ejercicio · Reapertura de ejercicio · Nuevo cierre de ejercicio · Ajuste de inventario · Diferencia de traslado · Comprobante manual · Anulación de comprobante · Gasto recurrente · Transferencia entre cuentas · Ajuste de caja/banco · Apertura contable · Depreciación de activo fijo",
+      "tags": [
+        "accounting",
+        "chart"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Plan de cuentas: campos, botones y mensajes (2/2)",
+      "body": "Contabilidad › Plan de cuentas.\nCampos, columnas y botones: Baja de activo fijo · Asiento recurrente · Aporte de capital · Distribución de utilidades · Liquidación de IVA · Anulación de liquidación de IVA · Pago de IVA a la DIAN · Pago de diferido · Amortización de diferido · Cancelación de diferido · Deterioro de cartera · Desembolso de préstamo · Cuota de préstamo · Declaración de ICA · Anulación de declaración de ICA · Pago de ICA · Castigo de cartera · Recuperación de cartera castigada · Causación de intereses · Abono extraordinario a capital\nMensajes que puede mostrar:\n- ¿Desactivar esta cuenta? No se le podrán registrar nuevos asientos, pero su historial se conserva.\n- ¿Activar esta cuenta? Volverá a estar disponible para nuevos asientos.\n- Aún no se ha generado el plan de cuentas.\n- Sin movimientos en este rango de fechas.\n- El código es obligatorio.\n- El nombre es obligatorio.\n- Selecciona un tipo de cuenta.",
+      "tags": [
+        "accounting",
+        "chart"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Libro diario: cómo funciona",
+      "body": "Contabilidad › Libro diario.\nCada operación automática y cada comprobante contabilizado aparece aquí, dividido en Débito y Crédito. Los dos lados siempre suman igual y los asientos contabilizados nunca se editan.\nGuía de la pantalla:\n- La historia completa de cada movimiento\n- Elige el periodo y, si lo necesitas, filtra por el proceso que originó el asiento.\n- Expande un asiento para revisar las cuentas afectadas y comprobar su partida doble.\n- Trazabilidad desde la operación original hasta sus débitos y créditos.\nAyudas y conceptos:\n- Prueba otro rango o registra una operación. Las ventas, compras, pagos, devoluciones y comprobantes contabilizados aparecerán aquí automáticamente.\n- Se creará un asiento inverso y el original permanecerá intacto para auditoría.",
+      "tags": [
+        "accounting",
+        "journal"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Libro diario: campos, botones y mensajes (1/2)",
+      "body": "Contabilidad › Libro diario.\nCampos, columnas y botones: Tipo · Total · Reversar · Libro diario · Todos los tipos · Filtrado por registro de origen · Reversar asiento contable · Fecha de reversa · Motivo · Venta · Compra · Pago de pedido · Pago de compra · Cancelación de pedido · Devolución de pedido · Devolución de compra · Nota crédito (devolución) · Nota crédito (financiera) · Cierre de periodo · Reapertura de periodo · Nuevo cierre de periodo · Cierre de ejercicio · Reapertura de ejercicio · Nuevo cierre de ejercicio · Ajuste de inventario\nCampos, columnas y botones: Diferencia de traslado · Comprobante manual · Anulación de comprobante · Gasto manual · Ingreso manual · Gasto recurrente · Transferencia entre cuentas · Ajuste de caja/banco · Apertura contable · Depreciación de activo fijo · Baja de activo fijo · Asiento recurrente · Aporte de capital · Distribución de utilidades · Liquidación de IVA · Anulación de liquidación de IVA · Pago de IVA a la DIAN · Pago de diferido · Amortización de diferido · Cancelación de diferido · Deterioro de cartera",
+      "tags": [
+        "accounting",
+        "journal"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Libro diario: campos, botones y mensajes (2/2)",
+      "body": "Contabilidad › Libro diario.\nCampos, columnas y botones: Desembolso de préstamo · Cuota de préstamo · Declaración de ICA · Anulación de declaración de ICA · Pago de ICA · Castigo de cartera · Recuperación de cartera castigada · Causación de intereses · Abono extraordinario a capital · Ajuste de inventario: … · Diferencia del traslado … · Transferencia de … a … · Reapertura del periodo …: …\nMensajes que puede mostrar:\n- Asiento reversado correctamente.\n- No hay asientos contables en este rango de fechas.",
+      "tags": [
+        "accounting",
+        "journal"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Comprobantes: cómo funciona (1/2)",
+      "body": "Contabilidad › Comprobantes.\nCrea ajustes y reclasificaciones contables. Los borradores no afectan los estados financieros; al contabilizar quedan inmutables y solo pueden anularse mediante contraasiento.\nGuía de la pantalla:\n- Ajustes controlados fuera de la operación automática\n- Crea un borrador con fecha, explicación y al menos dos líneas.\n- Comprueba que débitos y créditos sean iguales.\n- Contabiliza cuando esté revisado; después solo podrá anularse con una reversa.\n- Un ajuste auditable que aparece en libros y estados financieros.\nAyudas y conceptos:\n- Se puede editar y todavía no afecta saldos ni reportes.\n- Ya afecta la contabilidad y queda protegido contra edición directa.\n- Si tu equipo tiene más de una persona con acceso a Contabilidad, quien creó el comprobante no podrá contabilizarlo: debe hacerlo otra persona. Si solo tú tienes acceso, puedes contabilizar tus propios comprobantes sin restricción.\n- Úsalos para ajustes y reclasificaciones que no nacen de ventas, compras o pagos automáticos.\n- Este comprobante es para ajustes contables, no para reemplazar ventas, compras o pagos. Escribe una explicación que otra persona pueda auditar después.\n- Opcional: enlace HTTPS al soporte del ajuste, como un documento o comprobante externo.",
+      "tags": [
+        "accounting",
+        "vouchers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Comprobantes: cómo funciona (2/2)",
+      "body": "Contabilidad › Comprobantes.\n- Si usas Clientes (1305) o Proveedores (2205), identifica el tercero en esa misma línea. Así el auxiliar conservará el saldo de la persona o empresa correcta.",
+      "tags": [
+        "accounting",
+        "vouchers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Comprobantes: campos, botones y mensajes",
+      "body": "Contabilidad › Comprobantes.\nCampos, columnas y botones: Comprobante guardado · Comprobante contabilizado · Anular mediante contraasiento · Motivo de anulación · Anular · Comprobante anulado · Borrador · Contabilizado · Anulado · Total · Contabilizar · Doble control · Nuevo comprobante · Abrir soporte · Editar comprobante · Enlace al soporte · Agregar línea · El comprobante está cuadrado y puede contabilizarse.\nMensajes que puede mostrar:\n- ¿Contabilizar este comprobante? Después no podrá editarse.\n- No has creado comprobantes manuales\n- El motivo de anulación es obligatorio.\n- Los débitos y créditos deben sumar lo mismo antes de contabilizar.",
+      "tags": [
+        "accounting",
+        "vouchers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Apertura contable: cómo funciona",
+      "body": "Contabilidad › Apertura contable.\nRegistra una única apertura para traer a Ohnix los saldos con los que ya opera tu empresa.\nGuía de la pantalla:\n- Usa la fecha inmediatamente anterior a tu primer periodo en Ohnix.\n- Distribuye cada saldo en su cuenta contable y, si aplica, tercero o centro de costo.\n- Verifica que el total de débitos sea igual al total de créditos.\nAyudas y conceptos:\n- Ohnix creará un asiento de apertura trazable que aparecerá en el libro diario y los saldos iniciales.\n- El asiento de apertura quedó disponible en el libro diario y se usará para calcular tus saldos.\n- Apertura contable\n- Columnas requeridas: código, débito y crédito. Opcionales: descripción, centro costo, tipo tercero, tercero y documento tercero.",
+      "tags": [
+        "accounting",
+        "opening_balance"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Apertura contable: campos, botones y mensajes",
+      "body": "Contabilidad › Apertura contable.\nCampos, columnas y botones: Apertura contable contabilizada · Comienza con tus saldos reales · Tus saldos iniciales ya están registrados · Crear otra apertura · Fecha de apertura · Importar Excel o CSV · Selecciona una cuenta activa · Tipo de tercero (opcional) · Agregar cuenta · La apertura cuadra y está lista para contabilizar. · Contabilizar apertura\nMensajes que puede mostrar:\n- El archivo no contiene filas.\n- La fila … no tiene una cuenta activa válida o valores numéricos.\n- El centro de costo de la fila … no existe o está inactivo.\n- El tipo de tercero de la fila … no es válido. Usa cliente, proveedor u otro.\n- La fila … necesita el nombre del tercero.\n- No fue posible leer el archivo de apertura.\n- Ajusta los valores hasta que débitos y créditos sean iguales.",
+      "tags": [
+        "accounting",
+        "opening_balance"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Auditoría: cómo funciona",
+      "body": "Contabilidad › Auditoría.\nConsulta quién ejecutó cada cambio contable y qué información quedó registrada.\nGuía de la pantalla:\n- Filtra por fechas, origen o acción.\n- Expande una fila para revisar los datos registrados.\nAyudas y conceptos:\n- Obtienes una trazabilidad centralizada de las operaciones contables.\n- La entidad indica qué registro originó la acción.\n- Cuando se registren operaciones contables aparecerán aquí.",
+      "tags": [
+        "accounting",
+        "audit"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Auditoría: campos, botones y mensajes",
+      "body": "Contabilidad › Auditoría.\nCampos, columnas y botones: Asiento contable · Presupuesto · Cuenta de caja · Cuenta contable · Centro de costo · Centro de costo del punto de venta · Concepto de retención · Auditoría contable · Filtrar por entidad · Filtrar por acción · Publicado · Creado · Actualizado · Eliminado · Activado · Desactivado · Cuenta contable cambiada · Fecha · Entidad · Acción · Usuario · Referencia\nMensajes que puede mostrar:\n- No hay eventos de auditoría\n- No fue posible cargar la auditoría.",
+      "tags": [
+        "accounting",
+        "audit"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Auxiliares por tercero: cómo funciona",
+      "body": "Contabilidad › Auxiliares por tercero.\nConsulta débitos, créditos y saldo acumulado por cliente, proveedor u otro tercero, conservando el nombre y documento registrados al contabilizar.\nGuía de la pantalla:\n- Saldos explicados por cliente o proveedor\n- Filtra el periodo y el tipo de tercero que quieres revisar.\n- Abre un tercero para ver cada movimiento y su saldo acumulado.\n- Un auxiliar para conciliar quién debe, a quién debes y qué movimientos forman el saldo.\nAyudas y conceptos:\n- Saldo que la cuenta o el tercero traía antes del rango seleccionado.\n- Saldo inicial más todos los movimientos dentro del rango.\n- Los clientes y proveedores aparecerán cuando una venta, compra, pago o devolución genere movimiento en sus cuentas de control.",
+      "tags": [
+        "accounting",
+        "third_parties"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Auxiliares por tercero: campos, botones y mensajes",
+      "body": "Contabilidad › Auxiliares por tercero.\nCampos, columnas y botones: Saldo inicial · Saldo final · Todos los terceros · Ver movimientos · Auxiliares por tercero · Saldo\nMensajes que puede mostrar:\n- Todavía no hay saldos por tercero",
+      "tags": [
+        "accounting",
+        "third_parties"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Centros de costo: cómo funciona",
+      "body": "Contabilidad › Centros de costo.\nOrganiza ingresos, costos y gastos por área, sede o unidad para entender qué parte del negocio genera cada resultado.\nGuía de la pantalla:\n- Entiende qué parte del negocio produce cada movimiento\n- Crea las áreas, sedes o unidades que necesitas analizar.\n- Selecciona un centro de costo en las líneas de tus comprobantes manuales.\n- Desactiva los que ya no uses; su historial contable se conserva.\n- Cada línea contabilizada conservará su centro de costo para filtros y reportes posteriores.\nAyudas y conceptos:\n- Es una etiqueta contable que identifica el área, sede o unidad responsable de un movimiento.\n- Crea el primero para clasificar líneas de comprobantes y consultar posteriormente el desempeño de cada área.\n- El centro seleccionado se aplicará a las nuevas ventas, compras, pagos, devoluciones, ingresos, gastos y ajustes originados en esa sede. Los movimientos históricos no se modifican.\n- Usa códigos cortos y nombres claros, por ejemplo ADM · Administración o BOG · Sede Bogotá.\n- Identificador único dentro de tu empresa. Se guardará en mayúsculas.\n- Aquí verás exclusivamente las líneas contables asignadas a este centro. Los totales de débito y crédito no tienen que ser iguales porque un asiento puede distribuir sus líneas entre varios centros.",
+      "tags": [
+        "accounting",
+        "cost_centers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Centros de costo: campos, botones y mensajes",
+      "body": "Contabilidad › Centros de costo.\nCampos, columnas y botones: Centro de costo actualizado. · Centro de costo creado. · Asignación automática actualizada. · Nuevo centro de costo · Nombre · Ver auxiliar · Asignación automática por sede · Sin asignación automática · Editar centro de costo · Auxiliar por centro de costo\nMensajes que puede mostrar:\n- Aún no tienes centros de costo\n- No hay movimientos asignados a este centro de costo en el periodo seleccionado.",
+      "tags": [
+        "accounting",
+        "cost_centers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Gastos recurrentes: cómo funciona",
+      "body": "Contabilidad › Gastos recurrentes.\nConfigura un gasto que se repite cada mes (arriendo, nómina, etc.) y Ohnix lo contabiliza solo, el día indicado, sin que tengas que cargarlo a mano.\nGuía de la pantalla:\n- Automatiza los gastos que se repiten cada mes\n- Crea una plantilla con el monto, la cuenta de gasto y la cuenta de caja/banco.\n- Define el día del mes en que debe contabilizarse (o genera el primero con \"Generar ahora\").\n- Ohnix crea el comprobante contable automáticamente cada mes, sin duplicarlo, hasta que desactives la plantilla.\nAyudas y conceptos:\n- Entre 1 y 28, para que todos los meses (incluido febrero) tengan ese mismo día.\n- Crea el primero para dejar de registrar a mano el arriendo, la nómina u otro gasto operativo que se repite cada mes.\n- El centro de costo se asigna solo, según la sede de la cuenta de caja/banco que elijas — igual que un gasto manual.\n- El total que realmente pagas cada periodo (lo que sale de tu caja/banco), no la base sin IVA. Si marcas \"Gravado\", el IVA se descuenta de este total, no se suma encima.",
+      "tags": [
+        "accounting",
+        "recurring_expenses"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Gastos recurrentes: campos, botones y mensajes",
+      "body": "Contabilidad › Gastos recurrentes.\nCampos, columnas y botones: Gasto recurrente actualizado. · Gasto recurrente creado. · Día del mes · Nuevo gasto recurrente · Monto · Gastos · Cuenta de caja/banco · IVA · Gravado · Último generado: … · Generar ahora · Editar gasto recurrente · Tratamiento de IVA · Excluido · Exento · Tarifa de IVA (%) · Ese total se descompone en base … + IVA ….\nMensajes que puede mostrar:\n- Gasto recurrente generado.\n- Aún no tienes gastos recurrentes\n- Falló el último intento",
+      "tags": [
+        "accounting",
+        "recurring_expenses"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Activos fijos: cómo funciona (1/2)",
+      "body": "Contabilidad › Activos fijos.\nRegistra un activo fijo (equipo, mobiliario, vehículo) y Ohnix contabiliza su depreciación mensual automáticamente por línea recta, hasta agotar su vida útil.\nGuía de la pantalla:\n- Deprecia tus activos fijos mes a mes, sin hacerlo a mano\n- Registra el activo con su costo, valor residual y vida útil en meses.\n- Cada mes, Ohnix contabiliza automáticamente la cuota de depreciación (o genera la del mes actual con \"Generar ahora\").\n- Cuando se cumple la vida útil, el activo queda \"Totalmente depreciado\" y deja de generar asientos.\n- Un gasto de depreciación mensual real en tus estados financieros, sin cálculos manuales.\nAyudas y conceptos:\n- Lo que estimas que valdrá el activo al final de su vida útil. Se resta del costo antes de calcular la cuota mensual.\n- Cuántos meses esperas usar el activo antes de que se deprecie por completo.\n- Registra el primero para que Ohnix contabilice su depreciación mensual automáticamente.\n- La depreciación se calcula por línea recta: (costo - valor residual) ÷ vida útil en meses. El último mes ajusta cualquier centavo de redondeo para que el activo quede exactamente en su valor residual.\n- Este activo ya generó depreciación. El costo, valor residual, vida útil y fecha de adquisición ya no se pueden cambiar — si te equivocaste, da de baja este activo y registra uno nuevo.",
+      "tags": [
+        "accounting",
+        "fixed_assets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Activos fijos: cómo funciona (2/2)",
+      "body": "Contabilidad › Activos fijos.\n- Puede ser cero si esperas que el activo no valga nada al final.\n- Ej: 60 meses para equipo de cómputo, 120 para muebles.\n- Debe ser distinta a la cuenta del activo — es la contrapartida que reduce su valor en libros.\n- Esto retira el activo y su depreciación acumulada del balance, deposita lo recibido por la venta (si aplica) y contabiliza la utilidad o pérdida frente a su valor en libros. No se puede deshacer.\n- Lo que recibiste al vender el activo. Déjalo en 0 si lo diste de baja sin ninguna contraprestación.",
+      "tags": [
+        "accounting",
+        "fixed_assets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Activos fijos: campos, botones y mensajes",
+      "body": "Contabilidad › Activos fijos.\nCampos, columnas y botones: Activo fijo actualizado. · Activo fijo creado. · Activo dado de baja. · Valor residual · Vida útil (meses) · Nuevo activo fijo · Costo de adquisición · Depreciación mensual · Progreso · meses · Utilidad en baja · Pérdida en baja · Generar ahora · Dar de baja · Editar activo fijo · Contenido · Fecha de adquisición · Cuota mensual estimada: …. · Cuenta del activo · Cuenta de depreciación acumulada · Cuenta de gasto por depreciación · Dar de baja: … · Motivo de la baja\nCampos, columnas y botones: Valor de venta (0 si se descarta sin recibir nada) · Cuenta que recibió el pago\nMensajes que puede mostrar:\n- Depreciación generada.\n- Aún no tienes activos fijos registrados\n- Falló el último intento\n- El motivo de la baja es obligatorio.",
+      "tags": [
+        "accounting",
+        "fixed_assets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Diferidos: cómo funciona",
+      "body": "Contabilidad › Diferidos.\nAyudas y conceptos:\n- La amortización ya empezó; no se pueden cambiar los meses ni el primer mes.\n- El valor ya no se puede cambiar (el pago se registró aquí o ya hay amortizaciones).\n- El diferido cambió en otra sesión. Actualiza e inténtalo de nuevo.\n- Seguros, arriendos anticipados, licencias o suscripciones anuales: se pagan una vez y se reconocen como gasto mes a mes. Ohnix registra la amortización automáticamente cada mes y, si el diferido empezó en meses anteriores, pone al día los meses pendientes.\n- Registra un seguro, un arriendo anticipado o una licencia anual para amortizarlo mes a mes.\n- La amortización ya empezó: el valor, los meses y el primer mes no se pueden cambiar.\n- Por defecto 1705 Gastos pagados por anticipado.\n- Ohnix registrará la salida de la cuenta elegida contra la cuenta del diferido.\n- Déjalo apagado si el pago ya está contabilizado en la cuenta del diferido (por ejemplo, desde una compra o un comprobante).\n- El saldo pendiente (…) se llevará al gasto hoy, en un solo asiento, y la amortización se detiene.",
+      "tags": [
+        "accounting",
+        "prepaid_expenses"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Diferidos: campos, botones y mensajes",
+      "body": "Contabilidad › Diferidos.\nCampos, columnas y botones: La cuenta elegida no tiene saldo suficiente para el pago. · No hay meses pendientes por amortizar todavía. · Diferido actualizado · Diferido registrado · Diferido cancelado · Gastos pagados por anticipado · Nuevo diferido · Valor total · Cuota mensual · Saldo por amortizar · Progreso · meses · … mes(es) pendiente(s): … · Amortizar ahora · Cancelar · Editar diferido · Ej. Póliza todo riesgo 2026 · Contenido · Meses · Primer mes · Se amortizarán … por mes. · Cuenta del diferido · Cuenta de gasto\nCampos, columnas y botones: Registrar el pago ahora · Pagado desde · Fecha de pago · Cancelar … · Motivo\nMensajes que puede mostrar:\n- Amortización registrada\n- No hay diferidos registrados\n- No se pudo registrar la amortización.\n- Falló el último intento",
+      "tags": [
+        "accounting",
+        "prepaid_expenses"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Obligaciones financieras: cómo funciona",
+      "body": "Contabilidad › Obligaciones financieras.\nCuota fija de … (tasa mensual …%).\nAyudas y conceptos:\n- El préstamo cambió en otra sesión. Actualiza e inténtalo de nuevo.\n- Registra un préstamo con su tasa efectiva anual y plazo. Ohnix arma la tabla de amortización con cuota fija y, en cada pago, separa el abono a capital (obligación financiera) de los intereses (gasto financiero). Si el banco cobra otro interés, puedes corregirlo al pagar.\n- Registra un crédito bancario para llevar su tabla de amortización y sus pagos.\n- La tasa E.A. del crédito (no la nominal mensual).\n- Ohnix registrará la entrada del dinero en la cuenta elegida contra la obligación financiera.\n- Déjalo apagado si el préstamo ya está contabilizado (por ejemplo, en el saldo inicial).\n- Capital … + intereses … según la tabla.\n- Cámbialo si el extracto del banco muestra otro valor.\n- Saldo de capital actual: …. El abono va completo a capital (sin intereses).",
+      "tags": [
+        "accounting",
+        "financial_obligations"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Obligaciones financieras: campos, botones y mensajes",
+      "body": "Contabilidad › Obligaciones financieras.\nCampos, columnas y botones: La cuenta elegida no tiene saldo suficiente para la cuota. · La primera cuota debe ser igual o posterior al desembolso. · El abono supera el saldo de capital. · Préstamo registrado · Cuota pagada · Vence · Cuota · Capital · Intereses · Saldo · Préstamos y obligaciones financieras · Nuevo préstamo · Entidad · …% E.A. · Monto · Saldo de capital · Progreso · Próxima: … · … · Tabla · Pagar cuota · Abono a capital · Número de crédito · Tasa efectiva anual · Plazo (meses) · Fecha de desembolso\nCampos, columnas y botones: Primera cuota · Ver tabla de amortización · Cuenta de la obligación · Cuenta de intereses · Registrar el desembolso ahora · Cuenta donde se recibió · Cuota …/… · … · Cuenta de pago · Fecha de pago · Abono extraordinario · … · Valor del abono · Después del abono · Reducir la cuota (mismo plazo) · Reducir el plazo (misma cuota) · Abono … · … · Pagada … · Vencida · intereses causados · Pendiente\nMensajes que puede mostrar:\n- Abono a capital registrado\n- No hay obligaciones financieras",
+      "tags": [
+        "accounting",
+        "financial_obligations"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Deterioro de cartera: cómo funciona",
+      "body": "Contabilidad › Deterioro de cartera.\nAyudas y conceptos:\n- Calcula cuánto de tu cartera vencida probablemente no se recupere y lo reconoce como gasto. Ohnix agrupa las facturas pendientes por días de vencimiento (desde la fecha de vencimiento, o desde la fecha de la venta si no tiene) y aplica un porcentaje por tramo. Por defecto usa el método general fiscal: 5% de 91 a 180 días, 10% de 181 a 360 y 15% a más de 360. Cada vez que lo registras, el deterioro acumulado (1399) se ajusta al valor requerido: sube contra gasto (5199) o baja contra recuperación (4250).",
+      "tags": [
+        "accounting",
+        "receivable_impairment"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Deterioro de cartera: campos, botones y mensajes",
+      "body": "Contabilidad › Deterioro de cartera.\nCampos, columnas y botones: Cada porcentaje debe estar entre 0 y 100. · La fecha de corte no puede ser futura. · Deterioro registrado · Deterioro de cartera · Fecha de corte · Calcular · Cartera pendiente · Ajuste: aumentar · Ajuste: recuperar · Registrar deterioro · Factura · Vence · Días vencida · Tramo · Pendiente · Deterioro · Corridas anteriores · Ajuste · Registrado\nMensajes que puede mostrar:\n- ¿Registrar el deterioro a esta fecha?\n- El deterioro registrado ya coincide con el requerido; solo se guardará la corrida.\n- Se registrará un gasto por deterioro de ….\n- Se registrará una recuperación de ….\n- No hay facturas vencidas a esta fecha\n- Aún no has registrado deterioro\n- Deterioro requerido",
+      "tags": [
+        "accounting",
+        "receivable_impairment"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Inventario valorizado: cómo funciona",
+      "body": "Contabilidad › Inventario valorizado.\nAyudas y conceptos:\n- Valoriza el inventario a una fecha con el costo promedio de cada movimiento y lo compara con el saldo de la cuenta 1435. Haz clic en un producto para ver su kardex.\n- El saldo contable no coincide con el inventario valorizado. Suele deberse a comprobantes manuales o saldos iniciales sobre la cuenta 1435, o a movimientos antiguos sin costo.\n- … producto(s) tienen existencias con movimientos antiguos sin costo registrado; su valor aparece incompleto.",
+      "tags": [
+        "accounting",
+        "inventory_valuation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Inventario valorizado: campos, botones y mensajes",
+      "body": "Contabilidad › Inventario valorizado.\nCampos, columnas y botones: Inventario valorizado · Código · Producto · Cantidad · Costo promedio · Valor · Saldo cuenta 1435 · Diferencia · Movimiento · Sede · Entradas · Salidas · Costo unitario · Valor movimiento · Saldo cant. · Saldo valor · Saldo inicial · Inventario valorizado contra contabilidad · Tiene existencias sin costo registrado · Kardex · … · Saldo final\nMensajes que puede mostrar:\n- No hay existencias a esta fecha",
+      "tags": [
+        "accounting",
+        "inventory_valuation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Asientos recurrentes: cómo funciona",
+      "body": "Contabilidad › Asientos recurrentes.\nRegistra un asiento de varias líneas (provisión, causación de intereses, etc.) que se repite cada mes con el mismo monto — para casos de doble partida que no encajan en Gastos Recurrentes.\nGuía de la pantalla:\n- Automatiza asientos de doble partida que se repiten cada mes\n- Arma el asiento con sus líneas de débito y crédito, igual que un comprobante manual.\n- Cada mes, Ohnix lo contabiliza automáticamente con el mismo monto (o genera el del mes actual con \"Generar ahora\").\n- Un asiento recurrente contabilizado a tiempo, sin tener que recrearlo cada mes a mano.\nAyudas y conceptos:\n- Entre 1 y 28, para que todos los meses (incluido febrero) tengan ese mismo día.\n- Crea la primera para automatizar un asiento de varias líneas que se repite cada mes.\n- El monto de cada línea es fijo y se repite igual cada mes. Si el monto cambia, edita la plantilla.",
+      "tags": [
+        "accounting",
+        "recurring_journals"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Asientos recurrentes: campos, botones y mensajes",
+      "body": "Contabilidad › Asientos recurrentes.\nCampos, columnas y botones: Plantilla recurrente actualizada. · Plantilla recurrente creada. · Día del mes · Nueva plantilla recurrente · Monto · Último generado: … · Generar ahora · Editar plantilla recurrente · Agregar línea · El comprobante está cuadrado y puede contabilizarse.\nMensajes que puede mostrar:\n- Asiento recurrente generado.\n- Aún no tienes plantillas de asiento recurrente\n- Falló el último intento\n- Los débitos y créditos deben sumar lo mismo antes de contabilizar.",
+      "tags": [
+        "accounting",
+        "recurring_journals"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Presupuestos: cómo funciona",
+      "body": "Contabilidad › Presupuestos.\nDefine metas mensuales por cuenta y centro de costo, compáralas con la ejecución contable y detecta desviaciones a tiempo.\nGuía de la pantalla:\n- Convierte tus metas en decisiones medibles\n- Selecciona el mes y decide si la meta aplica a toda la empresa o a un centro de costo.\n- Registra el valor esperado para cada cuenta y define cuánto desvío toleras.\n- Revisa la ejecución y atiende las partidas que Ohnix marque fuera de rango.\n- Obtendrás una comparación mensual actualizada directamente con los asientos contabilizados, sin ingresar la ejecución manualmente.\nAyudas y conceptos:\n- Diferencia entre la ejecución real y el valor presupuestado. En ingresos, quedar por debajo es desfavorable; en costos y gastos, excederse es desfavorable.\n- Porcentaje de desviación desfavorable permitido antes de mostrar una alerta.\n- Hay … partidas fuera del umbral definido. Revisa las filas marcadas antes de tomar decisiones.\n- Crea una partida para comenzar a comparar tus metas con los movimientos realmente contabilizados.\n- Ingresa el total anual. Ohnix lo distribuirá equitativamente entre los 12 meses y ajustará los centavos en diciembre.\n- Selecciona una cuenta de ingresos, costos o gastos. La ejecución se calculará automáticamente desde el libro diario del mes.\n- Déjalo vacío para comparar la meta contra toda la empresa, sin limitarla a un centro de costo.",
+      "tags": [
+        "accounting",
+        "budgets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Presupuestos: campos, botones y mensajes",
+      "body": "Contabilidad › Presupuestos.\nCampos, columnas y botones: Presupuesto guardado. · Partida presupuestal eliminada. · Ingreso por debajo · Presupuesto excedido · En rango · Desviación · Umbral de alerta · Vista mensual · Vista anual · Presupuesto general · Distribuir presupuesto anual · Nueva partida · Copiar año anterior · Ingresos presupuestados · Ingresos ejecutados · Costos y gastos presupuestados · Costos y gastos ejecutados · Cuenta · Presupuesto anual · Ejecución real · Presupuesto · Cumplimiento · Editar partida · Valor anual\nMensajes que puede mostrar:\n- Se copiaron … partidas y se conservaron … existentes.\n- ¿Copiar el presupuesto de …? Las partidas que ya existan en el año actual se conservarán.\n- Aún no hay presupuesto para este periodo\n- ¿Eliminar esta partida presupuestal?",
+      "tags": [
+        "accounting",
+        "budgets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Balance de comprobación: cómo funciona",
+      "body": "Contabilidad › Balance de comprobación.\nTodas tus cuentas contables con su saldo inicial, movimiento del periodo y saldo final — útil para revisar que todo cuadre antes de cerrar el mes.\nGuía de la pantalla:\n- La comprobación de que los libros cuadran\n- Selecciona el periodo que vas a revisar.\n- Confirma que el total de débitos sea igual al total de créditos.\n- Una vista de control por cuenta con saldo inicial, movimiento y saldo final.\nAyudas y conceptos:\n- Saldo que la cuenta o el tercero traía antes del rango seleccionado.\n- Saldo inicial más todos los movimientos dentro del rango.\n- Aquí aparecerán las cuentas que clasifican tus movimientos. Ohnix genera las principales automáticamente; agrega otra solo si necesitas un nivel de detalle adicional.",
+      "tags": [
+        "accounting",
+        "trial_balance"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Balance de comprobación: campos, botones y mensajes",
+      "body": "Contabilidad › Balance de comprobación.\nCampos, columnas y botones: Nombre · Saldo inicial · Saldo final · Balance de comprobación · Todos los centros de costo · Totales del periodo\nMensajes que puede mostrar:\n- Aún no se ha generado el plan de cuentas.",
+      "tags": [
+        "accounting",
+        "trial_balance"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Periodos: cómo funciona (1/3)",
+      "body": "Contabilidad › Periodos.\nLos periodos agrupan tu contabilidad por mes. Cerrar un periodo evita que se agreguen o modifiquen asientos de un mes que ya revisaste y diste por bueno — es opcional, no bloquea tu operación si no lo haces.\nGuía de la pantalla:\n- Protege los meses que ya revisaste\n- Revisa primero el balance de comprobación y los estados del mes.\n- Cierra el periodo para bloquear nuevos asientos con esa fecha.\n- Si necesitas corregirlo, reábrelo temporalmente dejando un motivo.\n- Meses protegidos y una bitácora clara de cierres y reaperturas.\nAyudas y conceptos:\n- Solo puedes cerrar un año fiscal ya transcurrido por completo.\n- Si necesitas corregir algo, primero reábrelo desde la tabla de abajo.\n- Todos los meses de … están cerrados. Al continuar se trasladará el resultado del año a Utilidades acumuladas.\n- Esta acción queda registrada y puede revertirse temporalmente con \"Reabrir\" si necesitas corregir algo.\n- Reabrir el ejercicio no reabre por sí solo ningún mes para nuevos movimientos; solo revierte el traslado a Utilidades acumuladas para que puedas corregir algo y volver a cerrar.\n- Hay … cajas o bancos cuyo saldo no coincide con sus movimientos. Revísalos en Finanzas antes de cerrar.\n- El saldo guardado de cada caja y banco coincide con la suma de sus movimientos.",
+      "tags": [
+        "accounting",
+        "periods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Periodos: cómo funciona (2/3)",
+      "body": "Contabilidad › Periodos.\n- Hay … líneas de extracto y … movimientos internos pendientes en este periodo. No bloquean el cierre, pero conviene revisarlos.\n- … cuentas contables requieren revisión. Pueden explicarse por comprobantes manuales o saldos históricos y no bloquean automáticamente.\n- Este mes cierra el periodo … …/… y todavía no está liquidado. Si cierras el mes primero, no podrás registrar la liquidación hasta reabrirlo. Liquídalo en Impuestos → Liquidación de IVA.\n- Este mes cierra el periodo de ICA … y aún no está declarado. Si cierras el mes primero, no podrás registrar la declaración hasta reabrirlo. Declárala en Impuestos → Declaración de ICA.\n- … diferido(s) tienen … pendientes de amortizar hasta este mes. Amortízalos en la pestaña Diferidos antes de cerrar.\n- … préstamo(s) tienen cuotas vencidas por …. Sus intereses se causan automáticamente; registra el pago en Obligaciones financieras.\n- Según la antigüedad de la cartera a fin de mes, el deterioro requerido es … y el registrado es …. Actualízalo en la pestaña Deterioro de cartera.\n- Al cerrar se trasladará el resultado del periodo y se bloquearán nuevos asientos para ese mes.\n- La reapertura permitirá nuevos asientos durante el tiempo indicado. Al volver a cerrar, Ohnix recalculará el traslado del resultado del periodo.\n- Bloquea nuevas contabilizaciones en el mes y traslada su resultado a patrimonio.",
+      "tags": [
+        "accounting",
+        "periods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Periodos: cómo funciona (3/3)",
+      "body": "Contabilidad › Periodos.\n- Habilita correcciones por tiempo limitado y conserva quién lo hizo y por qué.\n- Ohnix crea cada periodo mensual al registrar el primer asiento. No necesitas abrirlo manualmente.\n- Traslada la utilidad o pérdida del año (acumulada mes a mes en \"Utilidad del ejercicio\") a \"Utilidades acumuladas\", y deja el año listo para auditoría. Solo se puede cerrar un año una vez sus 12 meses ya estén cerrados individualmente.\n- Cuando cierres un año completo (con sus 12 meses ya cerrados), aparecerá aquí.",
+      "tags": [
+        "accounting",
+        "periods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Periodos: campos, botones y mensajes",
+      "body": "Contabilidad › Periodos.\nCampos, columnas y botones: Verificación del cierre del ejercicio … · Ese año todavía no ha terminado · Ese año ya está cerrado · Aún faltan meses por cerrar · Cierra primero estos meses en la tabla de arriba: …. · Listo para cerrar · Cerrar ejercicio · Corrige las diferencias primero · Ejercicio … cerrado. · Reabrir el ejercicio … · Motivo de reapertura · horas · Reabrir ejercicio · Ejercicio … reabierto temporalmente. · Periodo cerrado · Revisión antes de cerrar … · El periodo no puede cerrarse todavía\nCampos, columnas y botones: Los saldos operativos son consistentes · Existen conciliaciones pendientes · Ir a conciliación bancaria en Finanzas → · Hay diferencias frente al libro mayor · IVA sin liquidar · ICA sin declarar · Diferidos sin amortizar · Cuotas de préstamos vencidas · Deterioro de cartera desactualizado · Cerrar · Reabrir periodo temporalmente · Reabrir · Periodo reabierto temporalmente · Periodo · Cerrado · Reabierto · Reapertura vencida · Abierto · Cerrado el · Autorizado hasta · Reabierto el\nCampos, columnas y botones: Cerrado nuevamente · Cierre de ejercicio anual · Selecciona un año · Verificar y cerrar año · Año\nMensajes que puede mostrar:\n- No hay periodos contables todavía.\n- Aún no has cerrado ningún ejercicio\n- No fue posible ejecutar la revisión previa al cierre.\n- El motivo de reapertura es obligatorio.",
+      "tags": [
+        "accounting",
+        "periods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Estados financieros: cómo funciona (1/2)",
+      "body": "Contabilidad › Estados financieros.\nGuía de la pantalla:\n- Convierte los asientos en información financiera\n- Consulta el desempeño de un periodo y la situación financiera acumulada a una fecha.\n- Usa el estado de resultados para analizar ingresos, costos y margen del periodo.\n- Usa el balance general para revisar activos, pasivos y patrimonio a una fecha.\n- Reportes financieros calculados directamente desde el libro contable.\nAyudas y conceptos:\n- Calculado automáticamente: ingresos menos costos y gastos del periodo. No es una cuenta contable real, por eso no tiene código.\n- Explica si la operación produjo utilidad o pérdida durante un rango de fechas.\n- Muestra lo que tienes, lo que debes y el patrimonio acumulado a una fecha.\n- Los ingresos y el costo de ventas se contabilizan solos desde tus operaciones. Los gastos operativos (arriendo, nómina, etc.) no se automatizan todavía — el resultado neto solo incluye los que hayas registrado a mano en Gastos manuales.\n- Compara el mismo periodo entre todos los centros de costo activos, uno por columna. La fila Total coincide con el estado de resultados sin filtrar porque cada movimiento cae en un único centro (o en \"Sin centro\" si nunca se clasificó).",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Estados financieros: cómo funciona (2/2)",
+      "body": "Contabilidad › Estados financieros.\n- Este balance filtrado por centro de costo puede no cuadrar por sí solo — algunas operaciones (como transferencias entre cajas de sedes distintas) reparten sus líneas entre varios centros. No es un descuadre del libro general; quita el filtro para verificarlo.\n- Agrega aclaraciones que no se ven en las cifras: políticas contables, contingencias, operaciones con partes relacionadas, o cualquier nota que tu contador o revisor fiscal necesite para el año.\n- Crea la primera para dejar constancia de algo que las cifras por sí solas no explican.",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Estados financieros: campos, botones y mensajes (1/3)",
+      "body": "Contabilidad › Estados financieros.\nCampos, columnas y botones: Nota actualizada. · Nota creada. · Nota eliminada. · Cuenta · Monto · Ingresos · Costos · Gastos · Ingresos totales · Costo de ventas · Margen bruto · Gastos totales · Resultado neto · Estado de Resultados · Activos · Pasivos · Patrimonio · Resultado del ejercicio · Total activos · Total pasivos · Total patrimonio · Balance General · Saldo inicial · Actividades de operación · Actividades de inversión · Actividades de financiación · Ajustes · Variación neta · Saldo final\nCampos, columnas y botones: Estado de Flujo de Efectivo · Aportes de capital · Distribuciones · Otros movimientos · Estado de Cambios en el Patrimonio · Calculado · Todos los centros de costo · Ocultar comparativo · Comparar centros de costo · Sin centro · Notas a los estados financieros · Nueva nota · Editar nota · Título · Contenido · Venta · Compra · Pago de pedido · Pago de compra · Cancelación de pedido · Devolución de pedido · Devolución de compra · Nota crédito (devolución) · Nota crédito (financiera)",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Estados financieros: campos, botones y mensajes (2/3)",
+      "body": "Contabilidad › Estados financieros.\nCampos, columnas y botones: Cierre de periodo · Reapertura de periodo · Nuevo cierre de periodo · Cierre de ejercicio · Reapertura de ejercicio · Nuevo cierre de ejercicio · Ajuste de inventario · Diferencia de traslado · Comprobante manual · Anulación de comprobante · Gasto manual · Ingreso manual · Gasto recurrente · Transferencia entre cuentas · Ajuste de caja/banco · Apertura contable · Depreciación de activo fijo · Baja de activo fijo · Asiento recurrente · Aporte de capital · Distribución de utilidades\nCampos, columnas y botones: Liquidación de IVA · Anulación de liquidación de IVA · Pago de IVA a la DIAN · Pago de diferido · Amortización de diferido · Cancelación de diferido · Deterioro de cartera · Desembolso de préstamo · Cuota de préstamo · Declaración de ICA · Anulación de declaración de ICA · Pago de ICA · Castigo de cartera · Recuperación de cartera castigada · Causación de intereses · Abono extraordinario a capital\nMensajes que puede mostrar:\n- Aún no tienes centros de costo\n- No hay ingresos registrados en este rango.\n- No hay costos registrados en este rango.\n- No hay gastos operativos registrados en este rango. Regístralos en Gastos manuales para que aparezcan aquí.\n- El balance no cuadra — esto no debería pasar nunca. Repórtalo.\n- No hay cuentas de activo con saldo a esta fecha.",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Estados financieros: campos, botones y mensajes (3/3)",
+      "body": "Contabilidad › Estados financieros.\n- No hay cuentas de pasivo con saldo a esta fecha.\n- Aún no tienes notas para este año\n- ¿Eliminar esta nota?",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: cómo funciona (1/5)",
+      "body": "Contabilidad › Impuestos y retenciones.\nCentro tributario de Ohnix: configura responsabilidades, administra conceptos versionados y controla cómo IVA y retenciones llegan a tus asientos y saldos por pagar.\nGuía de la pantalla:\n- Configura impuestos sin perder la trazabilidad\n- Confirma la responsabilidad tributaria general de la empresa.\n- Crea conceptos con tarifa, base, vigencia y cuenta fiscal validadas.\n- Selecciona en cada compra únicamente las retenciones que realmente correspondan.\n- IVA y retenciones congelados por documento y contabilizados automáticamente.\nAyudas y conceptos:\n- Impuesto de ventas y compras calculado con el tratamiento fiscal congelado del producto.\n- Valor descontado al proveedor y registrado como obligación fiscal de la empresa.\n- Cada venta y compra ya calcula el IVA según el tratamiento tributario del producto y lo contabiliza en las cuentas \"IVA generado\" y \"IVA descontable\". El detalle por tarifa y periodo, listo para tu declaración, está en el reporte de IVA.\n- La configuración tributaria (quién es agente retenedor, tarifas aplicables, responsabilidad de IVA, régimen de renta) depende de la situación específica de tu empresa. Revísala con tu contador antes de darla por definitiva.\n- Configura el régimen tributario de tu empresa (Ordinario o RST) arriba para calcular tu declaración de renta estimada.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: cómo funciona (2/5)",
+      "body": "Contabilidad › Impuestos y retenciones.\n- Selecciona el grupo de actividad de tu empresa (Régimen Simple) arriba para calcular tu declaración de renta estimada.\n- Aún no hay tarifas configuradas para el año …. Contacta a soporte para que un administrador las cargue.\n- No fue posible calcular la declaración de renta con la configuración actual.\n- Tu declaración de renta la presentas tú (o tu contador) directamente ante la DIAN — Ohnix no la presenta por ti. Con base en tu régimen tributario y tus estados financieros del año, calculamos un estimado de tu renta líquida e impuesto a cargo, listo para que tu contador lo revise antes de declarar.\n- ⚠️ Estas tarifas son cifras de referencia que AÚN NO han sido confirmadas por un contador. No declares con estos números sin verificarlos primero.\n- Este es un estimado, no una declaración certificada. La tarifa vigente, la renta líquida gravable definitiva y el valor a pagar dependen de reglas fiscales adicionales (ingresos no constitutivos de renta, deducciones especiales, descuentos tributarios, etc.) que debe validar tu contador antes de presentar la declaración ante la DIAN.\n- Define si tu empresa declara renta bajo el Régimen Ordinario o el Régimen Simple de Tributación (RST) y, si aplica, tu grupo de actividad. Esto determina cómo Ohnix estima tu impuesto de renta.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: cómo funciona (3/5)",
+      "body": "Contabilidad › Impuestos y retenciones.\n- Confírmalo con tu contador — determina la tarifa y las reglas que se aplican en la declaración de renta.\n- El grupo determina la tabla de tarifas aplicable (Art. 908 ET). Confírmalo con tu contador.\n- Esto NO es el archivo certificado de la DIAN — el formato técnico exacto (ancho de columnas, catálogo de conceptos, codificación) cambia cada año por resolución y debe confirmarlo tu contador. Esta tabla organiza los pagos y retenciones que ya tienes en Ohnix, agrupados por proveedor y concepto, como insumo para armar la exógena real.\n- No hay pagos ni retenciones a proveedores registrados para ese año.\n- Define la condición tributaria general de tu empresa. Los conceptos aplicables se seleccionan explícitamente en cada compra y Ohnix congela su cálculo para conservar la historia.\n- Determina si tu empresa está obligada a retener y declarar retención en la fuente al pagarle a proveedores. Confírmalo con tu contador si no estás seguro.\n- Código de 5 dígitos del municipio donde tu empresa realiza su actividad económica, ej. 11001 para Bogotá.\n- Código de 4 dígitos de tu actividad económica principal según la clasificación CIIU.\n- La tarifa la define el acuerdo municipal de tu actividad — no hay una tarifa nacional única. Pídesela a tu contador o consúltala en la secretaría de hacienda de tu municipio.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: cómo funciona (4/5)",
+      "body": "Contabilidad › Impuestos y retenciones.\n- Consulta lo retenido en compras completadas, las devoluciones que lo reversaron y el valor neto vigente. Las compras pendientes no se incluyen.\n- Completa el NIT y la razón social de la empresa antes de entregar este certificado.\n- Este documento resume la información registrada en Ohnix. Revisa los datos de la empresa y su validez tributaria con tu contador antes de entregarlo.\n- Conceptos con vigencia, base mínima, tarifa y cuenta fiscal. Al seleccionarlos en una compra, Ohnix calcula el neto por pagar y genera la partida doble automáticamente.\n- Las versiones no se editan para proteger compras históricas. Cuando cambie una tarifa, cierra la vigencia anterior y crea una nueva versión.\n- Define qué obligación fiscal representa el concepto.\n- Valor sobre el que Ohnix aplicará la tarifa.\n- Ingresa el porcentaje, por ejemplo 2.5 para una tarifa del 2,5 %.\n- Si la base de la compra es menor, el concepto queda registrado pero no retiene valor.\n- Cuenta de pasivo que recibirá el crédito por el valor retenido.\n- Configura la tarifa de ICA por mil de tu actividad (o escríbela arriba).\n- Otra declaración ya cubre parte de este periodo (revisa la periodicidad).\n- La liquidación cambió en otra sesión. Actualiza e inténtalo de nuevo.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: cómo funciona (5/5)",
+      "body": "Contabilidad › Impuestos y retenciones.\n- Liquida el impuesto de industria y comercio: toma los ingresos del periodo, resta las exclusiones, aplica la tarifa por mil de tu actividad, suma avisos y tableros y la sobretasa bomberil si aplican, y descuenta la ReteICA que te practicaron. Queda como ICA por pagar (2412).\n- Se pagarán … del periodo ….\n- Se registra un asiento inverso con la misma fecha. Solo se puede anular la última liquidación y solo si no está pagada.\n- Otra liquidación ya cubre parte de este periodo (revisa la periodicidad).\n- Ya hay un periodo posterior liquidado. Anúlalo primero para liquidar este.\n- Cierra el IVA de un periodo declarado: Ohnix cruza el IVA generado (240805) contra el descontable (240810), aplica el saldo a favor anterior y deja el resultado en IVA por pagar (240895) o en saldo a favor (135520). Luego registra el pago a la DIAN desde tu banco.\n- Hay movimientos de IVA con fecha de periodos ya liquidados (por ejemplo, una compra registrada tarde). Se incluyen en esta liquidación; revisa si corresponde corregir la declaración anterior.\n- Además tienes … de saldo a favor acumulado de periodos anteriores, que se sumará al nuevo saldo.\n- Elige un periodo terminado y pulsa Calcular.\n- Se pagarán … del periodo …: débito a IVA por pagar (240895) y salida de la cuenta elegida.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: campos, botones y mensajes (1/4)",
+      "body": "Contabilidad › Impuestos y retenciones.\nCampos, columnas y botones: IVA · Motor de retenciones · Ver reporte de IVA · Tarifa aplicada · Impuesto estimado · Retenciones en la fuente que te practicaron · Anticipo año siguiente (neto de retenciones) · Saldo a pagar estimado · Patrimonio bruto · Patrimonio líquido · Ingresos · Costos · Gastos · Utilidad contable · Ajustes manuales · Renta líquida (base) · Declaración de renta (estimado) · Año gravable · Ajustes manuales (opcional) · Calcular · Saldo a favor estimado · Descargar PDF · Configuración guardada\nCampos, columnas y botones: Régimen tributario · Selecciona un régimen · Grupo de actividad (RST) · Selecciona un grupo · NIT / Documento · Proveedor · Total pagado en el año · Concepto · Código · Base · Total retenido · Información exógena (ayuda para Formato 1001) · Configuración de retenciones · Motor activo · ¿Tu empresa es agente retenedor de renta? · ReteICA · Municipio (código DANE) · Debe ser un código DANE de 5 dígitos. · Actividad económica (CIIU) · Debe ser un código CIIU de 4 dígitos. · Tarifa ICA (por mil)",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: campos, botones y mensajes (2/4)",
+      "body": "Contabilidad › Impuestos y retenciones.\nCampos, columnas y botones: Fecha · Compra · Tarifa · Neto retenido · Certificado · Certificado descargado · Auxiliar y certificados de retenciones · CONTROL TRIBUTARIO · De la compra al saldo retenido, sin perder el rastro · Todos los tipos de retención · Consultar · Certificado por proveedor · Generado desde la trazabilidad contable · Certificado de retenciones practicadas · Año gravable … · Agente retenedor · Empresa sin razón social configurada · NIT no configurado · … documento(s) · Retención neta vigente\nCampos, columnas y botones: Total neto certificado · Concepto de retención creado · Estado del concepto actualizado · Base mínima · Desactivar · Activar · Nuevo concepto · AUTOMATIZACIÓN CONTABLE · conceptos activos · Crear versión de concepto · Base de cálculo · Cuenta fiscal de pasivo · Vigente desde · Vigente hasta (opcional) · Este periodo ya está declarado. · El periodo aún no ha terminado. · Ya hay un periodo posterior declarado. Anúlalo primero. · Solo se puede anular la última liquidación de IVA.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: campos, botones y mensajes (3/4)",
+      "body": "Contabilidad › Impuestos y retenciones.\nCampos, columnas y botones: Una liquidación pagada no se puede anular. · La cuenta elegida no tiene saldo suficiente. · El pago no puede tener fecha anterior al fin del periodo. · Declaración de ICA · Anual · Bimestral · Exclusiones · Sobretasa bomberil · Avisos y tableros (15%) · Ingresos del periodo según contabilidad: · Total a pagar · Registrar declaración · Periodo · Base gravable · Total impuesto · Estado · Pagar · Anular · Pagar ICA · Cuenta de pago · Fecha de pago · Anular declaración de ICA · Motivo\nCampos, columnas y botones: Este periodo ya está liquidado. · Liquidación de IVA · Cuatrimestral · Saldo a favor para el siguiente periodo · Liquidar periodo · IVA generado · IVA descontable · Resultado · a favor · Pagar IVA a la DIAN · Anular liquidación de IVA\nMensajes que puede mostrar:\n- No hay retenciones en este periodo\n- Aquí aparecerán las retenciones de compras completadas. Amplía las fechas o aplica un concepto al registrar una compra.\n- Aún no hay conceptos. Crea el primero con la tarifa confirmada por tu contador.\n- Declaración de ICA registrada\n- Pago de ICA registrado\n- Liquidación anulada\n- ¿Registrar esta declaración de ICA?\n- Se registrará el asiento de liquidación con fecha del último día del periodo.\n- Aún no hay declaraciones de ICA\n- Registrar pago\n- Periodo de IVA liquidado\n- Pago de IVA registrado",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › Impuestos y retenciones: campos, botones y mensajes (4/4)",
+      "body": "Contabilidad › Impuestos y retenciones.\n- ¿Liquidar este periodo de IVA?\n- Aún no hay liquidaciones de IVA\n- Escribe el motivo de la anulación.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mapa de pantallas (1/3)",
+      "body": "Pantallas (pestañas) del módulo Contabilidad en Ohnix y para qué sirve cada una:\n- Resumen: Un vistazo rápido a tus cifras del mes y accesos directos a las herramientas relacionadas (cartera, IVA, conciliación bancaria) que viven en otros módulos.\n- Plan de cuentas: Organiza tus cuentas contables por tipo (activo, pasivo, patrimonio, ingreso, costo, gasto). Ohnix creó el plan base automáticamente y lo usa para clasificar cada venta, compra y pago — normalmente no necesitas tocarlo, pero puedes agregar tus propias cuentas si tu contador te lo pide.\n- Libro diario: Cada operación automática y cada comprobante contabilizado aparece aquí, dividido en Débito y Crédito. Los dos lados siempre suman igual y los asientos contabilizados nunca se editan.\n- Comprobantes: Crea ajustes y reclasificaciones contables. Los borradores no afectan los estados financieros; al contabilizar quedan inmutables y solo pueden anularse mediante contraasiento.\n- Apertura contable\n- Auditoría\n- Auxiliares por tercero: Consulta débitos, créditos y saldo acumulado por cliente, proveedor u otro tercero, conservando el nombre y documento registrados al contabilizar.\n- Centros de costo: Organiza ingresos, costos y gastos por área, sede o unidad para entender qué parte del negocio genera cada resultado.",
+      "tags": [
+        "accounting",
+        "map"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mapa de pantallas (2/3)",
+      "body": "Pantallas (pestañas) del módulo Contabilidad en Ohnix y para qué sirve cada una:\n- Gastos recurrentes: Configura un gasto que se repite cada mes (arriendo, nómina, etc.) y Ohnix lo contabiliza solo, el día indicado, sin que tengas que cargarlo a mano.\n- Activos fijos: Registra un activo fijo (equipo, mobiliario, vehículo) y Ohnix contabiliza su depreciación mensual automáticamente por línea recta, hasta agotar su vida útil.\n- Diferidos\n- Obligaciones financieras\n- Deterioro de cartera\n- Inventario valorizado\n- Asientos recurrentes: Registra un asiento de varias líneas (provisión, causación de intereses, etc.) que se repite cada mes con el mismo monto — para casos de doble partida que no encajan en Gastos Recurrentes.\n- Presupuestos: Define metas mensuales por cuenta y centro de costo, compáralas con la ejecución contable y detecta desviaciones a tiempo.\n- Balance de comprobación: Todas tus cuentas contables con su saldo inicial, movimiento del periodo y saldo final — útil para revisar que todo cuadre antes de cerrar el mes.\n- Periodos: Los periodos agrupan tu contabilidad por mes. Cerrar un periodo evita que se agreguen o modifiquen asientos de un mes que ya revisaste y diste por bueno — es opcional, no bloquea tu operación si no lo haces.\n- Estados financieros",
+      "tags": [
+        "accounting",
+        "map"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mapa de pantallas (3/3)",
+      "body": "Pantallas (pestañas) del módulo Contabilidad en Ohnix y para qué sirve cada una:\n- Impuestos y retenciones: Centro tributario de Ohnix: configura responsabilidades, administra conceptos versionados y controla cómo IVA y retenciones llegan a tus asientos y saldos por pagar.",
+      "tags": [
+        "accounting",
+        "map"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › primeros pasos: cómo funciona",
+      "body": "Contabilidad › primeros pasos.\nAyudas y conceptos:\n- El plan de cuentas se creó automáticamente. No necesitas hacer nada más: cada venta y compra que completes se registrará sola en el libro diario, y el Balance y el Estado de Resultados se irán actualizando a medida que operes.\n- Revisa dónde se clasificará cada movimiento.\n- Una compra o venta completada crea el asiento.\n- Abre el diario y sigue la partida doble.",
+      "tags": [
+        "accounting",
+        "primeros-pasos"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad › primeros pasos: campos, botones y mensajes",
+      "body": "Contabilidad › primeros pasos.\nCampos, columnas y botones: PRIMEROS PASOS · Tu contabilidad ya está lista · 3 pasos · Conoce tus cuentas · Registra una operación · Comprueba el resultado",
+      "tags": [
+        "accounting",
+        "primeros-pasos"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mensajes de error y validaciones (1/7)",
+      "body": "Contabilidad: mensajes de error y validaciones.\n- La partida presupuestal ya no existe o no pertenece a tu empresa.\n- El estado de la cuenta contable no es válido.\n- Ya existe una cuenta contable con ese código.\n- Ingresa el código de la cuenta contable.\n- Ingresa el nombre de la cuenta contable.\n- La cuenta contable ya no existe o no pertenece a tu empresa.\n- La cuenta superior seleccionada ya no existe.\n- Selecciona un tipo de cuenta contable válido.\n- El centro de costo no existe, está inactivo o pertenece a otra empresa.\n- Ya existe un centro de costo con ese código.\n- Ingresa el código y el nombre del centro de costo.\n- El código o el nombre del centro de costo supera la longitud permitida.\n- La sede seleccionada ya no existe o no pertenece a tu empresa.\n- El centro de costo ya no existe o no pertenece a tu empresa.\n- El año indicado no es válido.\n- Ese ejercicio ya está cerrado.\n- El cierre del ejercicio fue modificado por otra operación. Intenta de nuevo.\n- El año indicado no es válido.\n- Todavía hay meses de ese año sin cerrar.\n- Solo un ejercicio cerrado puede reabrirse.\n- Solo puede cerrarse un año fiscal ya transcurrido por completo.\n- No se encontró el cierre de ese ejercicio.\n- La ventana de reapertura debe estar entre 1 y 168 horas.\n- El motivo de reapertura es obligatorio.\n- La cuenta de depreciación acumulada debe ser distinta a la cuenta del activo.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mensajes de error y validaciones (2/7)",
+      "body": "Contabilidad: mensajes de error y validaciones.\n- El costo de adquisición debe ser mayor que cero.\n- La fecha de adquisición no es válida.\n- Este activo ya generó su depreciación del periodo actual.\n- La cuenta del activo no existe o está inactiva.\n- El centro de costo seleccionado no existe o está inactivo.\n- La cuenta de depreciación acumulada no existe o está inactiva.\n- El valor de venta no puede ser negativo.\n- Selecciona la cuenta que recibió el pago.\n- La cuenta seleccionada no existe o está inactiva.\n- El motivo de la baja es obligatorio.\n- La cuenta de gasto no existe o está inactiva.\n- Este activo ya está totalmente depreciado.\n- El nombre del activo es obligatorio.\n- El nombre del activo es demasiado largo.\n- Esta acción solo aplica a un activo activo.\n- Este activo no está depreciando actualmente.\n- El activo fijo ya no existe.\n- El valor residual debe ser cero o más, y menor que el costo de adquisición.\n- El costo, valor residual, vida útil y fecha no se pueden cambiar porque este activo ya depreció.\n- La vida útil debe estar entre 1 y 600 meses.\n- El asiento contable ya no existe o no pertenece a tu empresa.\n- El asiento no cuadra: el total de débitos debe ser igual al total de créditos.\n- La fecha de reversa no es válida.\n- Este asiento no se puede reversar.\n- Indica el motivo de la reversa.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mensajes de error y validaciones (3/7)",
+      "body": "Contabilidad: mensajes de error y validaciones.\n- Una o más cuentas ya no existen, están inactivas o pertenecen a otra empresa.\n- El comprobante ya fue contabilizado o anulado.\n- Uno o más centros de costo ya no existen, están inactivos o pertenecen a otra empresa.\n- Selecciona una fecha válida para el comprobante.\n- Ingresa una descripción para el comprobante.\n- Revisa las cuentas y valores de las líneas del comprobante.\n- Cada línea debe tener un débito o un crédito mayor que cero, pero no ambos.\n- Agrega al menos dos líneas al comprobante.\n- Solo puedes modificar comprobantes en borrador.\n- El comprobante ya no existe o no pertenece a tu empresa.\n- Solo puedes anular un comprobante contabilizado.\n- Quien creó este comprobante no puede contabilizarlo. Pide a otra persona con acceso a Contabilidad que lo revise y lo contabilice.\n- Ingresa un enlace de soporte válido que comience por HTTP o HTTPS.\n- Ingresa el nombre del tercero en cada línea que lo requiera.\n- Las líneas de Clientes o Proveedores deben identificar un tercero.\n- Selecciona un tipo de tercero válido en cada línea.\n- El comprobante no cuadra: el total de débitos debe ser igual al total de créditos.\n- Selecciona una fecha válida para la anulación.\n- Explica el motivo de la anulación.\n- El contenido de la nota es obligatorio.\n- El contenido es demasiado largo.\n- El año indicado no es válido.\n- La nota ya no existe.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mensajes de error y validaciones (4/7)",
+      "body": "Contabilidad: mensajes de error y validaciones.\n- El título de la nota es obligatorio.\n- El título es demasiado largo.\n- Una o más cuentas del saldo inicial no existen, están inactivas o no pertenecen a tu empresa.\n- Ya existe una apertura contable para esta empresa.\n- Uno o más centros de costo no existen, están inactivos o no pertenecen a tu empresa.\n- Selecciona una fecha válida para la apertura.\n- Cada línea debe tener un débito o crédito positivo, pero no ambos.\n- Agrega al menos dos líneas al saldo inicial.\n- Ingresa el nombre cuando asignes un tercero a una línea.\n- Uno o más tipos de tercero no son válidos.\n- La apertura no cuadra: débitos y créditos deben ser iguales.\n- Este periodo contable ya está cerrado.\n- El periodo contable está cerrado para nuevos movimientos.\n- Otra operación modificó el periodo. Actualiza la información e inténtalo nuevamente.\n- Selecciona el periodo contable que deseas administrar.\n- No puedes cerrar el periodo mientras existan diferencias entre los saldos de caja o bancos y sus movimientos.\n- Solo puedes reabrir un periodo que esté cerrado.\n- El periodo contable ya no existe o no pertenece a tu empresa.\n- Solo puedes cerrar periodos correspondientes a meses anteriores.\n- La reapertura debe durar entre 1 y 168 horas.\n- Explica el motivo por el que necesitas reabrir el periodo.\n- La autorización temporal para modificar este periodo venció.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mensajes de error y validaciones (5/7)",
+      "body": "Contabilidad: mensajes de error y validaciones.\n- Este gasto recurrente ya fue generado durante el periodo actual.\n- El valor del gasto recurrente debe ser mayor que cero.\n- La cuenta de caja o banco ya no existe o está inactiva.\n- El día de ejecución debe estar entre el 1 y el 28 de cada mes.\n- Ingresa una descripción para el gasto recurrente.\n- La descripción del gasto recurrente es demasiado larga.\n- La cuenta de gasto ya no existe o está inactiva.\n- No fue posible generar el gasto recurrente. Revisa su configuración e inténtalo nuevamente.\n- Activa el gasto recurrente antes de generarlo.\n- La cuenta de caja o banco no tiene saldo suficiente para generar el gasto.\n- Una o más cuentas no existen, están inactivas, o pertenecen a otra empresa.\n- Este asiento recurrente ya se generó para el periodo actual.\n- Uno o más centros de costo no existen o están inactivos.\n- El día del mes debe estar entre 1 y 28.\n- La descripción de la plantilla es obligatoria.\n- La descripción es demasiado larga.\n- La plantilla recurrente está inactiva.\n- Una de las líneas de la plantilla no es válida.\n- Cada línea debe tener débito o crédito, no ambos.\n- La plantilla debe tener al menos dos líneas.\n- La plantilla recurrente ya no existe.\n- El nombre del tercero es obligatorio en esa línea.\n- El tipo de tercero de una línea no es válido.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mensajes de error y validaciones (6/7)",
+      "body": "Contabilidad: mensajes de error y validaciones.\n- La plantilla no cuadra: el total de débitos debe ser igual al total de créditos.\n- El gasto recurrente ya no existe o no pertenece a tu empresa.\n- La tarifa de IVA debe ser mayor que cero y menor o igual que 100%.\n- Selecciona un tratamiento de IVA válido.\n- Selecciona el tercero cuyos movimientos deseas consultar.\n- Selecciona una base de retención válida.\n- Selecciona un año válido para generar el certificado.\n- Selecciona una cuenta contable de pasivo activa de tu empresa.\n- El concepto de retención ya no existe o no pertenece a tu empresa.\n- Selecciona al menos un concepto de retención.\n- Uno o más conceptos no existen o no están vigentes para la fecha seleccionada.\n- Selecciona una fecha válida para el concepto de retención.\n- La fecha final de vigencia no puede ser anterior a la fecha inicial.\n- Ya existe una versión de este concepto vigente durante esas fechas.\n- Ingresa el código y el nombre del concepto de retención.\n- La base mínima de retención no puede ser negativa.\n- Selecciona el municipio correspondiente para la retención de ICA.\n- El subtotal y el IVA deben ser valores iguales o mayores que cero.\n- La tarifa debe ser mayor que cero y menor o igual que 100%.\n- El proveedor ya no existe o no pertenece a tu empresa.\n- Selecciona un tipo de retención válido.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "es",
+      "title": "Contabilidad: mensajes de error y validaciones (7/7)",
+      "body": "Contabilidad: mensajes de error y validaciones.\n- No puedes aplicar dos versiones del mismo concepto de retención.\n- No se pudo generar la depreciación.\n- No se pudo generar el asiento recurrente.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Overview: how it works",
+      "body": "Accounting › Overview.\nA quick look at this month's numbers, plus shortcuts to the related tools (receivables/payables, VAT, bank reconciliation) that live in other modules.\nScreen guide:\n- Your accounting at a glance\n- Review this month's figures and spot values that need attention.\n- Use the shortcuts to explore receivables, VAT, or banking.\n- A quick view of financial health before reviewing detail.\nHelp and concepts:\n- Outstanding balances by customer and supplier — computed in Reports from your orders and purchases, not here.\n- VAT collected and credited by rate and period, ready for your bimonthly filing — in Reports.\n- Match your movements against the bank statement — done from Finance, one account at a time.\n- Sales less product cost; it does not yet include every operating expense.\n- The difference between VAT collected on sales and deductible VAT on purchases.\n- This is the cumulative balance since your accounting was first set up, including any manual-voucher adjustments. The VAT Report (in Reports) is period-scoped and doesn't include those manual adjustments - use that report for your bimonthly filing, not this number.",
+      "tags": [
+        "accounting",
+        "overview"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Overview: fields, buttons and messages",
+      "body": "Accounting › Overview.\nFields, columns and buttons: Receivables and payables · VAT report · Bank reconciliation · Gross profit (this month) · Net VAT payable · Total assets · Total liabilities · VAT credit balance · Related tools",
+      "tags": [
+        "accounting",
+        "overview"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Chart of accounts: how it works (1/2)",
+      "body": "Accounting › Chart of accounts.\nOrganizes your accounts by type (asset, liability, equity, revenue, cost, expense). Ohnix created the base chart automatically and uses it to classify every sale, purchase, and payment - you usually won't need to touch it, but you can add your own accounts if your accountant asks for one.\nScreen guide:\n- The structure behind your journal entries\n- Review the accounts Ohnix creates automatically.\n- Add an account only when you need to separate a specific concept.\n- Open an account ledger to understand where its balance comes from.\n- A consistent catalog that classifies movements and feeds reports.\nHelp and concepts:\n- Identifies whether an account is an asset, liability, equity, revenue, expense, or cost.\n- Shows every debit and credit for an account and its running balance.\n- Accounts that classify your movements will appear here. Ohnix creates the main ones automatically; add another only when you need more detail.\n- Create an account only when existing accounts do not represent the concept you need. Code and type determine how it appears in ledgers and statements.\n- Use numbering consistent with your current catalog; codes cannot be duplicated.\n- The type controls which statement includes the account and how its balance is interpreted.",
+      "tags": [
+        "accounting",
+        "chart"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Chart of accounts: how it works (2/2)",
+      "body": "Accounting › Chart of accounts.\n- Groups this account under an existing one, if your chart of accounts uses a hierarchy. You can leave this blank.\n- Costs of running the business, not tied directly to a sale (rent, payroll, utilities).\n- What it costs you to produce or buy what you sell (cost of goods sold).",
+      "tags": [
+        "accounting",
+        "chart"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Chart of accounts: fields, buttons and messages (1/2)",
+      "body": "Accounting › Chart of accounts.\nFields, columns and buttons: Account deactivated · Account activated · Name · Active · Inactive · View movements · Deactivate · Activate · New account · Account created · New ledger account · Parent account (optional) · Asset · Liability · Equity · Revenue · Expense · Cost · Type · Balance · Opening balance · Closing balance · Manual income · Manual expense · Inventory adjustment: … · Transfer discrepancy … · Transfer from … to … · Period reopening …: … · Sale · Purchase · Order payment · Purchase payment\nFields, columns and buttons: Order cancellation · Order return · Purchase return · Credit note (return) · Credit note (financial) · Period close · Period reopening · Period reclose · Fiscal year close · Fiscal year reopen · Fiscal year reclose · Inventory adjustment · Transfer discrepancy · Manual voucher · Voucher reversal · Recurring expense · Transfer between accounts · Cash/bank adjustment · Fixed asset depreciation · Fixed asset disposal · Recurring journal entry · Capital contribution · Equity distribution",
+      "tags": [
+        "accounting",
+        "chart"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Chart of accounts: fields, buttons and messages (2/2)",
+      "body": "Accounting › Chart of accounts.\nFields, columns and buttons: VAT settlement · VAT settlement void · VAT payment to the DIAN · Prepaid expense payment · Prepaid expense amortization · Prepaid expense cancellation · Receivables impairment · Loan disbursement · Loan installment · ICA return · ICA return void · ICA payment · Receivable write-off · Written-off receivable recovered · Interest accrual · Extra principal payment\nMessages it can show:\n- Deactivate this account? No new entries can post to it, but its history is kept.\n- Activate this account? It will be available for new entries again.\n- The chart of accounts hasn't been generated yet.\n- No movements in this date range.\n- Code is required.\n- Name is required.\n- Select an account type.",
+      "tags": [
+        "accounting",
+        "chart"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Journal: how it works",
+      "body": "Accounting › Journal.\nEvery automatic operation and posted voucher appears here, split into Debit and Credit. Both sides always match and posted entries are never edited.\nScreen guide:\n- The complete history of every movement\n- Choose a period and optionally filter by the process that created the entry.\n- Expand an entry to inspect affected accounts and verify double entry.\n- Traceability from the original operation to its debits and credits.\nHelp and concepts:\n- Try another range or record an operation. Sales, purchases, payments, returns, and posted vouchers appear here automatically.\n- An inverse entry will be created while the original remains intact for audit purposes.",
+      "tags": [
+        "accounting",
+        "journal"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Journal: fields, buttons and messages",
+      "body": "Accounting › Journal.\nFields, columns and buttons: Type · Total · Reverse · Journal · All types · Filtered to the source record · Reverse journal entry · Reversal date · Reason · Sale · Purchase · Order payment · Purchase payment · Order cancellation · Order return · Purchase return · Credit note (return) · Credit note (financial) · Period close · Period reopening · Period reclose · Fiscal year close · Fiscal year reopen · Fiscal year reclose · Inventory adjustment · Transfer discrepancy · Manual voucher · Voucher reversal · Manual expense\nFields, columns and buttons: Manual income · Recurring expense · Transfer between accounts · Cash/bank adjustment · Opening balance · Fixed asset depreciation · Fixed asset disposal · Recurring journal entry · Capital contribution · Equity distribution · VAT settlement · VAT settlement void · VAT payment to the DIAN · Prepaid expense payment · Prepaid expense amortization · Prepaid expense cancellation · Receivables impairment · Loan disbursement · Loan installment · ICA return · ICA return void · ICA payment\nFields, columns and buttons: Receivable write-off · Written-off receivable recovered · Interest accrual · Extra principal payment · Inventory adjustment: … · Transfer discrepancy … · Transfer from … to … · Period reopening …: …\nMessages it can show:\n- Journal entry reversed successfully.\n- No journal entries in this date range.",
+      "tags": [
+        "accounting",
+        "journal"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Vouchers: how it works",
+      "body": "Accounting › Vouchers.\nCreate accounting adjustments and reclassifications. Drafts do not affect financial statements; once posted they are immutable and can only be voided with a reversing entry.\nScreen guide:\n- Controlled adjustments outside automatic operations\n- Create a draft with a date, explanation, and at least two lines.\n- Confirm that debits and credits are equal.\n- Post after review; afterwards it can only be voided with a reversal.\n- An auditable adjustment included in ledgers and financial statements.\nHelp and concepts:\n- Editable and has no effect on balances or reports yet.\n- Already affects accounting and is protected from direct editing.\n- If your team has more than one person with Accounting access, whoever created the voucher can't post it - someone else has to. If you're the only one with access, you can post your own vouchers without restriction.\n- Use them for adjustments and reclassifications that do not originate from automatic sales, purchases, or payments.\n- Use this voucher for accounting adjustments, not to replace sales, purchases, or payments. Write an explanation another person can audit later.\n- Optional HTTPS link to supporting evidence, such as a document or external receipt.\n- When using Customers (1305) or Suppliers (2205), identify the third party on that line so the subsidiary ledger keeps the correct person or company balance.",
+      "tags": [
+        "accounting",
+        "vouchers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Vouchers: fields, buttons and messages",
+      "body": "Accounting › Vouchers.\nFields, columns and buttons: Voucher saved · Voucher posted · Void with a reversing entry · Reason for voiding · Void · Voucher voided · Draft · Posted · Voided · Total · Post · Dual control · New voucher · Open supporting document · Edit voucher · Supporting document link · Add line · The voucher is balanced and ready to post.\nMessages it can show:\n- Post this voucher? It cannot be edited afterwards.\n- No manual vouchers yet\n- A reason for voiding is required.\n- Debits and credits must match before posting.",
+      "tags": [
+        "accounting",
+        "vouchers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Opening balance: how it works",
+      "body": "Accounting › Opening balance.\nRecord one opening balance to bring the balances your business already operates with into Ohnix.\nScreen guide:\n- Use the date immediately before your first period in Ohnix.\n- Distribute each balance to its ledger account and, when applicable, third party or cost center.\n- Verify that total debits equal total credits.\nHelp and concepts:\n- Ohnix will create a traceable opening entry visible in the journal and opening balances.\n- The opening entry is now available in the journal and will be used to calculate balances.\n- Opening balance\n- Required columns: code, debit, and credit. Optional: description, cost center, third-party type, third party, and third-party document.",
+      "tags": [
+        "accounting",
+        "opening_balance"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Opening balance: fields, buttons and messages",
+      "body": "Accounting › Opening balance.\nFields, columns and buttons: Opening balance posted · Start with your real balances · Your opening balances are registered · Create another opening balance · Opening date · Import Excel or CSV · Select an active account · Third-party type (optional) · Add account · The opening balance is balanced and ready to post. · Post opening balance\nMessages it can show:\n- The file contains no rows.\n- Row … has no valid active account or numeric values.\n- The cost center on row … does not exist or is inactive.\n- The third-party type on row … is invalid. Use customer, supplier, or other.\n- Row … requires a third-party name.\n- The opening balance file could not be read.\n- Adjust the amounts until debits and credits are equal.",
+      "tags": [
+        "accounting",
+        "opening_balance"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Audit: how it works",
+      "body": "Accounting › Audit.\nSee who performed each accounting change and what information was recorded.\nScreen guide:\n- Filter by date, origin, or action.\n- Expand a row to review the recorded data.\nHelp and concepts:\n- The entity identifies the record that originated the action.\n- Accounting operations will appear here as they are recorded.",
+      "tags": [
+        "accounting",
+        "audit"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Audit: fields, buttons and messages",
+      "body": "Accounting › Audit.\nFields, columns and buttons: Journal entry · Budget · Cash account · Chart account · Cost center · Point of sale cost center · Withholding concept · Accounting audit · You get centralized traceability for accounting operations. · Filter by entity · Filter by action · Posted · Created · Updated · Deleted · Activated · Deactivated · Chart account changed · Date · Entity · Action · User · Reference\nMessages it can show:\n- No audit events\n- The audit could not be loaded.",
+      "tags": [
+        "accounting",
+        "audit"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Third-party ledgers: how it works",
+      "body": "Accounting › Third-party ledgers.\nReview debits, credits, and accumulated balances by customer, supplier, or other third party, preserving the name and document recorded when posted.\nScreen guide:\n- Balances explained by customer or supplier\n- Filter the period and third-party type you want to review.\n- Open a party to see every movement and its running balance.\n- A subsidiary ledger showing who owes, whom you owe, and what forms the balance.\nHelp and concepts:\n- Balance carried into the selected range.\n- Opening balance plus all movements inside the range.\n- Customers and suppliers appear after a sale, purchase, payment, or return moves their control account.",
+      "tags": [
+        "accounting",
+        "third_parties"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Third-party ledgers: fields, buttons and messages",
+      "body": "Accounting › Third-party ledgers.\nFields, columns and buttons: Opening balance · Closing balance · All third parties · View movements · Third-party ledgers · Balance\nMessages it can show:\n- No third-party balances yet",
+      "tags": [
+        "accounting",
+        "third_parties"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Cost centers: how it works",
+      "body": "Accounting › Cost centers.\nOrganize revenue, costs, and expenses by area, location, or unit to understand where each result comes from.\nScreen guide:\n- Understand which part of the business produces each transaction\n- Create the areas, locations, or units you need to analyze.\n- Select a cost center on your manual voucher lines.\n- Deactivate those you no longer use; their accounting history is preserved.\n- Each posted line will retain its cost center for future filters and reports.\nHelp and concepts:\n- An accounting label identifying the area, location, or unit responsible for a transaction.\n- Create the first one to classify voucher lines and later review each area's performance.\n- The selected center will be applied to new sales, purchases, payments, returns, income, expenses, and adjustments originating at that location. Historical transactions are not changed.\n- Use short codes and clear names, for example ADM · Administration or BOG · Bogotá office.\n- Unique identifier within your company. It will be stored in uppercase.\n- This view only includes accounting lines assigned to this center. Debit and credit totals do not need to match because one entry may distribute its lines among several centers.",
+      "tags": [
+        "accounting",
+        "cost_centers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Cost centers: fields, buttons and messages",
+      "body": "Accounting › Cost centers.\nFields, columns and buttons: Cost center updated. · Cost center created. · Automatic assignment updated. · New cost center · Name · View ledger · Automatic assignment by location · No automatic assignment · Edit cost center · Cost center ledger\nMessages it can show:\n- You do not have cost centers yet\n- No transactions are assigned to this cost center in the selected period.",
+      "tags": [
+        "accounting",
+        "cost_centers"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Recurring expenses: how it works",
+      "body": "Accounting › Recurring expenses.\nSet up an expense that repeats every month (rent, payroll, etc.) and Ohnix posts it on its own, on the day you pick, without you entering it by hand.\nScreen guide:\n- Automate expenses that repeat every month\n- Create a template with the amount, the expense account, and the cash/bank account.\n- Set the day of the month it should post on (or generate the first one with \"Generate now\").\n- Ohnix creates the accounting entry automatically every month, without duplicating it, until you deactivate the template.\nHelp and concepts:\n- Between 1 and 28, so every month (February included) has that exact day.\n- Create the first one to stop entering rent, payroll, or another recurring operating expense by hand every month.\n- The cost center is assigned automatically, based on the sede of the cash/bank account you pick - same as a manual expense.\n- The total you actually pay each period (what leaves your cash/bank account), not the pre-tax base. If you pick \"Taxed\", VAT is backed out of this total, not added on top of it.",
+      "tags": [
+        "accounting",
+        "recurring_expenses"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Recurring expenses: fields, buttons and messages",
+      "body": "Accounting › Recurring expenses.\nFields, columns and buttons: Recurring expense updated. · Recurring expense created. · Day of month · New recurring expense · Amount · Expenses · Cash/bank account · VAT · Taxed · Last generated: … · Generate now · Edit recurring expense · VAT treatment · Excluded · Exempt · VAT rate (%) · That total breaks down into base … + VAT ….\nMessages it can show:\n- Recurring expense generated.\n- You don't have recurring expenses yet\n- Last attempt failed",
+      "tags": [
+        "accounting",
+        "recurring_expenses"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Fixed assets: how it works (1/2)",
+      "body": "Accounting › Fixed assets.\nRegister a fixed asset (equipment, furniture, a vehicle) and Ohnix posts its monthly straight-line depreciation automatically, until its useful life runs out.\nScreen guide:\n- Depreciate your fixed assets month by month, without doing it by hand\n- Register the asset with its cost, salvage value, and useful life in months.\n- Every month, Ohnix automatically posts the depreciation charge (or generate the current month's with \"Generate now\").\n- Once its useful life is reached, the asset becomes \"Fully depreciated\" and stops posting entries.\n- A real monthly depreciation expense in your financial statements, no manual calculations.\nHelp and concepts:\n- What you estimate the asset will be worth at the end of its useful life. Subtracted from cost before computing the monthly charge.\n- How many months you expect to use the asset before it's fully depreciated.\n- Register the first one so Ohnix can post its monthly depreciation automatically.\n- Depreciation is straight-line: (cost - salvage value) ÷ useful life in months. The last month corrects any rounding cents so the asset lands exactly on its salvage value.\n- This asset already posted depreciation. Cost, salvage value, useful life, and acquisition date can no longer change - if you made a mistake, dispose of this asset and register a new one.",
+      "tags": [
+        "accounting",
+        "fixed_assets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Fixed assets: how it works (2/2)",
+      "body": "Accounting › Fixed assets.\n- Can be zero if you expect the asset to be worthless at the end.\n- E.g. 60 months for computer equipment, 120 for furniture.\n- Must be different from the asset account - it's the offsetting entry that reduces its book value.\n- This removes the asset and its accumulated depreciation from the balance sheet, deposits the sale proceeds (if any), and books the gain or loss against its book value. This can't be undone.\n- What you received for the asset. Leave it at 0 if you disposed of it with nothing in return.",
+      "tags": [
+        "accounting",
+        "fixed_assets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Fixed assets: fields, buttons and messages",
+      "body": "Accounting › Fixed assets.\nFields, columns and buttons: Fixed asset updated. · Fixed asset created. · Fixed asset disposed. · Salvage value · Useful life (months) · New fixed asset · Acquisition cost · Monthly depreciation · Progress · months · Gain on disposal · Loss on disposal · Generate now · Dispose · Edit fixed asset · Content · Acquisition date · Estimated monthly charge: …. · Asset account · Accumulated depreciation account · Depreciation expense account · Dispose: … · Disposal reason · Sale amount (0 if scrapped with no proceeds)\nFields, columns and buttons: Account that received the payment\nMessages it can show:\n- Depreciation generated.\n- You don't have any fixed assets registered yet\n- Last attempt failed\n- A disposal reason is required.",
+      "tags": [
+        "accounting",
+        "fixed_assets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Prepaid expenses: how it works",
+      "body": "Accounting › Prepaid expenses.\nHelp and concepts:\n- The chosen account doesn't have enough balance for the payment.\n- Amortization already started; months and first month can't change.\n- The amount can no longer change (paid here or already amortizing).\n- The prepaid expense changed in another session. Refresh and try again.\n- Insurance, rent paid in advance, licenses or annual subscriptions: paid once, recognized as expense month by month. Ohnix posts the amortization automatically every month and, if the prepaid started in earlier months, catches up the pending ones.\n- Register an insurance policy, prepaid rent or an annual license to amortize it month by month.\n- Amortization already started: the amount, months and first month can't change.\n- Defaults to 1705 Prepaid expenses.\n- Ohnix will record the outflow from the chosen account against the prepaid account.\n- Leave it off if the payment is already booked to the prepaid account (e.g. from a purchase or a voucher).\n- The remaining balance (…) will be expensed today in a single entry, and amortization stops.",
+      "tags": [
+        "accounting",
+        "prepaid_expenses"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Prepaid expenses: fields, buttons and messages",
+      "body": "Accounting › Prepaid expenses.\nFields, columns and buttons: Nothing is due to amortize yet. · Prepaid expense updated · Prepaid expense registered · Prepaid expense cancelled · Prepaid expenses · New prepaid expense · Total amount · Monthly amount · Remaining · Progress · months · … month(s) pending: … · Amortize now · Cancel · Edit prepaid expense · e.g. 2026 insurance policy · Content · Months · First month · … will be amortized per month. · Prepaid account · Expense account · Record the payment now · Paid from · Payment date · Cancel … · Reason\nMessages it can show:\n- Amortization posted\n- No prepaid expenses yet\n- The amortization couldn't be posted.\n- Last attempt failed",
+      "tags": [
+        "accounting",
+        "prepaid_expenses"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Financial obligations: how it works",
+      "body": "Accounting › Financial obligations.\nFixed installment of … (monthly rate …%).\nHelp and concepts:\n- The chosen account doesn't have enough balance for the installment.\n- Register a loan with its effective annual rate and term. Ohnix builds a fixed-installment amortization schedule and, on each payment, splits principal (financial obligation) from interest (financial expense). If the bank charged different interest, you can correct it when paying.\n- Register a bank loan to track its amortization schedule and payments.\n- The loan's effective annual rate (not the nominal monthly one).\n- Ohnix will record the money coming into the chosen account against the financial obligation.\n- Leave it off if the loan is already booked (e.g. in the opening balance).\n- Principal … + interest … per the schedule.\n- Change it if the bank statement shows a different amount.\n- Current outstanding principal: …. The payment goes entirely to principal (no interest).",
+      "tags": [
+        "accounting",
+        "financial_obligations"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Financial obligations: fields, buttons and messages",
+      "body": "Accounting › Financial obligations.\nFields, columns and buttons: The loan changed in another session. Refresh and try again. · The first installment must be on or after the disbursement. · The payment exceeds the outstanding principal. · Loan registered · Installment paid · Due · Installment · Principal · Interest · Balance · Loans and financial obligations · New loan · Lender · …% EAR · Amount · Outstanding principal · Progress · Next: … · … · Schedule · Pay installment · Extra payment · Loan number · Effective annual rate · Term (months) · Disbursement date\nFields, columns and buttons: First installment · Show amortization schedule · Obligation account · Interest account · Record the disbursement now · Received in · Installment …/… · … · Pay from · Payment date · Extra principal payment · … · After the payment · Lower the installment (same term) · Shorten the term (same installment) · Extra … · … · Paid … · Overdue · interest accrued · Pending\nMessages it can show:\n- Extra payment recorded\n- No financial obligations",
+      "tags": [
+        "accounting",
+        "financial_obligations"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Receivables impairment: how it works",
+      "body": "Accounting › Receivables impairment.\nHelp and concepts:\n- Estimates how much of your overdue receivables will likely not be collected and books it as an expense. Ohnix groups pending invoices by days past due (from the due date, or the sale date when there is none) and applies a percentage per bucket. Defaults follow the Colombian general tax method: 5% for 91–180 days, 10% for 181–360 and 15% over 360. Each time you post it, the accumulated allowance (1399) is adjusted to the required amount: up against expense (5199) or down against recovery (4250).",
+      "tags": [
+        "accounting",
+        "receivable_impairment"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Receivables impairment: fields, buttons and messages",
+      "body": "Accounting › Receivables impairment.\nFields, columns and buttons: Each percentage must be between 0 and 100. · The cutoff date can't be in the future. · Impairment posted · Receivables impairment · Cutoff date · Calculate · Pending receivables · Recorded allowance · Adjustment: increase · Adjustment: recover · Post impairment · Invoice · Due · Days overdue · Bucket · Pending · Impairment · Previous runs · Adjustment · Posted\nMessages it can show:\n- Post the impairment at this date?\n- The recorded allowance already matches; only the run will be saved.\n- An impairment expense of … will be posted.\n- A recovery of … will be posted.\n- No overdue invoices at this date\n- No impairment posted yet\n- Required allowance",
+      "tags": [
+        "accounting",
+        "receivable_impairment"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Inventory valuation: how it works",
+      "body": "Accounting › Inventory valuation.\nHelp and concepts:\n- Values inventory at a date using each movement's average cost and compares it with account 1435. Click a product to see its stock card (kardex).\n- The ledger balance doesn't match the valued inventory. Usually caused by manual vouchers or opening balances on account 1435, or old movements with no cost.\n- … product(s) have stock from old movements with no recorded cost; their value is incomplete.",
+      "tags": [
+        "accounting",
+        "inventory_valuation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Inventory valuation: fields, buttons and messages",
+      "body": "Accounting › Inventory valuation.\nFields, columns and buttons: Inventory valuation · Code · Product · Quantity · Average cost · Value · Valued inventory · Account 1435 balance · Difference · Movement · Location · In · Out · Unit cost · Movement value · Balance qty · Balance value · Opening · Inventory valuation vs. books · Has stock with no recorded cost · Stock card · … · Closing\nMessages it can show:\n- No stock at this date",
+      "tags": [
+        "accounting",
+        "inventory_valuation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Recurring journal entries: how it works",
+      "body": "Accounting › Recurring journal entries.\nRegister a multi-line entry (a provision, accrued interest, etc.) that repeats every month with the same amount - for double-entry cases that don't fit Recurring Expenses.\nScreen guide:\n- Automate double-entry entries that repeat every month\n- Build the entry with its debit and credit lines, just like a manual voucher.\n- Every month, Ohnix posts it automatically with the same amount (or generate the current month's with \"Generate now\").\n- A recurring entry posted on time, without recreating it by hand every month.\nHelp and concepts:\n- Between 1 and 28, so every month (February included) has that exact day.\n- Create the first one to automate a multi-line entry that repeats every month.\n- Each line's amount is fixed and repeats the same every month. If the amount changes, edit the template.",
+      "tags": [
+        "accounting",
+        "recurring_journals"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Recurring journal entries: fields, buttons and messages",
+      "body": "Accounting › Recurring journal entries.\nFields, columns and buttons: Recurring template updated. · Recurring template created. · Day of month · New recurring template · Amount · Last generated: … · Generate now · Edit recurring template · Add line · The voucher is balanced and ready to post.\nMessages it can show:\n- Recurring entry generated.\n- You don't have any recurring journal templates yet\n- Last attempt failed\n- Debits and credits must match before posting.",
+      "tags": [
+        "accounting",
+        "recurring_journals"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Budgets: how it works",
+      "body": "Accounting › Budgets.\nSet monthly targets by account and cost center, compare them with accounting execution, and detect variances early.\nScreen guide:\n- Turn your targets into measurable decisions\n- Select the month and decide whether the target applies company-wide or to one cost center.\n- Enter the expected amount for each account and define the variance you can tolerate.\n- Review actual execution and address the lines Ohnix marks outside their range.\n- You will get a monthly comparison updated directly from posted journal entries, without entering actuals manually.\nHelp and concepts:\n- Difference between actual execution and budget. Falling short is unfavorable for revenue; exceeding the target is unfavorable for costs and expenses.\n- Allowed unfavorable variance percentage before an alert is shown.\n- … budget lines are outside their threshold. Review the highlighted rows before making decisions.\n- Create a budget line to compare your targets with transactions actually posted to accounting.\n- Enter the annual total. Ohnix will distribute it evenly across all 12 months and adjust remaining cents in December.\n- Select a revenue, cost, or expense account. Actual execution is calculated automatically from the month's journal entries.\n- Leave this empty to compare the target against the entire company instead of one cost center.",
+      "tags": [
+        "accounting",
+        "budgets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Budgets: fields, buttons and messages",
+      "body": "Accounting › Budgets.\nFields, columns and buttons: Budget saved. · Budget line deleted. · Revenue below target · Budget exceeded · On track · Variance · Alert threshold · Monthly view · Annual view · Company-wide budget · Distribute annual budget · New budget line · Copy previous year · Budgeted revenue · Actual revenue · Budgeted costs and expenses · Actual costs and expenses · Account · Annual budget · Actual · Budget · Achievement · Edit budget line · Annual amount\nMessages it can show:\n- … lines were copied and … existing lines were preserved.\n- Copy the … budget? Existing lines in the current year will be preserved.\n- No budget exists for this period yet\n- Delete this budget line?",
+      "tags": [
+        "accounting",
+        "budgets"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Trial balance: how it works",
+      "body": "Accounting › Trial balance.\nEvery ledger account with its opening balance, this period's movement, and closing balance - useful for checking everything ties out before closing the month.\nScreen guide:\n- The check that your books balance\n- Select the period you want to review.\n- Confirm total debits equal total credits.\n- A control view by account with opening, movement, and closing balances.\nHelp and concepts:\n- Balance carried into the selected range.\n- Opening balance plus all movements inside the range.\n- Accounts that classify your movements will appear here. Ohnix creates the main ones automatically; add another only when you need more detail.",
+      "tags": [
+        "accounting",
+        "trial_balance"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Trial balance: fields, buttons and messages",
+      "body": "Accounting › Trial balance.\nFields, columns and buttons: Name · Opening balance · Closing balance · Trial balance · All cost centers · Period totals\nMessages it can show:\n- The chart of accounts hasn't been generated yet.",
+      "tags": [
+        "accounting",
+        "trial_balance"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Periods: how it works (1/3)",
+      "body": "Accounting › Periods.\nPeriods group your accounting by month. Closing a period stops new entries from being added to or changed in a month you've already reviewed and signed off on - it's optional, it doesn't block your operation if you skip it.\nScreen guide:\n- Protect months you've already reviewed\n- First review the trial balance and financial statements for the month.\n- Close the period to block new entries dated in that month.\n- For a correction, reopen it temporarily and record a reason.\n- Protected months with a clear close and reopening audit trail.\nHelp and concepts:\n- If you need to fix something, reopen it first from the table below.\n- Every month of … is closed. Continuing will move the year's result into Retained earnings.\n- This action is logged and can be temporarily undone with \"Reopen\" if you need to fix something.\n- Reopening the year does not by itself reopen any month for new postings - it only reverses the sweep into Retained earnings so you can fix something and close it again.\n- … cash or bank accounts do not match their movements. Review them in Finance before closing.\n- The stored balance of every cash and bank account matches the sum of its movements.\n- This period has … statement rows and … internal movements pending. They do not block closing, but should be reviewed.",
+      "tags": [
+        "accounting",
+        "periods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Periods: how it works (2/3)",
+      "body": "Accounting › Periods.\n- … ledger accounts require review. Manual vouchers or historical balances may explain them, so they do not automatically block closing.\n- This month ends the … period …/…, which isn't settled yet. If you close the month first, you won't be able to post the settlement until you reopen it. Settle it in Taxes → VAT settlement.\n- This month ends ICA period …, which isn't declared yet. If you close the month first, you won't be able to post the return until you reopen it. Declare it in Taxes → ICA return.\n- … prepaid expense(s) have … pending amortization up to this month. Amortize them in the Prepaid expenses tab before closing.\n- … loan(s) have overdue installments for …. Their interest is accrued automatically; record the payment in Financial obligations.\n- Based on month-end aging, the required allowance is … and the recorded one is …. Update it in the Receivables impairment tab.\n- Closing transfers the period result and prevents new entries from being posted into that month.\n- Reopening allows new entries for the selected time. When closed again, Ohnix recalculates the period result transfer.\n- Blocks new postings in the month and transfers its result to equity.\n- Allows corrections for a limited time and records who did it and why.\n- Ohnix creates each monthly period with its first journal entry. You do not need to open it manually.",
+      "tags": [
+        "accounting",
+        "periods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Periods: how it works (3/3)",
+      "body": "Accounting › Periods.\n- Sweeps the year's profit or loss (accumulated month by month in \"Current year earnings\") into \"Retained earnings\", and locks the year for audit. A year can only be closed once all 12 of its months are individually closed.\n- Once you close a full year (with all 12 months already closed), it will show up here.",
+      "tags": [
+        "accounting",
+        "periods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Periods: fields, buttons and messages",
+      "body": "Accounting › Periods.\nFields, columns and buttons: Fiscal year … close check · That year hasn't ended yet · You can only close a fiscal year that has fully elapsed. · That year is already closed · Some months are still open · Close these months first in the table above: …. · Ready to close · Close fiscal year · Resolve differences first · Fiscal year … closed. · Reopen fiscal year … · Reason for reopening · hours · Reopen fiscal year · Fiscal year … reopened temporarily. · Period closed · Review before closing … · The period cannot be closed yet\nFields, columns and buttons: Operational balances are consistent · There are pending reconciliations · Go to bank reconciliation in Finance → · There are general-ledger differences · Unsettled VAT · ICA not declared · Prepaid expenses not amortized · Overdue loan installments · Receivables impairment outdated · Close · Temporarily reopen period · Reopen · Period temporarily reopened · Period · Closed · Reopened · Reopening expired · Open · Closed on · Authorized until · Reopened at · Reclosed at · Fiscal year close\nFields, columns and buttons: Select a year · Verify and close year · Year\nMessages it can show:\n- No accounting periods yet.\n- You haven't closed any fiscal year yet\n- The pre-close review could not be completed.\n- A reason for reopening is required.",
+      "tags": [
+        "accounting",
+        "periods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Financial statements: how it works (1/2)",
+      "body": "Accounting › Financial statements.\nScreen guide:\n- Turn journal entries into financial information\n- Review performance for a period and accumulated financial position as of a date.\n- Use the income statement to analyze revenue, costs, and margin.\n- Use the balance sheet to review assets, liabilities, and equity.\n- Financial reports calculated directly from the accounting ledger.\nHelp and concepts:\n- Calculated automatically: revenue minus costs and expenses for the period. Not a real ledger account, which is why it has no code.\n- Explains whether operations produced profit or loss during a date range.\n- Shows what you own, owe, and accumulated equity as of a date.\n- Revenue and cost of sales are posted automatically from your operations. Operating expenses (rent, payroll, etc.) aren't automated yet - net income only reflects whatever you've logged by hand in Manual Expenses.\n- Compares the same period across every active cost center, one per column. The Total row matches the unfiltered income statement because each movement falls into exactly one center (or \"No center\" if it was never classified).\n- This cost-center-filtered balance sheet may not balance on its own - some operations (like transfers between different sedes' cajas) split their lines across multiple centers. It's not a general-ledger imbalance; clear the filter to check.",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Financial statements: how it works (2/2)",
+      "body": "Accounting › Financial statements.\n- Add clarifications the numbers alone don't show: accounting policies, contingencies, related-party transactions, or anything your accountant or auditor needs for the year.\n- Create the first one to record something the numbers alone don't explain.",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Financial statements: fields, buttons and messages (1/2)",
+      "body": "Accounting › Financial statements.\nFields, columns and buttons: Note updated. · Note created. · Note deleted. · Account · Amount · Revenue · Costs · Expenses · Total revenue · Cost of sales · Gross profit · Total expenses · Net income · Income Statement · Assets · Liabilities · Equity · Current earnings · Total assets · Total liabilities · Total equity · Balance Sheet · Beginning balance · Operating activities · Investing activities · Financing activities · Adjustments · Net change · Ending balance · Cash Flow Statement · Opening balance\nFields, columns and buttons: Capital contributions · Period result · Distributions · Other movements · Closing balance · Statement of Changes in Equity · Calculated · All cost centers · Hide comparison · Compare cost centers · No center · Notes to the financial statements · New note · Edit note · Title · Content · Sale · Purchase · Order payment · Purchase payment · Order cancellation · Order return · Purchase return · Credit note (return) · Credit note (financial) · Period close · Period reopening · Period reclose",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Financial statements: fields, buttons and messages (2/2)",
+      "body": "Accounting › Financial statements.\nFields, columns and buttons: Fiscal year close · Fiscal year reopen · Fiscal year reclose · Inventory adjustment · Transfer discrepancy · Manual voucher · Voucher reversal · Manual expense · Manual income · Recurring expense · Transfer between accounts · Cash/bank adjustment · Fixed asset depreciation · Fixed asset disposal · Recurring journal entry · Capital contribution · Equity distribution · VAT settlement · VAT settlement void · VAT payment to the DIAN · Prepaid expense payment · Prepaid expense amortization\nFields, columns and buttons: Prepaid expense cancellation · Receivables impairment · Loan disbursement · Loan installment · ICA return · ICA return void · ICA payment · Receivable write-off · Written-off receivable recovered · Interest accrual · Extra principal payment\nMessages it can show:\n- You do not have cost centers yet\n- No revenue logged for this range.\n- No costs logged for this range.\n- No operating expenses logged for this range. Add them in Manual Expenses to see them here.\n- The balance sheet doesn't balance - this should never happen. Please report it.\n- No asset accounts have a balance as of this date.\n- No liability accounts have a balance as of this date.\n- You don't have any notes for this year yet\n- Delete this note?",
+      "tags": [
+        "accounting",
+        "statements"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Taxes and withholdings: how it works (1/5)",
+      "body": "Accounting › Taxes and withholdings.\nOhnix tax center: configure responsibilities, manage effective-dated concepts, and control how VAT and withholdings flow into journal entries and payables.\nScreen guide:\n- Configure taxes without losing traceability\n- Confirm the company's general tax status.\n- Create concepts with validated rates, bases, effective dates, and tax accounts.\n- Select only the withholdings that truly apply to each purchase.\n- VAT and withholdings frozen per document and posted automatically.\nHelp and concepts:\n- Sales and purchase tax calculated from the product's frozen tax treatment.\n- Amount deducted from a supplier and recorded as the company's tax liability.\n- Every sale and purchase already calculates VAT based on the product's tax treatment and posts it to the \"VAT generated\" and \"VAT deductible\" accounts. The breakdown by rate and period, ready for your filing, is in the VAT report.\n- Tax configuration (who's a withholding agent, applicable rates, VAT responsibility, income tax regime) depends on your company's specific situation. Review it with your accountant before treating it as final.\n- Set your company's tax regime (Ordinary or RST) above to calculate your estimated income tax return.\n- Select your company's activity group (Simple Regime) above to calculate your estimated income tax return.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Taxes and withholdings: how it works (2/5)",
+      "body": "Accounting › Taxes and withholdings.\n- No rates are configured yet for tax year …. Contact support to have an admin load them.\n- The income tax return couldn't be calculated with the current configuration.\n- You (or your accountant) file your income tax return directly with DIAN — Ohnix doesn't file it for you. Based on your tax regime and this year's financial statements, we calculate an estimate of your taxable income and tax due, ready for your accountant to review before filing.\n- ⚠️ These rates are reference figures that have NOT yet been confirmed by an accountant. Do not file using these numbers without verifying them first.\n- This is an estimate, not a certified filing. The applicable rate, your final taxable income, and the amount due depend on additional tax rules (non-taxable income, special deductions, tax credits, etc.) that your accountant must validate before filing with DIAN.\n- Set whether your company files under the Ordinary regime or Colombia's Simple Tax Regime (RST) and, if applicable, your activity group. This drives how Ohnix estimates your income tax.\n- Confirm this with your accountant — it determines which rate and rules apply to your income tax return.\n- The group determines the applicable rate table (Art. 908 ET). Confirm this with your accountant.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Taxes and withholdings: how it works (3/5)",
+      "body": "Accounting › Taxes and withholdings.\n- This is NOT the certified DIAN file - the exact technical format (column widths, concept catalog, encoding) changes every year by resolution and must be confirmed by your accountant. This table organizes the payments and withholdings Ohnix already has, grouped by supplier and concept, as an input for preparing the real exógena filing.\n- No payments or withholdings to suppliers are recorded for that year.\n- Define your company's general tax status. Applicable concepts are selected explicitly on each purchase and Ohnix freezes the calculation to preserve history.\n- Determines whether your company is required to withhold and file income-tax withholding when paying suppliers. Confirm with your accountant if you're not sure.\n- 5-digit code for the municipality where your company carries out its economic activity, e.g. 11001 for Bogotá.\n- 4-digit code for your main economic activity under the CIIU classification.\n- The rate is set by your municipality's own agreement for your activity — there's no single national rate. Ask your accountant or check with your municipality's tax office.\n- Review withholding on completed purchases, amounts reversed by returns, and the current net value. Pending purchases are excluded.\n- Complete the company's tax ID and legal name before delivering this certificate.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Taxes and withholdings: how it works (4/5)",
+      "body": "Accounting › Taxes and withholdings.\n- This document summarizes information recorded in Ohnix. Review company details and tax validity with your accountant before delivering it.\n- Effective-dated concepts with a minimum base, rate, and tax account. When selected on a purchase, Ohnix calculates net payable and posts the double entry automatically.\n- Versions are not edited, protecting historical purchases. When a rate changes, close the previous effective period and create a new version.\n- Defines the tax obligation represented by the concept.\n- The value to which Ohnix applies the rate.\n- Enter a percentage, for example 2.5 for a 2.5% rate.\n- If the purchase base is lower, the concept is recorded but withholds no amount.\n- Liability account credited with the withheld amount.\n- Set your activity's ICA rate per thousand (or type it above).\n- Another return already covers part of this period (check the periodicity).\n- The settlement changed in another session. Refresh and try again.\n- Computes the industry and commerce tax: takes the period's revenue, subtracts exclusions, applies your activity's rate per thousand, adds signage and fire surcharges when they apply, and subtracts the ICA withheld from you. The result is booked as ICA payable (2412).\n- … for … will be paid.\n- A reversing entry is posted with the same date. Only the latest settlement can be voided, and only if unpaid.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Taxes and withholdings: how it works (5/5)",
+      "body": "Accounting › Taxes and withholdings.\n- Another settlement already covers part of this period (check the periodicity).\n- A later period is already settled. Void it first to settle this one.\n- Closes a declared period's VAT: Ohnix offsets output VAT (240805) against input VAT (240810), applies any prior credit and books the result to VAT payable (240895) or VAT credit (135520). Then record the payment to the DIAN from your bank.\n- Some VAT movements are dated in periods already settled (e.g. a purchase recorded late). They're included in this settlement; check whether the earlier return needs correcting.\n- You also have … of accumulated credit from earlier periods, which adds to the new credit.\n- Pick an ended period and press Calculate.\n- … for … will be paid: debit to VAT payable (240895) and an outflow from the chosen account.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Taxes and withholdings: fields, buttons and messages (1/3)",
+      "body": "Accounting › Taxes and withholdings.\nFields, columns and buttons: VAT · Withholding engine · View VAT report · Applied rate · Estimated tax · Income tax withheld from you · Next year's prepayment (net of withholdings) · Estimated balance due · Gross equity (patrimonio bruto) · Net equity (patrimonio líquido) · Revenue · Costs · Expenses · Book net income · Manual adjustments · Taxable income (base) · Income tax return (estimate) · Tax year · Manual adjustments (optional) · Calculate · Estimated credit balance · Download PDF · Configuration saved · Tax regime\nFields, columns and buttons: Select a regime · Activity group (RST) · Select a group · Tax ID / Document · Supplier · Total paid this year · Concept · Code · Base · Total withheld · Exógena information (Formato 1001 helper) · Withholding configuration · Engine active · Is your company a withholding agent (agente retenedor)? · ReteICA · Municipality (DANE code) · Must be a 5-digit DANE code. · Economic activity (CIIU) · Must be a 4-digit CIIU code. · ICA rate (per thousand) · Date · Purchase · Rate · Net withheld",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Taxes and withholdings: fields, buttons and messages (2/3)",
+      "body": "Accounting › Taxes and withholdings.\nFields, columns and buttons: Certificate · Certificate downloaded · Withholding ledger and certificates · TAX CONTROL · From purchase to current withholding, fully traceable · All withholding types · Run report · Supplier certificate · Generated from the accounting audit trail · Withholding certificate · Tax year … · Withholding agent · Company legal name not configured · Tax ID not configured · … document(s) · Current net withholding · Total net certified · Withholding concept created · Concept status updated\nFields, columns and buttons: Minimum base · Deactivate · Activate · New concept · ACCOUNTING AUTOMATION · active concepts · Create concept version · Calculation base · Tax liability account · Effective from · Effective to (optional) · This period is already declared. · The period hasn't ended yet. · A later period is already declared. Void it first. · Only the latest VAT settlement can be voided. · A paid settlement cannot be voided. · The chosen account doesn't have enough balance.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › Taxes and withholdings: fields, buttons and messages (3/3)",
+      "body": "Accounting › Taxes and withholdings.\nFields, columns and buttons: The payment can't be dated before the period ends. · ICA return · Annual · Bimonthly · Exclusions · Fire surcharge · Signage tax (15%) · Revenue for the period per the books: · Total payable · Post return · Period · Taxable base · Total tax · Status · Pay · Void · Pay ICA · Pay from · Payment date · Void ICA return · Reason · This period is already settled. · VAT settlement · Four-monthly · Credit carried to the next period · Settle period · Output VAT · Input VAT · Result · credit\nFields, columns and buttons: Pay VAT to the DIAN · Void VAT settlement\nMessages it can show:\n- No withholdings in this period\n- Completed purchase withholdings will appear here. Expand the dates or apply a concept when recording a purchase.\n- No concepts yet. Create the first one using the rate confirmed by your accountant.\n- ICA return posted\n- ICA payment recorded\n- Settlement voided\n- Post this ICA return?\n- The settlement entry will be dated on the period's last day.\n- No ICA returns yet\n- Record payment\n- VAT period settled\n- VAT payment recorded\n- Settle this VAT period?\n- No VAT settlements yet\n- Enter a reason for voiding.",
+      "tags": [
+        "accounting",
+        "taxes"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting: screen map (1/2)",
+      "body": "Screens (tabs) of the Accounting module in Ohnix and what each one is for:\n- Overview: A quick look at this month's numbers, plus shortcuts to the related tools (receivables/payables, VAT, bank reconciliation) that live in other modules.\n- Chart of accounts: Organizes your accounts by type (asset, liability, equity, revenue, cost, expense). Ohnix created the base chart automatically and uses it to classify every sale, purchase, and payment - you usually won't need to touch it, but you can add your own accounts if your accountant asks for one.\n- Journal: Every automatic operation and posted voucher appears here, split into Debit and Credit. Both sides always match and posted entries are never edited.\n- Vouchers: Create accounting adjustments and reclassifications. Drafts do not affect financial statements; once posted they are immutable and can only be voided with a reversing entry.\n- Opening balance\n- Audit\n- Third-party ledgers: Review debits, credits, and accumulated balances by customer, supplier, or other third party, preserving the name and document recorded when posted.\n- Cost centers: Organize revenue, costs, and expenses by area, location, or unit to understand where each result comes from.\n- Recurring expenses: Set up an expense that repeats every month (rent, payroll, etc.) and Ohnix posts it on its own, on the day you pick, without you entering it by hand.",
+      "tags": [
+        "accounting",
+        "map"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting: screen map (2/2)",
+      "body": "Screens (tabs) of the Accounting module in Ohnix and what each one is for:\n- Fixed assets: Register a fixed asset (equipment, furniture, a vehicle) and Ohnix posts its monthly straight-line depreciation automatically, until its useful life runs out.\n- Prepaid expenses\n- Financial obligations\n- Receivables impairment\n- Inventory valuation\n- Recurring journal entries: Register a multi-line entry (a provision, accrued interest, etc.) that repeats every month with the same amount - for double-entry cases that don't fit Recurring Expenses.\n- Budgets: Set monthly targets by account and cost center, compare them with accounting execution, and detect variances early.\n- Trial balance: Every ledger account with its opening balance, this period's movement, and closing balance - useful for checking everything ties out before closing the month.\n- Periods: Periods group your accounting by month. Closing a period stops new entries from being added to or changed in a month you've already reviewed and signed off on - it's optional, it doesn't block your operation if you skip it.\n- Financial statements\n- Taxes and withholdings: Ohnix tax center: configure responsibilities, manage effective-dated concepts, and control how VAT and withholdings flow into journal entries and payables.",
+      "tags": [
+        "accounting",
+        "map"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › getting started: how it works",
+      "body": "Accounting › getting started.\nHelp and concepts:\n- The chart of accounts was created automatically. Nothing else to do — every sale and purchase you complete will post itself to the journal, and the Balance Sheet and Income Statement will update as you go.\n- See where every movement will be classified.\n- A completed purchase or sale creates the entry.\n- Open the journal and follow the double entry.",
+      "tags": [
+        "accounting",
+        "primeros-pasos"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting › getting started: fields, buttons and messages",
+      "body": "Accounting › getting started.\nFields, columns and buttons: GETTING STARTED · Your accounting is ready · 3 steps · Understand your accounts · Record an operation · Verify the result",
+      "tags": [
+        "accounting",
+        "primeros-pasos"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting: error and validation messages (1/6)",
+      "body": "Accounting: error and validation messages.\n- The budget line no longer exists or does not belong to your company.\n- The chart account status is invalid.\n- A chart account with that code already exists.\n- Enter the chart account code.\n- Enter the chart account name.\n- The chart account no longer exists or does not belong to your company.\n- The selected parent account no longer exists.\n- Select a valid chart account type.\n- The cost center does not exist, is inactive, or belongs to another company.\n- A cost center with that code already exists.\n- Enter the cost center code and name.\n- The cost center code or name exceeds the allowed length.\n- The selected location no longer exists or does not belong to your company.\n- The cost center no longer exists or does not belong to your company.\n- That year is not valid.\n- That fiscal year is already closed.\n- The fiscal year closure was changed by another operation. Please try again.\n- That year is not valid.\n- Some months of that year are still not closed.\n- Only a closed fiscal year may be reopened.\n- Only a fully elapsed fiscal year may be closed.\n- That fiscal year's closure was not found.\n- The reopening window must be between 1 and 168 hours.\n- A reopening reason is required.\n- The accumulated depreciation account must be different from the asset account.\n- Acquisition cost must be greater than zero.\n- Acquisition date is invalid.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting: error and validation messages (2/6)",
+      "body": "Accounting: error and validation messages.\n- This asset already posted its depreciation for the current period.\n- The asset account was not found or is inactive.\n- The selected cost center does not exist or is inactive.\n- The accumulated depreciation account was not found or is inactive.\n- The sale amount cannot be negative.\n- Select the account that received the payment.\n- The selected account was not found or is inactive.\n- A disposal reason is required.\n- The expense account was not found or is inactive.\n- This asset is already fully depreciated.\n- The asset name is required.\n- The asset name is too long.\n- This action only applies to an active asset.\n- This asset is not currently depreciating.\n- This fixed asset no longer exists.\n- Salvage value must be zero or more, and less than the acquisition cost.\n- Cost, salvage value, useful life, and date can't change because this asset already depreciated.\n- Useful life must be between 1 and 600 months.\n- The journal entry no longer exists or does not belong to your company.\n- The journal entry is unbalanced: total debits must equal total credits.\n- The reversal date is invalid.\n- This journal entry cannot be reversed.\n- Enter a reason for the reversal.\n- One or more accounts no longer exist, are inactive, or belong to another company.\n- The voucher has already been posted or voided.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting: error and validation messages (3/6)",
+      "body": "Accounting: error and validation messages.\n- One or more cost centers no longer exist, are inactive, or belong to another company.\n- Select a valid voucher date.\n- Enter a description for the voucher.\n- Review the accounts and amounts on the voucher lines.\n- Each line must have either a debit or a credit greater than zero, but not both.\n- Add at least two lines to the voucher.\n- Only draft vouchers can be edited.\n- The voucher no longer exists or does not belong to your company.\n- Only a posted voucher can be voided.\n- Whoever created this voucher can't post it. Ask another person with Accounting access to review and post it.\n- Enter a valid support link beginning with HTTP or HTTPS.\n- Enter the third-party name on every line that requires it.\n- Customer or supplier lines must identify a third party.\n- Select a valid third-party type on each line.\n- The voucher is unbalanced: total debits must equal total credits.\n- Select a valid void date.\n- Explain the reason for voiding the voucher.\n- The note content is required.\n- The note content is too long.\n- That year is not valid.\n- That note no longer exists.\n- The note title is required.\n- The note title is too long.\n- One or more opening balance accounts do not exist, are inactive, or do not belong to your company.\n- An opening balance already exists for this company.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting: error and validation messages (4/6)",
+      "body": "Accounting: error and validation messages.\n- One or more cost centers do not exist, are inactive, or do not belong to your company.\n- Select a valid opening balance date.\n- Each line must have either a positive debit or credit, but not both.\n- Add at least two opening balance lines.\n- Enter a name when assigning a third party to a line.\n- One or more third-party types are invalid.\n- The opening balance is unbalanced: debits and credits must be equal.\n- This accounting period is already closed.\n- The accounting period is closed for new entries.\n- Another operation changed the period. Refresh the information and try again.\n- Select the accounting period you want to manage.\n- The period cannot be closed while cash or bank balances differ from their movements.\n- Only a closed accounting period may be reopened.\n- The accounting period no longer exists or does not belong to your company.\n- Only accounting periods from prior months may be closed.\n- The reopening window must be between 1 and 168 hours.\n- Explain why you need to reopen this period.\n- The temporary authorization to change this period has expired.\n- This recurring expense was already generated during the current period.\n- The recurring expense amount must be greater than zero.\n- The cash or bank account no longer exists or is inactive.\n- The execution day must be between day 1 and day 28 of each month.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting: error and validation messages (5/6)",
+      "body": "Accounting: error and validation messages.\n- Enter a description for the recurring expense.\n- The recurring expense description is too long.\n- The expense account no longer exists or is inactive.\n- The recurring expense could not be generated. Review its configuration and try again.\n- Activate the recurring expense before generating it.\n- The cash or bank account does not have enough funds to generate the expense.\n- One or more accounts do not exist, are inactive, or belong to another company.\n- This recurring entry was already generated for the current period.\n- One or more cost centers do not exist or are inactive.\n- The day of month must be between 1 and 28.\n- The template description is required.\n- The template description is too long.\n- This recurring template is inactive.\n- One of the template's lines is invalid.\n- Each line must have either a debit or a credit, not both.\n- The template must have at least two lines.\n- This recurring template no longer exists.\n- That line's third-party name is required.\n- A line's third-party type is invalid.\n- The template is unbalanced: total debits must equal total credits.\n- The recurring expense no longer exists or does not belong to your company.\n- The VAT rate must be greater than zero and at most 100%.\n- Select a valid VAT treatment.\n- Select the third party whose movements you want to review.\n- Select a valid withholding base.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "accounting",
+      "locale": "en",
+      "title": "Accounting: error and validation messages (6/6)",
+      "body": "Accounting: error and validation messages.\n- Select a valid year for the certificate.\n- Select an active liability account owned by your company.\n- The withholding concept no longer exists or does not belong to your company.\n- Select at least one withholding concept.\n- One or more concepts do not exist or are not effective on the selected date.\n- Select a valid date for the withholding concept.\n- The effective end date cannot precede the start date.\n- A version of this concept is already effective during that date range.\n- Enter the withholding concept code and name.\n- The minimum withholding base cannot be negative.\n- Select the municipality for the ICA withholding.\n- Subtotal and VAT must be zero or positive values.\n- The rate must be greater than zero and at most 100%.\n- The supplier no longer exists or does not belong to your company.\n- Select a valid withholding tax type.\n- Two versions of the same withholding concept cannot be applied.\n- The depreciation entry could not be generated.\n- The recurring entry could not be generated.",
+      "tags": [
+        "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    }
+  ]
+}

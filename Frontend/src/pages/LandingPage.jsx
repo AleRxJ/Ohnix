@@ -681,7 +681,7 @@ const LandingPage = () => {
                 primaryCta={t("landing.hero.primary_cta")}
                 onPrimary={handleGetStarted}
             />
-            <Footer />
+            <Footer clearMobileBars />
         </div>
     );
 };

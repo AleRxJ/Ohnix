@@ -7,7 +7,10 @@ import { prisma } from "../db/prisma.js";
 // with pgvector only if the KB grows large enough that keyword matching
 // starts missing paraphrased questions (see assistant architecture review,
 // 2026-08-31).
-const MAX_RESULTS = 5;
+// 3, not more: since the app map (assistantAppMapSync.service.js) chunks
+// run up to ~1,400 chars each, and every result is re-sent to the model on
+// each turn - on Groq's free tier the whole org shares 8,000 tokens/minute.
+const MAX_RESULTS = 3;
 // Added to ts_rank for a chunk whose module matches the page the user is on
 // (or is a cross-module "general" article) - prefers page-relevant content
 // when scores are close, without ever hard-excluding a better match from a
@@ -73,8 +76,13 @@ export const searchKnowledge = async ({ query, module, locale = "es" }) => {
           AND to_tsvector(${tsConfig}::regconfig, "title" || ' ' || "body")
               @@ to_tsquery(${tsConfig}::regconfig, ${tsQueryString})
         ORDER BY
+            -- Title matches weigh more than body matches: app map titles
+            -- name the screen ("Contabilidad › Periodos: cómo funciona"),
+            -- so a question naming a screen should land on that screen's
+            -- chunk rather than on one that merely mentions it in passing.
             ts_rank(
-                to_tsvector(${tsConfig}::regconfig, "title" || ' ' || "body"),
+                setweight(to_tsvector(${tsConfig}::regconfig, "title"), 'A')
+                    || setweight(to_tsvector(${tsConfig}::regconfig, "body"), 'B'),
                 to_tsquery(${tsConfig}::regconfig, ${tsQueryString})
             )
             + CASE WHEN "module" = ${module ?? ""} OR "module" = 'general' THEN ${MODULE_MATCH_BOOST} ELSE 0 END

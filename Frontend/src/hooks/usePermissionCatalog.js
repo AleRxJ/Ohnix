@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { teamService } from "../services/teamService";
-import { VISIBLE_MODULE_KEYS, PERMISSION_LEVELS } from "../constants/teamModules";
+import { VISIBLE_MODULE_KEYS, PERMISSION_LEVELS, MODULE_DEPENDENCIES } from "../constants/teamModules";
 
 // Role-editor module list from the backend (GET /teams/permission-catalog,
 // built from Backend's MODULE_KEYS) so a module added there shows up here
 // without a hand-synced frontend copy. The static constants are only the
 // first-render/offline fallback. One fetch per page load, shared by every
 // component that asks.
-const FALLBACK = { moduleKeys: VISIBLE_MODULE_KEYS, levels: PERMISSION_LEVELS };
+const FALLBACK = { moduleKeys: VISIBLE_MODULE_KEYS, levels: PERMISSION_LEVELS, dependencies: MODULE_DEPENDENCIES };
 let cached = null;
 let inflight = null;
 
@@ -21,6 +21,7 @@ const loadCatalog = () => {
                     cached = {
                         moduleKeys: data.modules,
                         levels: Array.isArray(data.levels) && data.levels.length > 0 ? data.levels : PERMISSION_LEVELS,
+                        dependencies: data.dependencies && typeof data.dependencies === "object" ? data.dependencies : MODULE_DEPENDENCIES,
                     };
                 }
                 return cached;

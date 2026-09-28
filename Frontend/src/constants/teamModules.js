@@ -22,3 +22,12 @@ export const MODULE_KEYS = [
 export const VISIBLE_MODULE_KEYS = MODULE_KEYS.filter((key) => key !== "dashboard");
 
 export const PERMISSION_LEVELS = ["none", "view", "edit", "admin"];
+
+// Offline/first-render fallback for Backend MODULE_DEPENDENCIES - the live
+// value comes from GET /teams/permission-catalog (usePermissionCatalog).
+export const MODULE_DEPENDENCIES = {
+    orders: ["customers", "products"],
+    purchases: ["suppliers", "products"],
+    products: ["categories", "units"],
+    warranties: ["orders", "customers"],
+};

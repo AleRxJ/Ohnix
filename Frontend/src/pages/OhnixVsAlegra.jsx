@@ -93,19 +93,29 @@ const OhnixVsAlegra = () => {
                     />
 
                     <div className="mt-10 overflow-hidden rounded-[24px] border border-white/10">
-                        <div className="grid grid-cols-3 bg-white/[0.06] px-5 py-4 text-sm font-semibold text-white">
+                        {/* Three columns only from sm up: at phone width each column
+                            was ~90px, so long words collided with the next column
+                            and the Alegra text ran past the card edge. On mobile
+                            each row stacks, labelling Ohnix/Alegra inline. */}
+                        <div className="hidden grid-cols-3 bg-white/[0.06] px-5 py-4 text-sm font-semibold text-white sm:grid">
                             <div>Criterio</div>
                             <div>Ohnix</div>
                             <div>Alegra</div>
                         </div>
-                        {comparisonRows.map((row) => (
+                        {comparisonRows.map((row, index) => (
                             <div
                                 key={row.criteria}
-                                className="grid grid-cols-3 gap-4 border-t border-white/10 px-5 py-4 text-sm"
+                                className={`grid gap-2 px-5 py-4 text-sm sm:grid-cols-3 sm:gap-4 ${index > 0 ? "border-t border-white/10" : "sm:border-t sm:border-white/10"}`}
                             >
-                                <div className="text-white">{row.criteria}</div>
-                                <div className="text-[#CFE8E8]">{row.ohnix}</div>
-                                <div className="text-[#A9B3B8]">{row.alegra}</div>
+                                <div className="font-semibold text-white sm:font-normal">{row.criteria}</div>
+                                <div className="text-[#CFE8E8]">
+                                    <span className="mb-0.5 block text-xs font-semibold uppercase tracking-[0.12em] text-[#29D8D5] sm:hidden">Ohnix</span>
+                                    {row.ohnix}
+                                </div>
+                                <div className="text-[#A9B3B8]">
+                                    <span className="mb-0.5 block text-xs font-semibold uppercase tracking-[0.12em] text-[#8B969C] sm:hidden">Alegra</span>
+                                    {row.alegra}
+                                </div>
                             </div>
                         ))}
                     </div>

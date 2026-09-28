@@ -57,6 +57,17 @@ export const MODULE_KEYS = [
 // set; use this to filter what a role-editing UI renders.
 export const COUPLED_MODULES = { dashboard: "reports" };
 
+// Modules another module can't work without, at "view" - e.g. an order form
+// has to list customers and products. Advisory only (the role editor raises
+// them to "view" when the dependent module is granted, and the owner can
+// still lower them afterwards); the backend never grants anything implicitly.
+export const MODULE_DEPENDENCIES = {
+    orders: ["customers", "products"],
+    purchases: ["suppliers", "products"],
+    products: ["categories", "units"],
+    warranties: ["orders", "customers"],
+};
+
 const LEVEL_ORDER = { none: 0, view: 1, edit: 2, admin: 3 };
 
 export const hasSufficientLevel = (level, minLevel) =>
@@ -69,6 +80,7 @@ export const hasSufficientLevel = (level, minLevel) =>
 export const getPermissionCatalog = () => ({
     modules: MODULE_KEYS.filter((key) => !COUPLED_MODULES[key]),
     coupled: COUPLED_MODULES,
+    dependencies: MODULE_DEPENDENCIES,
     levels: Object.keys(LEVEL_ORDER),
     // CAPABILITIES is declared further down - only read when this runs.
     capabilities: Object.entries(CAPABILITIES).map(([key, def]) => ({ key, type: def.type, module: def.module })),

@@ -48,7 +48,7 @@ const Blog = () => {
                                 key={post.slug}
                                 className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6"
                             >
-                                <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-[#A9B3B8]">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap text-xs uppercase tracking-[0.18em] text-[#A9B3B8]">
                                     <span>{post.category}</span>
                                     <span>{post.readTime}</span>
                                     <span>{post.publishDate}</span>

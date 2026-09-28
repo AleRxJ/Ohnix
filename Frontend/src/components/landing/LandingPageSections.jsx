@@ -82,6 +82,12 @@ const AnimatedStat = ({ value, active }) => {
     return <>{display}</>;
 };
 
+// Mock dashboard figures follow the page language, not the browser's locale:
+// bare toLocaleString() / hardcoded "3,421" rendered comma thousands on the
+// Spanish page next to dot-formatted COP prices.
+const formatCount = (value, language) =>
+    Number(value).toLocaleString(language === "en" ? "en-US" : "es-CO");
+
 /* ── Typewriter cycling word ────────────────────────────────────────── */
 const TypewriterWord = ({ words }) => {
     const [idx, setIdx] = useState(0);
@@ -136,7 +142,7 @@ const TypewriterWord = ({ words }) => {
 
 /* ── Live dashboard mockup ──────────────────────────────────────────── */
 export const HeroDashboard = () => {
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const [productCount, setProductCount] = useState(0);
     const [valueCount, setValueCount]     = useState(0);
     const [highlightRow, setHighlightRow] = useState(0);
@@ -250,7 +256,7 @@ export const HeroDashboard = () => {
             {/* KPI strip */}
             <div className="grid grid-cols-2 divide-x divide-y divide-white/5 border-b border-white/6 lg:grid-cols-4 lg:divide-y-0">
                 {[
-                    { label: t("landing.hero_dashboard.products_label"), value: productCount.toLocaleString(), note: "+18.2%",   pos: true  },
+                    { label: t("landing.hero_dashboard.products_label"), value: formatCount(productCount, currentLanguage), note: "+18.2%",   pos: true  },
                     { label: t("landing.hero_dashboard.sales_today_label"), value: `$${(valueCount / 100).toFixed(1)}M`, note: "+12.6%", pos: true },
                     { label: t("landing.hero_dashboard.locations_label"), value: "12",                         note: t("landing.hero_dashboard.connected_note"), pos: true },
                     { label: t("landing.hero_dashboard.dian_label"), value: t("landing.hero_dashboard.active_label"), note: t("landing.hero_dashboard.synced_note"), pos: true },
@@ -323,7 +329,7 @@ export const HeroDashboard = () => {
             <div className="bg-[#080808] px-3 py-2">
                 <div className="mb-1.5 flex items-center justify-between text-[9px] uppercase tracking-widest text-[#444]">
                     <span>{t("landing.hero_dashboard.location_activity_label")}</span>
-                    <span className="text-[#29D8D5]">3,421 {t("landing.hero_dashboard.today_label")}</span>
+                    <span className="text-[#29D8D5]">{formatCount(3421, currentLanguage)} {t("landing.hero_dashboard.today_label")}</span>
                 </div>
                 <div>
                     {rows.map((r, i) => (
@@ -699,7 +705,7 @@ const WorkspaceProgress = ({ isActive, isPast, duration, reducedMotion }) => {
 };
 
 export const OhnixCommandCanvas = () => {
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const [active, setActive] = useState(0);
     const canvasRef = useRef(null);
     const spotlightRef = useRef(null);
@@ -762,8 +768,8 @@ export const OhnixCommandCanvas = () => {
                 [t("landing.hero_dashboard.module_invoicing"), t("landing.hero_dashboard.node_dian")],
             ],
             kpis: [
-                ["3,421", t("landing.hero_dashboard.kpi_orders_label")],
-                ["1,204", t("landing.hero_dashboard.kpi_invoices_label")],
+                [formatCount(3421, currentLanguage), t("landing.hero_dashboard.kpi_orders_label")],
+                [formatCount(1204, currentLanguage), t("landing.hero_dashboard.kpi_invoices_label")],
                 ["480+", t("landing.hero_dashboard.kpi_clients_label")],
             ],
             spark: [30, 45, 38, 52, 60, 55, 70, 78],
@@ -870,7 +876,7 @@ export const OhnixCommandCanvas = () => {
                                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#29D8D5] opacity-50" />
                                 <span className="relative h-1 w-1 rounded-full bg-[#29D8D5] shadow-[0_0_7px_#29D8D5]" />
                             </span>
-                            <span className="font-mono tabular-nums text-[#dbe7e5]">{liveOps.toLocaleString()}</span>
+                            <span className="font-mono tabular-nums text-[#dbe7e5]">{formatCount(liveOps, currentLanguage)}</span>
                             {t("landing.hero_dashboard.live_ops_label")}
                         </div>
                     </div>
@@ -2294,7 +2300,7 @@ export const WhatsAppSupportButton = ({
                 aria-label={t("landing.support_widget.aria_label")}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
-                className="fixed bottom-8 right-8 z-50 hidden sm:flex items-center gap-3 no-underline"
+                className="fixed bottom-8 right-8 z-50 hidden md:flex items-center gap-3 no-underline"
                 style={{
                     background: hovered
                         ? "linear-gradient(135deg,#071f1f 0%,#0a2e2c 60%,#071a1a 100%)"
@@ -2419,6 +2425,8 @@ export const WhatsAppSupportButton = ({
                 </svg>
             </a>
 
+            {/* Breakpoint must match MobileStickyCta (md:hidden): with sm, at
+                640-767px the desktop card floated over the sticky CTA. */}
             {/* ── Mobile: barra inferior personalizada ──
                  Se ubica encima del MobileStickyCta (misma página, siempre juntos)
                  en vez de bottom-0, para no taparlo — antes ambas barras fijas
@@ -2428,7 +2436,7 @@ export const WhatsAppSupportButton = ({
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="fixed left-0 right-0 z-50 flex sm:hidden items-center justify-between px-5 no-underline"
+                className="fixed left-0 right-0 z-50 flex md:hidden items-center justify-between px-5 no-underline"
                 style={{
                     bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))",
                     minHeight: 64,

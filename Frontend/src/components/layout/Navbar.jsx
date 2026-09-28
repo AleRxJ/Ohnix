@@ -25,7 +25,7 @@ const Navbar = () => {
         { label: t("landing.nav.home"), path: "home" },
         { label: t("landing.nav.features"), path: "features" },
         { label: t("landing.nav.process"), path: "timeline" },
-        { label: t("pricing.eyebrow", { defaultValue: "Pricing" }), path: "pricing" },
+        { label: t("landing.nav.pricing"), path: "pricing" },
         // Same ELECTRONIC_INVOICING_ENABLED gate as the sections themselves
         // (LandingPage.jsx) - without it, this link would scroll to nothing
         // whenever the flag is off, since the section never renders at all.
