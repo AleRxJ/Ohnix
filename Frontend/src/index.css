@@ -309,6 +309,17 @@
   width: 20px;
   height: 20px;
 }
+/* antd's Menu styles every .anticon inside a menu item (min-width, 14px
+   font-size, inline margin, vertical-align) as if it were the row's leading
+   icon - which inflated and shifted the crown off-center next to the
+   numeric Discovery badge. Reset it so the glyph sits dead center. */
+.sidebar-locked-badge .anticon {
+  font-size: 10px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  line-height: 0 !important;
+  vertical-align: 0 !important;
+}
 
 /* Dashboard hero card for the top live Discovery - see
    components/discoveries/DiscoveryDashboardHero.jsx. The single place on
