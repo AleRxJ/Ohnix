@@ -1,5 +1,5 @@
 {
-  "hash": "daeeb5522019a04c",
+  "hash": "57a43fd700a0629f",
   "chunks": [
     {
       "module": "accounting",
@@ -1449,6 +1449,501 @@
       "body": "Accounting: error and validation messages.\n- Select a valid year for the certificate.\n- Select an active liability account owned by your company.\n- The withholding concept no longer exists or does not belong to your company.\n- Select at least one withholding concept.\n- One or more concepts do not exist or are not effective on the selected date.\n- Select a valid date for the withholding concept.\n- The effective end date cannot precede the start date.\n- A version of this concept is already effective during that date range.\n- Enter the withholding concept code and name.\n- The minimum withholding base cannot be negative.\n- Select the municipality for the ICA withholding.\n- Subtotal and VAT must be zero or positive values.\n- The rate must be greater than zero and at most 100%.\n- The supplier no longer exists or does not belong to your company.\n- Select a valid withholding tax type.\n- Two versions of the same withholding concept cannot be applied.\n- The depreciation entry could not be generated.\n- The recurring entry could not be generated.",
       "tags": [
         "accounting",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Cajas y bancos: cómo funciona (1/2)",
+      "body": "Finanzas › Cajas y bancos.\nControla caja, bancos, conciliaciones y compromisos de pago desde un solo lugar.\nAyudas y conceptos:\n- Necesitas al menos dos cuentas activas para transferir dinero\n- Ohnix descontará el valor de la cuenta de origen, lo sumará al destino y creará el asiento y ambos movimientos en una sola operación.\n- Descripción opcional\n- Ingresa la diferencia, no el saldo final. Usa un valor positivo para aumentar o negativo para disminuir; Ohnix creará el movimiento y el asiento correspondiente.\n- Positivo aumenta el saldo; negativo lo disminuye.\n- Indica dónde se reconocerá contablemente la diferencia.\n- Explica por qué existe la diferencia y qué soporte la respalda\n- Registra dinero que los socios/accionistas aportan al negocio. Ohnix acredita automáticamente la cuenta 3115 Aportes sociales por el monto completo.\n- Registra el pago de utilidades/dividendos a los socios. Ohnix debita automáticamente la cuenta 3605 Utilidades acumuladas por el monto completo — verifica que haya saldo suficiente antes de distribuir.\n- Aquí puedes verificar quién cambió la cuenta del mayor asociada. Los movimientos y asientos históricos nunca se reescriben.\n- Ventas, pagos, transferencias y ajustes utilizarán esta cuenta contable. Si no eliges una, Ohnix asignará automáticamente Caja (1105) o Bancos (1110).",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Cajas y bancos: cómo funciona (2/2)",
+      "body": "Finanzas › Cajas y bancos.\n- El cambio aplica a movimientos futuros; los asientos históricos no se modifican.\n- Opcional. Ohnix aplicará la cuenta predeterminada según el tipo.\n- Una cuenta de caja debe estar asociada a un punto de venta.",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Cajas y bancos: campos, botones y mensajes (1/3)",
+      "body": "Finanzas › Cajas y bancos.\nCampos, columnas y botones: Finanzas · Aporte de capital · Distribución de utilidades · Transferir dinero · Nueva cuenta · Todas las sedes · Cuenta contable automática · Activa · Inactiva · Saldo · Movimientos · Conciliar · Ajustar saldo · Historial contable · Transferencia entre cuentas · El dinero cambia de ubicación, no genera ingreso ni gasto · Cuenta de origen · Selecciona de dónde sale el dinero · Cuenta de destino · Selecciona dónde llegará el dinero · Valor a transferir · Fecha contable\nCampos, columnas y botones: Ej. Traslado para pagos de proveedores · Ajustar … · Este cambio dejará trazabilidad contable · Diferencia del ajuste · Saldo actual: … · Nuevo saldo: … · El ajuste debe ser diferente de cero · Ej. -25000 o 10000 · Cuenta contable de contrapartida · Selecciona la cuenta que explica el ajuste · Motivo y soporte · Registrar aporte de capital · Registrar distribución de utilidades · El efectivo entra y se causa como patrimonio · El efectivo sale y se debita de utilidades acumuladas · Monto",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Cajas y bancos: campos, botones y mensajes (2/3)",
+      "body": "Finanzas › Cajas y bancos.\nCampos, columnas y botones: Selecciona una cuenta de caja o banco · Fecha · Historial contable de … · Cambios que afectan asientos futuros · Realizado por · Cuenta anterior · Cuenta nueva · Pago de pedido · Pago de compra · Depósito manual · Retiro manual · Transferencia enviada · Transferencia recibida · Ajuste · Pago de impuestos · Pago de diferido · Desembolso de préstamo · Cuota de préstamo · Saldo resultante · Origen · Detalle · Conciliado · Pendiente · Movimientos de … · Historial de movimientos\nCampos, columnas y botones: Ir a conciliación bancaria · Editar cuenta · Define dónde aparecerá este saldo en Contabilidad · Nombre · Ej. Caja principal · Cuenta asociada del plan contable · Selecciona una cuenta de activo · Tipo de cuenta · Caja · Banco · Punto de venta · Ej. Bancolombia · Número de cuenta · Ej. 123-456789-00\nMensajes que puede mostrar:\n- Aporte de capital registrado correctamente\n- Distribución de utilidades registrada correctamente\n- Aún no has creado ninguna cuenta de caja o banco.\n- ¿Desactivar esta cuenta?\n- Dejará de aparecer como destino para nuevos pagos. El historial de movimientos no se pierde.\n- Realizar transferencia\n- Registrar ajuste\n- Registrar aporte\n- Registrar distribución\n- Todavía no se han realizado cambios en la asociación contable.\n- Sin movimientos todavía.\n- No se pudo registrar el ajuste",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Cajas y bancos: campos, botones y mensajes (3/3)",
+      "body": "Finanzas › Cajas y bancos.\n- No fue posible cargar las cuentas contables. Intenta de nuevo.\n- No se pudo registrar el aporte de capital\n- No se pudo registrar la distribución de utilidades\n- No fue posible cargar el historial contable",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Métodos de pago: cómo funciona",
+      "body": "Finanzas › Métodos de pago.\nComisiones de datáfono/pasarela (tarjeta, ePayco, Wompi...) que se causan solas como gasto al usarse.\nAyudas y conceptos:\n- Cada vez que se registra un pago con uno de estos métodos, la comisión se calcula y se causa en la cuenta de gasto abajo indicada - la cuenta de caja solo recibe (o paga) el neto, y la factura/compra sigue quedando completamente cobrada/pagada.\n- Dónde se causa la comisión como gasto.",
+      "tags": [
+        "finance",
+        "payment_methods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Métodos de pago: campos, botones y mensajes",
+      "body": "Finanzas › Métodos de pago.\nCampos, columnas y botones: Método de pago creado · Método de pago actualizado · Estado del método de pago actualizado · Nombre · Tarifa % · Cargo fijo · Cuenta de gasto · Métodos de pago · Nuevo método de pago · Configura la tarifa una sola vez, luego se aplica sola · … método(s) activo(s) · Editar método de pago · Ej. Datáfono Bancolombia\nMensajes que puede mostrar:\n- Aún no hay métodos de pago configurados.\n- No se pudieron cargar los métodos de pago.\n- No fue posible guardar el método de pago.",
+      "tags": [
+        "finance",
+        "payment_methods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Planificador de cuentas por pagar: cómo funciona",
+      "body": "Finanzas › Planificador de cuentas por pagar.\nAyudas y conceptos:\n- Ohnix ordena las compras por vencimiento y distribuye el efectivo disponible como una recomendación. Tú decides y registras cada pago.\n- El saldo considera devoluciones, retenciones y abonos ya registrados. La sugerencia no mueve dinero ni crea asientos automáticamente.\n- Distribuye el saldo según los días transcurridos desde su vencimiento. Los documentos sin fecha se mantienen separados para que puedas completarlos.\n- Define la fecha acordada para la compra … de …. Puedes dejarla vacía si aún no existe un acuerdo.",
+      "tags": [
+        "finance",
+        "payables"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Planificador de cuentas por pagar: campos, botones y mensajes",
+      "body": "Finanzas › Planificador de cuentas por pagar.\nCampos, columnas y botones: Vencimiento actualizado · Prioridad · Compra · Proveedor · Vencimiento · Según calendario tributario · Definir fecha · Antigüedad · Saldo pendiente · Pago sugerido · Cobertura · Gestionar · Planificador de cuentas por pagar · Actualizar plan · DECISIONES DE CAJA · Paga primero lo urgente sin perder liquidez · Antigüedad del saldo · Ir a compras · Revisar compras y registrar pagos · Corregir vencimiento\nMensajes que puede mostrar:\n- No tienes cuentas pendientes por pagar\n- Cuando completes una compra a crédito, su saldo y prioridad aparecerán aquí.\n- No se pudo calcular el plan de pagos\n- No se pudo actualizar el vencimiento",
+      "tags": [
+        "finance",
+        "payables"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Gestión de cuentas por cobrar: cómo funciona",
+      "body": "Finanzas › Gestión de cuentas por cobrar.\nAyudas y conceptos:\n- Hola …, te recordamos que la factura … tiene un saldo pendiente de … con vencimiento …. Si ya realizaste el pago, por favor compártenos el soporte.\n- Prioriza las facturas por vencimiento, corrige fechas históricas y contacta al cliente con el saldo exacto registrado en Ohnix.\n- El saldo descuenta devoluciones y abonos registrados. Enviar un recordatorio no registra un pago ni modifica la contabilidad.\n- Distribuye el saldo según los días transcurridos desde su vencimiento. Los documentos sin fecha se mantienen separados para que puedas completarlos.\n- Define la fecha acordada para la factura … de ….",
+      "tags": [
+        "finance",
+        "receivables"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Gestión de cuentas por cobrar: campos, botones y mensajes",
+      "body": "Finanzas › Gestión de cuentas por cobrar.\nCampos, columnas y botones: Vencimiento actualizado · El cliente no tiene teléfono registrado · sin fecha definida · Prioridad · Factura · Cliente · Vencimiento · Definir fecha · Antigüedad · Saldo pendiente · Recordar · Gestión de cuentas por cobrar · Actualizar plan · RECUPERACIÓN DE CARTERA · Identifica a quién contactar primero · Antigüedad del saldo · Revisar pedidos y registrar abonos · Corregir vencimiento de factura\nMensajes que puede mostrar:\n- No tienes saldos pendientes por cobrar\n- Los pedidos completados con saldo pendiente aparecerán aquí.\n- No se pudo calcular la cartera por cobrar\n- No se pudo actualizar el vencimiento",
+      "tags": [
+        "finance",
+        "receivables"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Integridad de caja: cómo funciona",
+      "body": "Finanzas › Integridad de caja.\nDetecta diferencias entre saldos, movimientos y libro mayor\nAyudas y conceptos:\n- La primera tabla debe cuadrar exactamente. La comparación contable puede requerir revisión si la cuenta del mayor también recibe asientos manuales o información histórica ajena a estas cajas y bancos.\n- Revisa los asientos que componen el saldo contable. Los comprobantes manuales, saldos históricos o movimientos registrados antes de configurar esta caja pueden explicar una diferencia válida.",
+      "tags": [
+        "finance",
+        "cash_integrity"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Integridad de caja: campos, botones y mensajes",
+      "body": "Finanzas › Integridad de caja.\nCampos, columnas y botones: Caja o banco · Saldo mostrado · Suma de movimientos · Diferencia · Resultado · Ver movimientos · Cuenta contable · Cajas/bancos asociados · Saldo operativo · Saldo en mayor · Investigar · Control de integridad financiera · Volver a comprobar · Reintentar · Este control no modifica información · Saldo guardado frente a movimientos · Operación frente al libro mayor · Mayor: … · Sigue el origen de la diferencia · Fecha · Descripción · Origen · Débito · Crédito\nMensajes que puede mostrar:\n- No hay cuentas configuradas para comprobar.\n- Esta cuenta todavía no tiene movimientos en el mayor.\n- No fue posible ejecutar el control de integridad.\n- No fue posible cargar el detalle del libro mayor.",
+      "tags": [
+        "finance",
+        "cash_integrity"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Conciliación bancaria: cómo funciona (1/2)",
+      "body": "Finanzas › Conciliación bancaria.\nImporta el extracto, relaciónalo con tus movimientos internos y reclasifica lo que no corresponda.\n… · … movimientos preparados\nAyudas y conceptos:\n- GMF 4x1000\n- Registra cada línea del extracto y relaciónala con el movimiento interno del mismo valor y signo. Conciliar solo confirma que ambos registros representan la misma operación.\n- Escribe el saldo final del extracto a la fecha de corte y compáralo con tus libros.\n- Carga CSV, Excel u OFX/QFX con Fecha, Descripción y Valor; también puedes usar columnas Débito y Crédito, o ajustar manualmente qué columna es cuál.\n- Selecciona solo entradas del mismo signo (todas positivas o todas negativas) para reclasificarlas juntas.\n- Revisa si el movimiento aún no fue registrado en Ohnix. No elijas otro importe para forzar la conciliación.\n- Los créditos o ingresos se importan positivos; los débitos, cargos o salidas se importan negativos.\n- Columna de descripción\n- Ohnix detecta las columnas automáticamente por el nombre del encabezado. Si tu banco usa otros nombres, elige aquí manualmente cuál columna corresponde a cada dato — se vuelve a procesar el archivo al instante, sin subirlo de nuevo.\n- Ohnix compara valor, signo, fecha y descripción. Revisa especialmente las opciones marcadas como ambiguas antes de confirmar.",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Conciliación bancaria: cómo funciona (2/2)",
+      "body": "Finanzas › Conciliación bancaria.\n- Ohnix registrará … gastos por un total de …, disminuirá el banco y conciliará cada línea en una sola operación.\n- Ohnix registrará un gasto por …, disminuirá el banco y conciliará esta línea en una sola operación.\n- Si la dejas vacía, cada entrada conserva su propia descripción del extracto.\n- Ohnix registrará … ingresos por un total de …, aumentará el banco y conciliará cada línea en una sola operación.\n- Ohnix aumentará el banco en …, reconocerá el ingreso y conciliará esta línea en una sola operación.\n- Consulta qué líneas del banco ya tienen un movimiento interno asociado y cuáles siguen pendientes. Filtra el periodo antes de exportar.",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Conciliación bancaria: campos, botones y mensajes (1/3)",
+      "body": "Finanzas › Conciliación bancaria.\nCampos, columnas y botones: Conciliación bancaria · Selecciona una cuenta de caja o banco · Elige una cuenta arriba para empezar a conciliar · Pago de pedido · Pago de compra · Depósito manual · Retiro manual · Transferencia enviada · Transferencia recibida · Ajuste · Pago de impuestos · Pago de diferido · Desembolso de préstamo · Cuota de préstamo · Fila duplicada dentro del mismo archivo · El archivo supera el máximo de 1.000 movimientos. · Cargo bancario · Ingreso bancario · Fecha · Descripción · Monto · Estado · Origen\nCampos, columnas y botones: Detalle · Conciliado el · Conciliación · Informe de conciliación bancaria · Líneas del periodo · Filas conciliadas · Filas pendientes · Conciliar · Registrar cargo · Registrar ingreso · Cruza el banco sin alterar tu contabilidad · Ver informe de conciliación · Cuadre con el extracto · Saldo según extracto · Cuadrar · Saldo que debería mostrar el extracto · Diferencia · Cuadra · No cuadra · Importar extracto · Seleccionar archivo · Ej. Transferencia recibida · Agregar entrada",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Conciliación bancaria: campos, botones y mensajes (2/3)",
+      "body": "Finanzas › Conciliación bancaria.\nCampos, columnas y botones: Entradas sin conciliar · Buscar coincidencias · Clasificar GMF (…) · … seleccionadas · Conciliar entrada de extracto · Elige un movimiento sin conciliar · Revisar extracto antes de importar · Mapeo de columnas · Columna de fecha · Selecciona una columna · Columna de valor (monto único) · Columna de crédito/abono · Columna de débito/cargo · … fila(s) omitida(s) — no se van a importar · Fila · Motivo · Revisar coincidencias sugeridas · Tú decides qué conciliar · Extracto bancario\nCampos, columnas y botones: Movimiento en Ohnix · Confianza · Revisar · Registrar y conciliar cargo bancario · Esto sí modifica la contabilidad · Cuenta contable del gasto · Selecciona dónde clasificar el cargo · Registrar y conciliar ingreso bancario · Ohnix creará el asiento automáticamente · Cuenta contable del ingreso · Selecciona dónde clasificar el ingreso · Trazabilidad del extracto frente a Ohnix · Todos los estados · Conciliado · Pendiente · Deshacer\nMensajes que puede mostrar:\n- El archivo no contiene movimientos.\n- El archivo OFX no contiene ninguna transacción ().\n- No hay entradas de extracto pendientes de conciliar.\n- No hay movimientos pendientes con el mismo valor y signo.\n- Importar movimientos\n- Conciliar seleccionadas\n- No encontramos coincidencias seguras. Puedes continuar conciliando cada entrada manualmente.",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas › Conciliación bancaria: campos, botones y mensajes (3/3)",
+      "body": "Finanzas › Conciliación bancaria.\n- Registrar y conciliar\n- No hay líneas de extracto para este periodo y estado. Cambia los filtros o importa un extracto.\n- ¿Deshacer esta conciliación?\n- La línea del extracto y el movimiento vuelven a quedar pendientes. Si el gasto o ingreso se registró desde esta línea, sigue contabilizado.\n- Fecha o valor no válido\n- No se pudo importar el extracto\n- No se pudo registrar el cargo bancario\n- No se pudo calcular el cuadre\n- No se pudo registrar el ingreso bancario\n- No fue posible cargar las cuentas de ingreso. Intenta de nuevo.\n- No se pudo cargar el informe de conciliación",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas: mapa de pantallas",
+      "body": "Pantallas (pestañas) del módulo Finanzas en Ohnix y para qué sirve cada una:\n- Cajas y bancos: Controla caja, bancos, conciliaciones y compromisos de pago desde un solo lugar.\n- Métodos de pago: Comisiones de datáfono/pasarela (tarjeta, ePayco, Wompi...) que se causan solas como gasto al usarse.\n- Planificador de cuentas por pagar\n- Gestión de cuentas por cobrar\n- Integridad de caja: Detecta diferencias entre saldos, movimientos y libro mayor\n- Conciliación bancaria: Importa el extracto, relaciónalo con tus movimientos internos y reclasifica lo que no corresponda.",
+      "tags": [
+        "finance",
+        "map"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas: mensajes de error y validaciones (1/4)",
+      "body": "Finanzas: mensajes de error y validaciones.\n- La cuenta de caja o banco ya no existe o no pertenece a tu empresa.\n- Selecciona una cuenta de caja o banco.\n- Selecciona la cuenta de caja o banco y su cuenta contable de contrapartida.\n- Ingresa un valor de ajuste diferente de cero.\n- La cuenta de caja o banco ya no existe o está inactiva.\n- La cuenta contable de contrapartida ya no existe o está inactiva.\n- Selecciona una fecha válida para el ajuste.\n- El ajuste dejaría la cuenta con saldo negativo.\n- Explica el motivo del ajuste.\n- La contrapartida debe ser diferente de la cuenta contable asociada a esta caja o banco.\n- Selecciona una cuenta contable de activo que esté habilitada.\n- Asocia la cuenta de caja con una sede.\n- Ingresa el nombre de la cuenta de caja o banco.\n- Una de las cuentas ya no existe, está inactiva o no pertenece a tu empresa.\n- Selecciona las cuentas de origen y destino.\n- Ingresa un valor de transferencia mayor que cero.\n- Selecciona una fecha válida para la transferencia.\n- La cuenta de origen no tiene saldo suficiente.\n- La cuenta de destino debe ser diferente de la cuenta de origen.\n- Selecciona si corresponde a una cuenta de caja o banco.\n- Selecciona la cuenta de gasto y la cuenta de caja o banco.\n- Selecciona la cuenta de ingreso y la cuenta de caja o banco.\n- Ingresa un valor de gasto mayor que cero.",
+      "tags": [
+        "finance",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas: mensajes de error y validaciones (2/4)",
+      "body": "Finanzas: mensajes de error y validaciones.\n- La cuenta de caja o banco ya no existe o está inactiva.\n- Selecciona una fecha válida para el gasto.\n- La cuenta contable de gasto ya no existe o está inactiva.\n- La cuenta de caja o banco seleccionada no tiene saldo suficiente.\n- El gasto debe coincidir exactamente con el valor negativo del extracto.\n- El movimiento del extracto ya no existe o ya fue conciliado.\n- Ingresa un valor de ingreso mayor que cero.\n- La cuenta de caja o banco ya no existe o está inactiva.\n- Selecciona una fecha válida para el ingreso.\n- La cuenta contable de ingreso ya no existe o está inactiva.\n- El ingreso debe coincidir exactamente con el valor positivo del extracto.\n- El movimiento del extracto ya no existe o ya fue conciliado.\n- Ingresa un valor de pago mayor que cero.\n- La cuenta de caja o banco ya no existe o no pertenece a tu empresa.\n- El pago supera el saldo pendiente del pedido.\n- No puedes registrar pagos sobre un pedido cancelado.\n- El pedido ya no existe o no pertenece a tu empresa.\n- Las retenciones deben ser valores positivos o cero.\n- Selecciona una fecha de vencimiento válida para la cuenta por pagar.\n- La compra ya no existe o no pertenece a tu empresa.\n- El saldo cambió en otra sesión. Actualiza la información e intenta registrar el pago nuevamente.\n- Ingresa un valor de pago mayor que cero.",
+      "tags": [
+        "finance",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas: mensajes de error y validaciones (3/4)",
+      "body": "Finanzas: mensajes de error y validaciones.\n- La cuenta de caja o banco ya no existe o no pertenece a tu empresa.\n- El pago supera el saldo pendiente de la compra.\n- La cuenta de caja o banco seleccionada no tiene saldo suficiente.\n- La compra ya no existe o no pertenece a tu empresa.\n- Selecciona una fecha de vencimiento válida para la cuenta por cobrar.\n- La venta ya no existe o no pertenece a tu empresa.\n- El valor y el signo del extracto deben coincidir con el movimiento interno.\n- La conciliación cambió en otra sesión. Actualiza la información e inténtalo nuevamente.\n- La fecha de corte no es válida.\n- Selecciona una fecha final válida.\n- Incluye al menos un movimiento del extracto bancario.\n- Este movimiento del extracto ya fue conciliado.\n- El extracto contiene una fila repetida.\n- Una fila del extracto no tiene fecha o contiene un valor inválido.\n- El movimiento del extracto ya no existe.\n- Esta línea del extracto no está conciliada.\n- El archivo supera el límite de 1.000 movimientos por importación.\n- Selecciona el movimiento del extracto y el movimiento interno que deseas conciliar.\n- Este movimiento interno ya fue conciliado.\n- El movimiento interno ya no existe.\n- Selecciona una fecha inicial válida.\n- El saldo del extracto no es válido.\n- Selecciona un estado de conciliación válido.",
+      "tags": [
+        "finance",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "es",
+      "title": "Finanzas: mensajes de error y validaciones (4/4)",
+      "body": "Finanzas: mensajes de error y validaciones.\n- El movimiento fue conciliado en otra sesión. Actualiza la información e inténtalo nuevamente.",
+      "tags": [
+        "finance",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Cash and bank accounts: how it works (1/2)",
+      "body": "Finance › Cash and bank accounts.\nControl cash, banks, reconciliation, and payment commitments from one place.\nHelp and concepts:\n- Ohnix will deduct the amount from the source, add it to the destination and create the journal entry and both movements in one operation.\n- Optional description\n- Enter the difference, not the final balance. Use a positive amount to increase it or a negative amount to decrease it; Ohnix will create the movement and journal entry.\n- A positive value increases the balance; a negative value decreases it.\n- Indicate where the difference should be recognized in the ledger.\n- Explain why the difference exists and what evidence supports it\n- Record money that partners/shareholders contribute to the business. Ohnix automatically credits the 3115 Capital contributions (Aportes sociales) account for the full amount.\n- Record a profit/dividend payout to partners. Ohnix automatically debits the 3605 Retained earnings (Utilidades acumuladas) account for the full amount — make sure there's enough balance before distributing.\n- Verify who changed the linked general-ledger account. Historical movements and journal entries are never rewritten.\n- Sales, payments, transfers and adjustments will use this ledger account. If none is selected, Ohnix automatically assigns Cash (1105) or Banks (1110).",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Cash and bank accounts: how it works (2/2)",
+      "body": "Finance › Cash and bank accounts.\n- The change applies to future movements; historical journal entries are not modified.\n- Optional. Ohnix will apply the default account for this account type.\n- A cash account must be tied to a point of sale.",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Cash and bank accounts: fields, buttons and messages (1/3)",
+      "body": "Finance › Cash and bank accounts.\nFields, columns and buttons: Finance · Capital contribution · Profit distribution · You need at least two active accounts to transfer money · Transfer money · New account · All locations · Automatic ledger account · Active · Inactive · Balance · Movements · Reconcile · Adjust balance · Accounting history · Transfer between accounts · Money changes location; this is not income or an expense · Source account · Choose where the money comes from · Destination account · Choose where the money will go · Amount to transfer\nFields, columns and buttons: Accounting date · E.g. Transfer for supplier payments · Adjust … · This change will retain an accounting audit trail · Adjustment difference · Current balance: … · New balance: … · The adjustment must be different from zero · E.g. -25000 or 10000 · Offsetting ledger account · Choose the account that explains the adjustment · Reason and supporting information · Register capital contribution · Register profit distribution · Cash comes in and posts as equity",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Cash and bank accounts: fields, buttons and messages (2/3)",
+      "body": "Finance › Cash and bank accounts.\nFields, columns and buttons: Cash goes out and debits retained earnings · Amount · Select a cash or bank account · Date · Accounting history for … · Changes that affect future entries · Changed by · Previous account · Order payment · Purchase payment · Manual deposit · Manual withdrawal · Transfer out · Transfer in · Adjustment · Tax payment · Prepaid expense payment · Loan disbursement · Loan installment · Resulting balance · Source · Detail · Reconciled · Pending · … movements · Movement history\nFields, columns and buttons: Go to bank reconciliation · Edit account · Define where this balance appears in Accounting · Name · E.g. Main register · Linked chart-of-accounts account · Choose an asset account · Account type · Cash · Bank · Point of sale · E.g. Bancolombia · Account number · E.g. 123-456789-00\nMessages it can show:\n- Capital contribution registered successfully\n- Profit distribution registered successfully\n- You haven't created any cash or bank account yet.\n- Deactivate this account?\n- It will stop showing up as a destination for new payments. Its movement history stays intact.\n- Complete transfer\n- Record adjustment\n- Register contribution\n- Register distribution\n- No changes have been made to this accounting link yet.\n- No movements yet.\n- The adjustment could not be recorded\n- Ledger accounts could not be loaded. Please try again.",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Cash and bank accounts: fields, buttons and messages (3/3)",
+      "body": "Finance › Cash and bank accounts.\n- The capital contribution could not be registered\n- The profit distribution could not be registered\n- The accounting history could not be loaded",
+      "tags": [
+        "finance",
+        "cash_accounts"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Payment methods: how it works",
+      "body": "Finance › Payment methods.\nDatáfono/gateway fees (card, ePayco, Wompi...) that automatically post as an expense when used.\nHelp and concepts:\n- Every time a payment is registered using one of these methods, the fee is calculated and posted to the expense account below - the cash account only receives (or pays) the net amount, and the invoice/purchase still shows as fully settled.\n- Where the fee is posted as an expense.",
+      "tags": [
+        "finance",
+        "payment_methods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Payment methods: fields, buttons and messages",
+      "body": "Finance › Payment methods.\nFields, columns and buttons: Payment method created · Payment method updated · Payment method status updated · Name · Fee % · Fixed charge · Expense account · Payment methods · New payment method · Set up the fee once, it's applied automatically afterwards · … active method(s) · Edit payment method · E.g. Bancolombia card terminal\nMessages it can show:\n- No payment methods configured yet.\n- Payment methods could not be loaded.\n- The payment method could not be saved.",
+      "tags": [
+        "finance",
+        "payment_methods"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Accounts payable planner: how it works",
+      "body": "Finance › Accounts payable planner.\nHelp and concepts:\n- Ohnix prioritizes purchases by due date and allocates available cash as a recommendation. You decide and record every payment.\n- Balances include returns, withholdings, and recorded payments. Suggestions never move money or create entries automatically.\n- Breaks down balances by days elapsed since their due date. Documents without a due date remain separate so you can complete them.\n- Set the agreed date for purchase … from …. Leave it empty when no date has been agreed.",
+      "tags": [
+        "finance",
+        "payables"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Accounts payable planner: fields, buttons and messages",
+      "body": "Finance › Accounts payable planner.\nFields, columns and buttons: Due date updated · Priority · Purchase · Supplier · Due date · Per tax calendar · Set date · Aging · Pending balance · Suggested payment · Coverage · Manage · Accounts payable planner · Refresh plan · CASH DECISIONS · Pay urgent commitments first without losing liquidity · Balance aging · Go to purchases · Review purchases and record payments · Correct due date\nMessages it can show:\n- No outstanding accounts payable\n- When a credit purchase is completed, its balance and priority will appear here.\n- Could not calculate the payment plan\n- Could not update due date",
+      "tags": [
+        "finance",
+        "payables"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Accounts receivable management: how it works",
+      "body": "Finance › Accounts receivable management.\nHelp and concepts:\n- Hello …, invoice … has an outstanding balance of … due …. If you have already paid, please share the receipt.\n- Prioritize invoices by due date, correct historical dates, and contact customers using the exact balance recorded in Ohnix.\n- Balances subtract recorded returns and payments. Sending a reminder does not record payment or alter accounting.\n- Breaks down balances by days elapsed since their due date. Documents without a due date remain separate so you can complete them.\n- Set the agreed due date for invoice … from ….",
+      "tags": [
+        "finance",
+        "receivables"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Accounts receivable management: fields, buttons and messages",
+      "body": "Finance › Accounts receivable management.\nFields, columns and buttons: Due date updated · The customer has no phone number · no date defined · Priority · Invoice · Customer · Due date · Set date · Aging · Pending balance · Remind · Accounts receivable management · Refresh plan · COLLECTION MANAGEMENT · Know which customer to contact first · Balance aging · Review orders and record payments · Correct invoice due date\nMessages it can show:\n- No outstanding receivables\n- Completed orders with pending balances will appear here.\n- Could not calculate accounts receivable\n- Could not update due date",
+      "tags": [
+        "finance",
+        "receivables"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Cash integrity: how it works",
+      "body": "Finance › Cash integrity.\nDetect differences between balances, movements and the general ledger\nHelp and concepts:\n- The first table must match exactly. The accounting comparison may require review when the ledger account also receives manual entries or historical information unrelated to these cash and bank accounts.\n- Review the entries that make up the ledger balance. Manual vouchers, historical balances or movements recorded before this cash account was configured may explain a valid difference.",
+      "tags": [
+        "finance",
+        "cash_integrity"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Cash integrity: fields, buttons and messages",
+      "body": "Finance › Cash integrity.\nFields, columns and buttons: Cash or bank account · Displayed balance · Movement total · Difference · Result · View movements · Ledger account · Linked cash/bank accounts · Operational balance · Ledger balance · Investigate · Financial integrity control · Run check again · Retry · This control does not modify any information · Stored balance versus movements · Operations versus general ledger · Ledger: … · Trace the source of the difference · Date · Description · Source · Debit · Credit\nMessages it can show:\n- There are no configured accounts to check.\n- This account has no general-ledger movements yet.\n- The integrity control could not be completed.\n- The general-ledger detail could not be loaded.",
+      "tags": [
+        "finance",
+        "cash_integrity"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Bank Reconciliation: how it works (1/2)",
+      "body": "Finance › Bank Reconciliation.\nImport the statement, match it against your internal movements, and reclassify anything that doesn't belong.\n… · … transactions ready\nHelp and concepts:\n- GMF 4x1000\n- Enter each bank-statement line and link it to an internal movement with the same amount and sign. Reconciliation only confirms both records represent the same operation.\n- Enter the statement's closing balance at the cutoff date and compare it with your books.\n- Upload CSV, Excel or OFX/QFX with Date, Description and Amount; Debit and Credit columns are also supported, or map columns manually.\n- Select entries with the same sign only (all positive or all negative) to reclassify them together.\n- Check whether the movement has been recorded in Ohnix. Do not choose a different amount to force a match.\n- Credits or deposits are imported as positive; debits, charges or withdrawals as negative.\n- Description column\n- Ohnix detects columns automatically from the header name. If your bank uses different headers, manually pick which column is which here — the file is reprocessed instantly, no need to re-upload.\n- Ohnix compares amount, sign, date and description. Review ambiguous options carefully before confirming.\n- Ohnix will record … expenses totaling …, decrease the bank balance, and reconcile each line in one operation.",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Bank Reconciliation: how it works (2/2)",
+      "body": "Finance › Bank Reconciliation.\n- Ohnix will record a … expense, decrease the bank balance and reconcile this row in one operation.\n- Leave it blank to keep each entry's own statement description.\n- Ohnix will record … income entries totaling …, increase the bank balance, and reconcile each line in one operation.\n- Ohnix will increase the bank balance by …, recognize the income and reconcile this row in one operation.\n- Review which bank rows have an associated internal movement and which remain pending. Filter the period before exporting.",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Bank Reconciliation: fields, buttons and messages (1/3)",
+      "body": "Finance › Bank Reconciliation.\nFields, columns and buttons: Bank Reconciliation · Select a cash or bank account · Pick an account above to start reconciling · Order payment · Purchase payment · Manual deposit · Manual withdrawal · Transfer out · Transfer in · Adjustment · Tax payment · Prepaid expense payment · Loan disbursement · Loan installment · Duplicate row within the same file · The file exceeds the 1,000 transaction limit. · Bank charge · Bank income · Date · Description · Amount · Status · Source · Detail · Reconciled at · Reconciliation\nFields, columns and buttons: Bank reconciliation report · Rows in period · Matched rows · Pending rows · Reconcile · Record charge · Record income · Match the bank without changing accounting · View reconciliation report · Balance against the statement · Statement balance · Check balance · Balance the statement should show · Difference · Balanced · Off · Import bank statement · Choose file · E.g. Wire transfer received · Add entry · Unmatched entries · Find matches · Classify GMF (…) · … selected · Reconcile statement entry",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Bank Reconciliation: fields, buttons and messages (2/3)",
+      "body": "Finance › Bank Reconciliation.\nFields, columns and buttons: Choose an unmatched movement · Review statement before importing · Column mapping · Date column · Select a column · Amount column (single value) · Credit/deposit column · Debit/charge column · … row(s) skipped — these will not be imported · Row · Reason · Review suggested matches · You decide what gets reconciled · Bank statement · Ohnix movement · Confidence · Review · Record and reconcile bank charge · This changes your accounting records · Expense account · Choose how to classify the charge\nFields, columns and buttons: Record and reconcile bank income · Ohnix will create the journal entry automatically · Revenue account · Choose how to classify the income · Statement-to-Ohnix traceability · All statuses · Reconciled · Pending · Undo\nMessages it can show:\n- The file contains no transactions.\n- The OFX file contains no transactions ().\n- No statement entries pending reconciliation.\n- No pending movement has the same amount and sign.\n- Import transactions\n- Reconcile selected\n- No safe matches were found. You can continue reconciling each entry manually.\n- Record and reconcile\n- No statement rows match this period and status. Change the filters or import a statement.\n- Undo this match?\n- The statement line and the movement go back to pending. If the expense or income was registered from this line, it stays posted.",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance › Bank Reconciliation: fields, buttons and messages (3/3)",
+      "body": "Finance › Bank Reconciliation.\n- Invalid date or amount\n- Could not import the statement\n- Could not record the bank charge\n- Could not calculate the balance check\n- Could not record the bank income\n- Revenue accounts could not be loaded. Please try again.\n- The reconciliation report could not be loaded",
+      "tags": [
+        "finance",
+        "reconciliation"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance: screen map",
+      "body": "Screens (tabs) of the Finance module in Ohnix and what each one is for:\n- Cash and bank accounts: Control cash, banks, reconciliation, and payment commitments from one place.\n- Payment methods: Datáfono/gateway fees (card, ePayco, Wompi...) that automatically post as an expense when used.\n- Accounts payable planner\n- Accounts receivable management\n- Cash integrity: Detect differences between balances, movements and the general ledger\n- Bank Reconciliation: Import the statement, match it against your internal movements, and reclassify anything that doesn't belong.",
+      "tags": [
+        "finance",
+        "map"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance: error and validation messages (1/3)",
+      "body": "Finance: error and validation messages.\n- The cash or bank account no longer exists or does not belong to your company.\n- Select a cash or bank account.\n- Select the cash or bank account and its counterpart ledger account.\n- Enter an adjustment amount different from zero.\n- The cash or bank account no longer exists or is inactive.\n- The counterpart ledger account no longer exists or is inactive.\n- Select a valid adjustment date.\n- The adjustment would leave the account with a negative balance.\n- Explain the reason for the adjustment.\n- The counterpart must differ from the ledger account linked to this cash or bank account.\n- Select an active asset chart account.\n- Associate the cash account with a location.\n- Enter the cash or bank account name.\n- One of the accounts no longer exists, is inactive, or does not belong to your company.\n- Select the source and destination accounts.\n- Enter a transfer amount greater than zero.\n- Select a valid transfer date.\n- The source account has insufficient funds.\n- The destination account must differ from the source account.\n- Select whether this is a cash or bank account.\n- Select the expense account and the cash or bank account.\n- Select the revenue account and the cash or bank account.\n- Enter an expense amount greater than zero.\n- The cash or bank account no longer exists or is inactive.\n- Select a valid expense date.",
+      "tags": [
+        "finance",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance: error and validation messages (2/3)",
+      "body": "Finance: error and validation messages.\n- The expense account no longer exists or is inactive.\n- The selected cash or bank account has insufficient funds.\n- The expense must exactly match the negative statement amount.\n- The statement movement no longer exists or has already been reconciled.\n- Enter an income amount greater than zero.\n- The cash or bank account no longer exists or is inactive.\n- Select a valid income date.\n- The revenue account no longer exists or is inactive.\n- The income must exactly match the positive statement amount.\n- The statement movement no longer exists or has already been reconciled.\n- Enter a payment amount greater than zero.\n- The cash or bank account no longer exists or does not belong to your company.\n- The payment exceeds the order's outstanding balance.\n- You cannot record payments for a cancelled order.\n- The order no longer exists or does not belong to your company.\n- Withholdings must be zero or positive amounts.\n- Select a valid due date for the payable.\n- The purchase no longer exists or does not belong to your company.\n- The balance changed in another session. Refresh the information and try recording the payment again.\n- Enter a payment amount greater than zero.\n- The cash or bank account no longer exists or does not belong to your company.\n- The payment exceeds the purchase's outstanding balance.",
+      "tags": [
+        "finance",
+        "errors"
+      ],
+      "sourceType": "app_map"
+    },
+    {
+      "module": "finance",
+      "locale": "en",
+      "title": "Finance: error and validation messages (3/3)",
+      "body": "Finance: error and validation messages.\n- The selected cash or bank account has insufficient funds.\n- The purchase no longer exists or does not belong to your company.\n- Select a valid due date for the receivable.\n- The sale no longer exists or does not belong to your company.\n- The bank statement amount and sign must match the internal movement.\n- The reconciliation changed in another session. Refresh the information and try again.\n- The cutoff date is invalid.\n- Select a valid end date.\n- Include at least one bank statement movement.\n- This bank statement movement is already reconciled.\n- The bank statement contains a duplicated row.\n- A bank statement row has no date or contains an invalid amount.\n- The bank statement movement no longer exists.\n- This bank statement line is not reconciled.\n- The file exceeds the limit of 1,000 movements per import.\n- Select the bank statement movement and internal movement you want to reconcile.\n- This internal cash movement is already reconciled.\n- The internal cash movement no longer exists.\n- Select a valid start date.\n- The statement balance is invalid.\n- Select a valid reconciliation status.\n- The movement was reconciled in another session. Refresh the information and try again.",
+      "tags": [
+        "finance",
         "errors"
       ],
       "sourceType": "app_map"

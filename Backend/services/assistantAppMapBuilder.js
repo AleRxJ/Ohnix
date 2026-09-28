@@ -1,6 +1,6 @@
 // Builds the assistant's "app map" knowledge straight from the frontend's
-// own source, instead of hand-written articles. For each screen listed in
-// APP_MAP_PAGES it finds the component every tab renders, follows every
+// own source, instead of hand-written articles. For each screen of each
+// module in APP_MAP_MODULES it finds the component that renders it, follows every
 // top-level component/lookup table that component uses (and imported
 // component files) and collects the i18n text it can show: captions, the
 // in-app "Cómo usar esta sección" guides, field help, empty states,
@@ -21,14 +21,55 @@
 // it into the DB is assistantAppMapSync.service.js.
 import crypto from "node:crypto";
 
-export const APP_MAP_PAGES = [
+// One entry per module; a module can span several pages. Two page layouts:
+// - "tabs": screens are read from the page's own tabItems array
+//   ({ key, label: tabLabel(..., "ns.tab_x"), children: <Component /> }).
+// - "sections": one page, several blocks listed explicitly - `component` is
+//   the component rendering that section (usually an imported file), or
+//   "@root" for the page's own default-exported component minus the other
+//   sections. Labels come from `labelKey` or a literal `label` when the UI
+//   has no title string for that section.
+// `errorSources` are extra files (outside any page) holding the module's
+// error-code -> i18n map, e.g. utils/financeError.js.
+export const APP_MAP_MODULES = [
     {
         module: "accounting",
-        page: "pages/Accounting.jsx",
         namespace: "accounting",
         moduleLabel: { es: "Contabilidad", en: "Accounting" },
-        // Top-level blocks that aren't a tab but deserve their own chunk.
-        extraBlocks: [{ block: "AccountingQuickStart", slug: "primeros-pasos", title: { es: "primeros pasos", en: "getting started" } }],
+        pages: [
+            {
+                page: "pages/Accounting.jsx",
+                layout: "tabs",
+                // Top-level blocks that aren't a tab but deserve their own chunk.
+                extraBlocks: [{ block: "AccountingQuickStart", slug: "primeros-pasos", title: { es: "primeros pasos", en: "getting started" } }],
+            },
+        ],
+    },
+    {
+        module: "finance",
+        namespace: "finance",
+        moduleLabel: { es: "Finanzas", en: "Finance" },
+        errorSources: ["utils/financeError.js"],
+        pages: [
+            {
+                page: "pages/Finance.jsx",
+                layout: "sections",
+                sections: [
+                    { key: "cash_accounts", component: "@root", label: { es: "Cajas y bancos", en: "Cash and bank accounts" }, captionKey: "finance.page_subtitle" },
+                    { key: "payment_methods", component: "PaymentMethodsCard", labelKey: "finance.payment_methods_title", captionKey: "finance.payment_methods_subtitle" },
+                    { key: "payables", component: "AccountsPayablePlanner", labelKey: "finance.payables_title" },
+                    { key: "receivables", component: "AccountsReceivablePlanner", labelKey: "finance.receivables_title" },
+                    { key: "cash_integrity", component: "CashIntegrityPanel", label: { es: "Integridad de caja", en: "Cash integrity" }, captionKey: "finance.integrity_subtitle" },
+                ],
+            },
+            {
+                page: "pages/BankReconciliation.jsx",
+                layout: "sections",
+                sections: [
+                    { key: "reconciliation", component: "@root", labelKey: "finance.reconciliation_page_title", captionKey: "finance.reconciliation_page_subtitle" },
+                ],
+            },
+        ],
     },
 ];
 
@@ -75,13 +116,13 @@ export const findKeyLiterals = (text, namespaces) => {
 // even in a comment - says nothing about this page's blocks. Following
 // them once pulled the page's root component, and with it every tab, into
 // every tab.
-const collectKeys = (startName, blocks, namespaces, opaque = new Set()) => {
+const collectKeys = (startName, blocks, namespaces, opaque = new Set(), exclude = new Set()) => {
     const seen = new Set();
     const keys = [];
     const stack = [startName];
     while (stack.length) {
         const name = stack.pop();
-        if (seen.has(name) || !blocks.has(name)) continue;
+        if (seen.has(name) || !blocks.has(name) || exclude.has(name)) continue;
         seen.add(name);
         const text = blocks.get(name);
         for (const key of findKeyLiterals(text, namespaces)) keys.push(key);
@@ -215,12 +256,13 @@ const screenChunks = ({ moduleLabel, screenLabel, keys, messages, headings }) =>
     ];
 };
 
-export const buildPageChunks = ({ config, pageSource, importedSources, locales }) => {
-    const namespaces = [config.namespace];
+const DEFAULT_EXPORT = /^export\s+default\s+([A-Za-z_$][\w$]*)\s*;?\s*$/m;
+
+// Blocks for one page, with its imported component files folded in as
+// opaque blocks under their import names.
+const loadPageBlocks = (pageSource, importedSources) => {
     const blocks = splitTopLevelBlocks(pageSource);
     const opaque = new Set();
-    // An imported component file is folded in as one block under its import
-    // name - enough to collect its text from the tab that renders it.
     for (const [name, relativePath] of [...pageSource.matchAll(IMPORT_COMPONENT)].map((m) => [m[1], m[2]])) {
         const imported = importedSources[relativePath];
         if (imported !== undefined && !blocks.has(name)) {
@@ -228,29 +270,80 @@ export const buildPageChunks = ({ config, pageSource, importedSources, locales }
             opaque.add(name);
         }
     }
+    return { blocks, opaque };
+};
+
+// Screens of a "tabs" page: one per tabItems entry.
+const tabScreens = ({ page, pageSource, blocks, opaque, namespaces }) => {
     // The page's own root component (the block declaring the tabs) renders
     // every tab - reaching it from anywhere would merge all tabs into one.
     for (const [name, text] of blocks) {
         if (TAB_ITEM.test(text)) blocks.delete(name);
         TAB_ITEM.lastIndex = 0;
     }
-
-    const tabs = [...pageSource.matchAll(TAB_ITEM)].map(([, key, labelKey, component]) => ({
+    const screens = [...pageSource.matchAll(TAB_ITEM)].map(([, key, labelKey, component]) => ({
         key,
         labelKey,
+        captionKey: `${labelKey}_caption`,
         keys: collectKeys(component, blocks, namespaces, opaque),
     }));
-    if (tabs.length === 0) {
-        throw new Error(`No tabs found in ${config.page} - did its tabItems format change?`);
+    if (screens.length === 0) {
+        throw new Error(`No tabs found in ${page.page} - did its tabItems format change?`);
+    }
+    return screens;
+};
+
+// Screens of a "sections" page: listed in the config.
+const sectionScreens = ({ page, pageSource, blocks, opaque, namespaces }) => {
+    const root = DEFAULT_EXPORT.exec(pageSource)?.[1];
+    const sectionComponents = new Set(page.sections.map((section) => section.component).filter((name) => name !== "@root"));
+    return page.sections.map((section) => {
+        const component = section.component === "@root" ? root : section.component;
+        if (!component || !blocks.has(component)) {
+            throw new Error(`Section "${section.key}" of ${page.page}: component ${section.component} not found`);
+        }
+        // "@root" is the page minus its other sections' components.
+        const exclude = section.component === "@root" ? sectionComponents : new Set();
+        return {
+            key: section.key,
+            labelKey: section.labelKey,
+            label: section.label,
+            captionKey: section.captionKey || (section.labelKey ? `${section.labelKey}_caption` : null),
+            keys: collectKeys(component, blocks, namespaces, opaque, exclude),
+        };
+    });
+};
+
+// `pages`: [{ page, pageSource, importedSources }] matching config.pages;
+// `extraSources`: { relativePath: source } for config.errorSources.
+export const buildModuleChunks = ({ config, pages, extraSources = {}, locales }) => {
+    const namespaces = [config.namespace];
+    const screens = [];
+    const extras = [];
+    for (const { page, pageSource, importedSources } of pages) {
+        const { blocks, opaque } = loadPageBlocks(pageSource, importedSources);
+        const build = page.layout === "sections" ? sectionScreens : tabScreens;
+        screens.push(...build({ page, pageSource, blocks, opaque, namespaces }));
+        for (const extra of page.extraBlocks || []) {
+            extras.push({ ...extra, keys: collectKeys(extra.block, blocks, namespaces, opaque) });
+        }
     }
 
-    // Keys shared by many tabs are page chrome - dropped from every tab's
-    // chunk (they'd make every tab match every search), except errors,
-    // which get their own chunks below.
+    // Keys shared by many screens are page chrome - dropped from every
+    // screen's chunk (they'd make every screen match every search), except
+    // errors, which get their own chunks below together with any error map
+    // living outside the pages (errorSources).
     const usage = new Map();
-    for (const tab of tabs) for (const key of tab.keys) usage.set(key, (usage.get(key) || 0) + 1);
+    for (const screen of screens) for (const key of screen.keys) usage.set(key, (usage.get(key) || 0) + 1);
     const isShared = (key) => usage.get(key) > SHARED_KEY_TAB_THRESHOLD;
-    const sharedErrorKeys = [...usage.keys()].filter((key) => isShared(key) && classifyKey(key, "") === "error").sort();
+    const errorKeys = [
+        ...new Set([
+            ...[...usage.keys()].filter((key) => isShared(key) && classifyKey(key, "") === "error"),
+            ...(config.errorSources || []).flatMap((file) =>
+                findKeyLiterals(extraSources[file] || "", namespaces).filter((key) => classifyKey(key, "") === "error")
+            ),
+        ]),
+    ].sort();
 
     const chunks = [];
     for (const [locale, messages] of Object.entries(locales)) {
@@ -262,35 +355,34 @@ export const buildPageChunks = ({ config, pageSource, importedSources, locales }
             );
 
         const mapLines = [];
-        for (const tab of tabs) {
-            const screenLabel = cleanText(lookup(messages, tab.labelKey) || tab.key);
-            const caption = lookup(messages, `${tab.labelKey}_caption`);
+        for (const screen of screens) {
+            const screenLabel = cleanText(screen.label?.[locale] || lookup(messages, screen.labelKey) || screen.key);
+            const caption = screen.captionKey ? lookup(messages, screen.captionKey) : null;
             mapLines.push(`- ${screenLabel}${typeof caption === "string" ? `: ${cleanText(caption)}` : ""}`);
             push(
                 screenChunks({
                     moduleLabel,
                     screenLabel,
-                    // The tab's own caption leads its chunk even when its
+                    // The screen's own caption leads its chunk even when its
                     // component never renders it (some only show it in the
                     // module map) - it's the best one-line "what is this".
-                    keys: [`${tab.labelKey}_caption`, ...tab.keys.filter((key) => !isShared(key))],
+                    keys: [...(screen.captionKey ? [screen.captionKey] : []), ...screen.keys.filter((key) => !isShared(key))],
                     messages,
                     headings,
                 }),
-                [config.module, tab.key]
+                [config.module, screen.key]
             );
         }
         push(withPartTitles(`${moduleLabel}: ${headings.map}`, packLines(headings.mapIntro(moduleLabel), mapLines)), [config.module, "map"]);
 
-        for (const extra of config.extraBlocks || []) {
-            const keys = collectKeys(extra.block, blocks, namespaces, opaque).filter((key) => !isShared(key));
+        for (const extra of extras) {
             push(
-                screenChunks({ moduleLabel, screenLabel: extra.title[locale], keys, messages, headings }),
+                screenChunks({ moduleLabel, screenLabel: extra.title[locale], keys: extra.keys.filter((key) => !isShared(key)), messages, headings }),
                 [config.module, extra.slug]
             );
         }
 
-        const errorLines = texts(sharedErrorKeys, messages).map((entry) => `- ${entry.text}`);
+        const errorLines = texts(errorKeys, messages).map((entry) => `- ${entry.text}`);
         if (errorLines.length) {
             push(withPartTitles(`${moduleLabel}: ${headings.errors}`, packLines(`${moduleLabel}: ${headings.errors}.`, errorLines)), [config.module, "errors"]);
         }

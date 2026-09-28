@@ -3,7 +3,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { searchKnowledge } from "./assistantKnowledge.service.js";
 import { callAssistantModel } from "./assistantModel.service.js";
 import { runAssistantAgent } from "./assistantAgent.service.js";
-import { getAccountingState, describeAccountingState } from "./assistantAccountingState.service.js";
+import { getCompanyState, relevantStateModules, flattenFindings, describeCompanyState } from "./assistantCompanyState.service.js";
+import { recordGuidance, recordKnowledgeGap } from "./assistantLearning.service.js";
 
 const MAX_MESSAGE_LENGTH = 2000;
 
@@ -69,29 +70,8 @@ const assertOwnedConversation = async (conversationId, userId) => {
     return conversation;
 };
 
-// The company's accounting state costs a handful of queries and ~100-300
-// prompt tokens, so it's only loaded when the conversation is plausibly
-// about accounting: the person is on that module, or the message (or the
-// question it answers) talks about it.
-const ACCOUNTING_TOPIC = /contab|asiento|comprobante|apertura|saldo|periodo|cierre|depreci|diferid|amortiz|balance|libro|cuenta contable|puc|activo fijo|retenci|\biva\b|\bica\b|accounting|journal|voucher|ledger|opening balance|closing/i;
-
-export const shouldLoadAccountingState = ({ module, message, history = [] }) => {
-    if (module === "accounting") return true;
-    const lastAssistant = [...history].reverse().find((entry) => entry.role === "assistant");
-    return ACCOUNTING_TOPIC.test(`${message} ${lastAssistant?.content || ""}`);
-};
-
-// Never lets a detector/permission failure cost the person their reply -
-// the assistant just answers without company context.
-const loadAccountingState = async (user) => {
-    if (!user) return null;
-    try {
-        return await getAccountingState(user);
-    } catch (error) {
-        console.error("[assistant] accounting state failed:", error);
-        return null;
-    }
-};
+// Modules whose company state the widget can open with (see getAssistantNudge).
+const NUDGE_MODULES = new Set(["accounting", "finance"]);
 
 const MODULE_KEY_PATTERN = /^[a-z0-9_-]{1,60}$/;
 const cleanPageKey = (value) => (typeof value === "string" && MODULE_KEY_PATTERN.test(value) ? value : null);
@@ -141,23 +121,25 @@ export const askAssistant = async ({ userId, user = null, conversationId, messag
     let content;
     let sources = null;
     let actions = null;
+    let knowledgeGap = false;
 
-    const accountingState = shouldLoadAccountingState({ module: safeModule, message: trimmed, history })
-        ? await loadAccountingState(user)
-        : null;
+    // What Ohnix knows about this company in the modules this turn touches
+    // (assistantCompanyState.service.js) - gated per module, never throws.
+    const companyState = await getCompanyState(user, relevantStateModules({ module: safeModule, message: trimmed, history }));
+    const findings = flattenFindings(companyState);
 
     if (isGreetingOnly(trimmed)) {
         const defaultChoices = (GREETING_CHOICES[safeModule] || GREETING_CHOICES.default)[safeLocale];
-        const top = safeModule === "accounting" ? accountingState?.[0] : null;
-        // Proactive greeting: on Accounting, lead with the most important
-        // thing Ohnix sees in this company's books (still no LLM call) and
-        // make "help me with that" the first choice.
+        const top = NUDGE_MODULES.has(safeModule) ? companyState[safeModule]?.[0] : null;
+        // Proactive greeting: on Accounting/Finance, lead with the most
+        // important thing Ohnix sees there for this company (still no LLM
+        // call) and make "help me with that" the first choice.
         content = top ? `${GREETING_MESSAGE[safeLocale]}\n\n${top.nudge[safeLocale]}` : GREETING_MESSAGE[safeLocale];
         actions = { choices: top ? [top.cta[safeLocale], ...defaultChoices.slice(0, 3)] : defaultChoices };
     } else {
         try {
             const result = await runAssistantAgent({
-                companyState: describeAccountingState(accountingState),
+                companyState: describeCompanyState(companyState),
                 message: trimmed,
                 history,
                 locale: safeLocale,
@@ -169,6 +151,7 @@ export const askAssistant = async ({ userId, user = null, conversationId, messag
             content = result.content;
             actions = result.actions;
             sources = result.sources.length ? result.sources : null;
+            knowledgeGap = result.knowledgeGap === true;
         } catch (error) {
             console.error("[assistant] agent failed:", error);
             content = PROVIDER_ERROR_MESSAGE[safeLocale];
@@ -187,6 +170,34 @@ export const askAssistant = async ({ userId, user = null, conversationId, messag
             actions: actions ?? undefined,
         },
     });
+
+    // Learning loop (assistantLearning.service.js) - bookkeeping only, so a
+    // failure here is logged and never costs the person the reply above.
+    try {
+        if (user && findings.length && actions) {
+            await recordGuidance({
+                accountId: user.prismaId,
+                actorId: userId,
+                conversationId: conversation.id,
+                messageId: assistantMessage.id,
+                findings,
+                actions,
+            });
+        }
+        if (knowledgeGap) {
+            await recordKnowledgeGap({
+                userId,
+                conversationId: conversation.id,
+                messageId: assistantMessage.id,
+                module: safeModule,
+                tab: safeTab,
+                locale: safeLocale,
+                question: trimmed,
+            });
+        }
+    } catch (error) {
+        console.error("[assistant] learning bookkeeping failed:", error);
+    }
 
     // Touch updatedAt so the conversation list (most-recent-first) reflects
     // this turn even though no column on ChatConversation itself changed.
@@ -213,9 +224,9 @@ export const askAssistant = async ({ userId, user = null, conversationId, messag
 // tap-to-send choice. Null when there's nothing worth interrupting for (or
 // the person can't see that module's data).
 export const getAssistantNudge = async ({ user, module, locale }) => {
-    if (module !== "accounting") return null;
+    if (!NUDGE_MODULES.has(module)) return null;
     const safeLocale = normalizeLocale(locale);
-    const top = (await loadAccountingState(user))?.[0];
+    const top = (await getCompanyState(user, [module]))[module]?.[0];
     if (!top) return null;
     return { key: top.key, message: top.nudge[safeLocale], choice: top.cta[safeLocale] };
 };

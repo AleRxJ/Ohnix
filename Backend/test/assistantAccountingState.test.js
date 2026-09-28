@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detectAccountingState, describeAccountingState } from "../services/assistantAccountingState.service.js";
+import { ACCOUNTING_STATE_DETECTORS } from "../services/assistantAccountingState.service.js";
+import { runDetectors, describeCompanyState, relevantStateModules } from "../services/assistantCompanyState.service.js";
 import { buildTurnMessage } from "../services/assistantAgent.service.js";
-import { shouldLoadAccountingState } from "../services/assistant.service.js";
+
+const detectAccountingState = (args) => runDetectors({ detectors: ACCOUNTING_STATE_DETECTORS, ...args });
+const describeAccountingState = (findings) => describeCompanyState({ accounting: findings });
 
 // Minimal stand-in for the Prisma models the detectors read. Each option
 // is what the "database" holds for the account under test.
@@ -81,13 +84,17 @@ test("a detector that throws is skipped without taking the others down", async (
     }
 });
 
-test("describeAccountingState distinguishes 'no access' from 'nothing pending'", () => {
-    assert.equal(describeAccountingState(null), null);
+test("describeCompanyState distinguishes 'no access' from 'nothing pending'", () => {
+    assert.equal(describeCompanyState({ accounting: null }), null);
+    assert.equal(describeCompanyState({}), null);
     assert.match(describeAccountingState([]), /no se detectó nada pendiente/);
     assert.match(
         describeAccountingState([{ summary: "Falta la apertura.", target: "accounting.opening_balance" }]),
         /- Falta la apertura\. \[pantalla: accounting\.opening_balance\]/
     );
+    // One section per visible module; a module the person can't see is left out.
+    const both = describeCompanyState({ accounting: [], finance: [{ summary: "Pagos vencidos.", target: "finance" }], other: null });
+    assert.match(both, /ESTADO DE LA CONTABILIDAD[\s\S]*ESTADO DE LAS FINANZAS[\s\S]*- Pagos vencidos\./);
 });
 
 test("buildTurnMessage puts the company state right next to the question", () => {
@@ -97,12 +104,14 @@ test("buildTurnMessage puts the company state right next to the question", () =>
     assert.doesNotMatch(buildTurnMessage({ message: "x", knowledge: "k" }), /ANTES DE PREGUNTAR/);
 });
 
-test("shouldLoadAccountingState only fires for accounting conversations", () => {
-    assert.equal(shouldLoadAccountingState({ module: "accounting", message: "hola" }), true);
-    assert.equal(shouldLoadAccountingState({ module: "products", message: "¿cómo liquido el IVA?" }), true);
-    assert.equal(shouldLoadAccountingState({ module: "products", message: "mi cuenta está activa" }), false);
-    assert.equal(
-        shouldLoadAccountingState({ module: "products", message: "sí", history: [{ role: "assistant", content: "¿Ya cerraste el periodo?" }] }),
-        true
+test("relevantStateModules loads only the modules a conversation touches", () => {
+    assert.deepEqual(relevantStateModules({ module: "accounting", message: "hola" }), ["accounting"]);
+    assert.deepEqual(relevantStateModules({ module: "products", message: "¿cómo liquido el IVA?" }), ["accounting"]);
+    assert.deepEqual(relevantStateModules({ module: "products", message: "mi cuenta está activa" }), []);
+    assert.deepEqual(relevantStateModules({ module: "finance", message: "hola" }), ["finance"]);
+    assert.deepEqual(relevantStateModules({ module: "products", message: "¿cómo concilio el extracto del banco?" }), ["finance"]);
+    assert.deepEqual(
+        relevantStateModules({ module: "products", message: "sí", history: [{ role: "assistant", content: "¿Ya cerraste el periodo?" }] }),
+        ["accounting"]
     );
 });

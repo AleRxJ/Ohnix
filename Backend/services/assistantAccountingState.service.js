@@ -12,7 +12,6 @@
 // Tenant scoping note: ManualJournalVoucher is scoped by accountId (its
 // createdById is the actor); every other model here uses createdById as the
 // tenant id, same as the rest of the accounting services.
-import { prisma } from "../db/prisma.js";
 import { canAccessModule } from "../middleware/team.permissions.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 
@@ -157,23 +156,6 @@ export const ACCOUNTING_STATE_DETECTORS = [
     },
 ];
 
-// Runs every detector; one failing (bad data, a schema drift) never takes
-// the others - or the assistant's reply - down with it.
-export const detectAccountingState = async ({ accountId, db = prisma, now = new Date(), detectors = ACCOUNTING_STATE_DETECTORS }) => {
-    const results = await Promise.all(
-        detectors.map(async (detector) => {
-            try {
-                const finding = await detector.run({ db, accountId, now });
-                return finding ? { key: detector.key, priority: detector.priority, ...finding } : null;
-            } catch (error) {
-                console.error(`[assistant] accounting state detector ${detector.key} failed:`, error);
-                return null;
-            }
-        })
-    );
-    return results.filter(Boolean).sort((a, b) => b.priority - a.priority);
-};
-
 // The same two gates the accounting routes apply (routes/accounting.routes.js:
 // enforcePlanFeature("accounting") + requireModulePermission("accounting")) -
 // the assistant must never become a side door to books the person can't
@@ -184,21 +166,4 @@ export const canSeeAccounting = async (user) => {
     if (!subscription || subscription.status !== "active") return false;
     if (!getPlanFeatures(getEffectivePlan(subscription)).accounting) return false;
     return canAccessModule(user, "accounting", "view");
-};
-
-export const getAccountingState = async (user, { now = new Date() } = {}) => {
-    if (!(await canSeeAccounting(user))) return null;
-    return detectAccountingState({ accountId: user.prismaId, now });
-};
-
-// Prompt block for the agent. Only called with findings the person is
-// allowed to see (see getAccountingState).
-export const describeAccountingState = (findings) => {
-    if (!findings) return null;
-    if (!findings.length) {
-        return "ESTADO DE LA CONTABILIDAD DE ESTA EMPRESA (datos reales de Ohnix): no se detectó nada pendiente (hay movimientos, apertura registrada, sin borradores, sin procesos fallidos ni meses anteriores abiertos).";
-    }
-    return `ESTADO DE LA CONTABILIDAD DE ESTA EMPRESA (datos reales de Ohnix, de lo más a lo menos importante):\n${findings
-        .map((finding) => `- ${finding.summary} [pantalla: ${finding.target}]`)
-        .join("\n")}`;
 };

@@ -47,11 +47,12 @@ const SHORT_MESSAGE_WORDS = 6;
 export const TURN_SCHEMA = {
     type: "object",
     additionalProperties: false,
-    required: ["search_query", "message", "sources_used", "choices", "navigate_to", "highlight"],
+    required: ["search_query", "message", "sources_used", "choices", "navigate_to", "highlight", "knowledge_gap"],
     properties: {
         search_query: { type: ["string", "null"] },
         message: { type: "string" },
         sources_used: { type: "array", items: { type: "string" } },
+        knowledge_gap: { type: "boolean" },
         choices: { type: "array", items: { type: "string" } },
         navigate_to: { type: ["string", "null"] },
         highlight: { type: ["string", "null"] },
@@ -90,6 +91,7 @@ FORMATO DE SALIDA
 - choices: lista de respuestas rápidas, o [].
 - navigate_to: clave de PANTALLAS del mapa, o null.
 - highlight: clave de pestaña o botón para señalar, o null.
+- knowledge_gap: true solo si la persona preguntó algo sobre Ohnix que la BASE DE CONOCIMIENTO y el mapa no cubren (tuviste que decir que no lo sabes o sugerir soporte); false en cualquier otro caso, incluidas preguntas generales de contabilidad.
 11. Escribe message y choices en ${locale === "en" ? "inglés" : "español"}.
 ${currentPage ? `\nLa persona está ahora mismo en: ${currentPage}. Úsalo para ubicarla, pero no asumas que su pregunta es sobre esa pantalla si no lo es.\n` : ""}
 ${describeAppMap({ module })}`;
@@ -187,7 +189,7 @@ const parseJsonObject = (raw) => {
 // For a provider that ignores response_format: the turn object is often
 // still there - as the whole reply, or trailing the prose. Pull it out so
 // the person keeps the quick replies/navigation instead of seeing raw JSON.
-const TURN_KEYS = ["message", "choices", "navigate_to", "highlight", "search_query", "sources_used"];
+const TURN_KEYS = ["message", "choices", "navigate_to", "highlight", "search_query", "sources_used", "knowledge_gap"];
 
 export const parseTurn = (text) => {
     const raw = (text || "").trim();
@@ -289,7 +291,7 @@ export const runAssistantAgent = async ({
 
         const { message: finalMessage, actions } = sanitizeRespondArgs(turn, { module, tab });
         if (finalMessage) {
-            return { content: finalMessage, actions, sources: citedSources(turn) };
+            return { content: finalMessage, actions, sources: citedSources(turn), knowledgeGap: turn.knowledge_gap === true };
         }
         if (isLastStep) break;
         // Empty message and no (new) search - nudge once more rather than

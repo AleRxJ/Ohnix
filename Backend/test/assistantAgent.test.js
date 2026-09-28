@@ -10,7 +10,7 @@ import {
 } from "../services/assistantAgent.service.js";
 
 const turn = (fields) => ({
-    content: JSON.stringify({ search_query: null, message: "", sources_used: [], choices: [], navigate_to: null, highlight: null, ...fields }),
+    content: JSON.stringify({ search_query: null, message: "", sources_used: [], choices: [], navigate_to: null, highlight: null, knowledge_gap: false, ...fields }),
 });
 
 // Scripted stand-in for the LLM: returns the queued replies in order and
@@ -197,4 +197,12 @@ test("runAssistantAgent accepts plain prose from a provider that ignores the sch
 test("runAssistantAgent throws when no usable reply ever arrives", async () => {
     const model = scriptedModel([turn({}), turn({}), turn({})]);
     await assert.rejects(runAssistantAgent({ message: "x", callModel: model, searchKnowledge: recordingSearch() }));
+});
+
+test("runAssistantAgent reports when the model flags a knowledge gap", async () => {
+    const model = scriptedModel([turn({ message: "No tengo eso confirmado, te sugiero soporte.", knowledge_gap: true })]);
+    const result = await runAssistantAgent({ message: "¿Ohnix hace nómina electrónica para Panamá?", callModel: model, searchKnowledge: recordingSearch() });
+    assert.equal(result.knowledgeGap, true);
+    const plain = await runAssistantAgent({ message: "hola?", callModel: scriptedModel([turn({ message: "Hola" })]), searchKnowledge: recordingSearch() });
+    assert.equal(plain.knowledgeGap, false);
 });

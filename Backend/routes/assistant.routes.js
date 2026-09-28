@@ -5,8 +5,10 @@ import {
     getConversation,
     postFeedback,
     getNudge,
+    getInsights,
 } from "../controllers/assistant.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
+import { isAdmin } from "../middleware/admin.middleware.js";
 import { assistantChatRateLimiter } from "../middleware/rateLimit.middleware.js";
 
 // Deliberately no requireModulePermission gate here (see
@@ -25,5 +27,8 @@ router.route("/feedback").post(postFeedback);
 // module-permission gates as /accounting itself (inside getAssistantNudge,
 // not here, since the rest of the assistant stays ungated on purpose).
 router.route("/nudge").get(getNudge);
+// Ohnix-staff only: cross-company view of how the assistant's guidance is
+// performing and what it couldn't answer (assistantLearning.service.js).
+router.route("/insights").get(isAdmin, getInsights);
 
 export default router;

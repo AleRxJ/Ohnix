@@ -24,6 +24,7 @@ import {
     CloudServerOutlined,
     BuildOutlined,
     CalculatorOutlined,
+    BulbOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { FEATURE_MINIMUM_PLAN, PLAN_DISPLAY } from "../hooks/useSubscription";
@@ -301,6 +302,11 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             key: "admin-income-tax-config",
             icon: <CalculatorOutlined />,
             label: <Link to="/admin/income-tax-config">{t("common.admin_income_tax_config")}</Link>,
+        });
+        items.push({
+            key: "admin-assistant-insights",
+            icon: <BulbOutlined />,
+            label: <Link to="/admin/assistant-insights">{t("common.admin_assistant_insights")}</Link>,
         });
     }
 

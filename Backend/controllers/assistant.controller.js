@@ -8,6 +8,7 @@ import {
     getAssistantNudge,
     submitFeedback,
 } from "../services/assistant.service.js";
+import { getAssistantInsights } from "../services/assistantLearning.service.js";
 
 const sendChatMessage = asyncHandler(async (req, res, next) => {
     const { message, conversation_id, module, tab, locale } = req.body;
@@ -90,4 +91,15 @@ const getNudge = asyncHandler(async (req, res, next) => {
     }
 });
 
-export { sendChatMessage, getConversations, getConversation, postFeedback, getNudge };
+const getInsights = asyncHandler(async (req, res, next) => {
+    try {
+        const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
+        const insights = await getAssistantInsights({ days });
+        return res.status(200).json(new ApiResponse(200, insights, "Assistant insights fetched successfully"));
+    } catch (error) {
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
+export { sendChatMessage, getConversations, getConversation, postFeedback, getNudge, getInsights };

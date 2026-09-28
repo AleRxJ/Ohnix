@@ -27,6 +27,9 @@ const CONVERSATION_STORAGE_KEY = "ohnix.assistant.conversationId";
 const SUGGESTION_KEYS = ["suggestion_1", "suggestion_2", "suggestion_3", "suggestion_4"];
 // Accounting gets its own openers: people there most often don't know what
 // to ask yet, so these start a guided conversation rather than a lookup.
+// Modules with company-state detectors on the backend (see
+// assistantCompanyState.service.js) - only these can open with a nudge.
+const NUDGE_MODULES = new Set(["accounting", "finance"]);
 const ACCOUNTING_SUGGESTION_KEYS = [
     "accounting_suggestion_1",
     "accounting_suggestion_2",
@@ -215,12 +218,12 @@ const AssistantWidget = () => {
 
     // Proactive opener: on a fresh conversation, ask the backend for the one
     // thing worth raising about this company (e.g. "3 comprobantes en
-    // borrador"). Only Accounting has detectors today; the backend returns
+    // borrador"). Accounting and Finance have detectors (NUDGE_MODULES); the backend returns
     // null when there's nothing to say or the person can't see those books.
     // Best-effort - a failure just means no nudge, never an error toast.
     const [nudge, setNudge] = useState(null);
     useEffect(() => {
-        if (!open || messages.length > 0 || !online || currentModule !== "accounting") {
+        if (!open || messages.length > 0 || !online || !NUDGE_MODULES.has(currentModule)) {
             setNudge(null);
             return undefined;
         }

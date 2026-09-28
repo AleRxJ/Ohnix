@@ -162,6 +162,7 @@ const AdminCertificateOrders = lazy(() => import("./pages/AdminCertificateOrders
 const AdminApiClients = lazy(() => import("./pages/AdminApiClients"));
 const AdminDianTestMatrix = lazy(() => import("./pages/AdminDianTestMatrix"));
 const AdminIncomeTaxConfig = lazy(() => import("./pages/AdminIncomeTaxConfig"));
+const AdminAssistantInsights = lazy(() => import("./pages/AdminAssistantInsights"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 const CardCheckout = lazy(() => import("./pages/CardCheckout"));
@@ -450,6 +451,7 @@ function App() {
                                 <Route path="admin/api-clients" element={<AdminApiClients />} />
                                 <Route path="admin/dian-test-matrix" element={<AdminDianTestMatrix />} />
                                 <Route path="admin/income-tax-config" element={<AdminIncomeTaxConfig />} />
+                                <Route path="admin/assistant-insights" element={<AdminAssistantInsights />} />
                             </Route>
 
                             {/* Fiscal setup (including the certificate checkout) deliberately does NOT

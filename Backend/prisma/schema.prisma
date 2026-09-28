@@ -4289,6 +4289,70 @@ enum ChatFeedbackRating {
   down
 }
 
+// Fase 4 of the guided assistant - the same "predicción → resultado real →
+// aprendizaje" loop as DiscoveryPrediction/DiscoveryPatternStats, applied to
+// the assistant's own guidance. When a reply sends a company to the screen
+// that fixes one of its detected accounting findings (see
+// services/assistantAccountingState.service.js), that's recorded as a
+// prediction: "this guidance will clear the finding". The nightly check
+// (assistantLearning.service.js) re-runs that detector after checkAfter.
+// Plain ids, no relations on purpose: these are analytics rows that must
+// outlive a deleted conversation.
+model AssistantGuidance {
+  id             String                    @id @default(cuid())
+  accountId      String                    @map("account_id")
+  actorId        String                    @map("actor_id")
+  conversationId String                    @map("conversation_id")
+  messageId      String                    @unique @map("message_id")
+  findingKey     String                    @map("finding_key")
+  target         String
+  checkAfter     DateTime                  @map("check_after")
+  checkedAt      DateTime?                 @map("checked_at")
+  outcome        AssistantGuidanceOutcome?
+  createdAt      DateTime                  @default(now()) @map("created_at")
+
+  @@index([checkAfter, checkedAt])
+  @@index([accountId, findingKey, checkedAt])
+  @@map("assistant_guidances")
+}
+
+enum AssistantGuidanceOutcome {
+  resolved
+  unresolved
+}
+
+// Track record per finding type, Laplace-smoothed like
+// DiscoveryPatternStats.currentConfidence. Fed back into the agent's prompt
+// when guidance on a finding keeps failing, and shown in the admin insights.
+model AssistantGuidanceStats {
+  id           String   @id @default(cuid())
+  findingKey   String   @unique @map("finding_key")
+  totalChecked Int      @default(0) @map("total_checked")
+  resolved     Int      @default(0)
+  successRate  Decimal  @default(0.5) @map("success_rate") @db.Decimal(4, 3)
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("assistant_guidance_stats")
+}
+
+// A question the assistant flagged it couldn't answer from what it knows
+// (the model sets knowledge_gap in its reply) - the to-do list for the
+// knowledge base / app map, instead of guessing what people ask.
+model AssistantKnowledgeGap {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  conversationId String   @map("conversation_id")
+  messageId      String   @unique @map("message_id")
+  module         String?
+  tab            String?
+  locale         String
+  question       String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("assistant_knowledge_gaps")
+}
+
 // ---------------------------------------------------------------------------
 // Discovery Engine (Fase 1 - base): Ohnix noticing things nobody asked about,
 // not another report/KPI screen. See docs/discovery-engine.md for the full

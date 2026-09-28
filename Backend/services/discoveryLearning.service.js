@@ -33,7 +33,7 @@ const CHECKERS = {
 // first checked prediction doesn't swing straight to 0% or 100% confidence -
 // starts at 0.5 (an uninformed prior) and moves gradually as more
 // predictions get checked.
-const smoothedConfidence = (correct, total) => Number(((correct + 1) / (total + 2)).toFixed(3));
+export const smoothedConfidence = (correct, total) => Number(((correct + 1) / (total + 2)).toFixed(3));
 
 const updatePatternStats = async ({ detectorKey, wasCorrect, db }) => {
     const existing = await db.discoveryPatternStats.findUnique({ where: { detectorKey } });

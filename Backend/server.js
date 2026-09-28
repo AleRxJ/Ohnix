@@ -14,6 +14,7 @@ import prepaidExpenseScheduler from "./utils/prepaidExpenseScheduler.js";
 import loanInterestAccrualScheduler from "./utils/loanInterestAccrualScheduler.js";
 import recurringJournalScheduler from "./utils/recurringJournalScheduler.js";
 import { syncAppMapKnowledge } from "./services/assistantAppMapSync.service.js";
+import assistantLearningScheduler from "./utils/assistantLearningScheduler.js";
 import receiptTacitaScheduler from "./utils/receiptTacitaScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
 import discoveryScheduler from "./utils/discoveryScheduler.js";
@@ -130,6 +131,8 @@ connectDB()
                 apiClientBillingScheduler.start();
                 console.log("🛠️ Starting warranty notification retry scheduler...");
                 warrantyNotificationRetryScheduler.start();
+                console.log("🧠 Starting assistant learning scheduler...");
+                assistantLearningScheduler.start();
             }
         });
     })

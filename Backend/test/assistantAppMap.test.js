@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildPageChunks, classifyKey, splitTopLevelBlocks } from "../services/assistantAppMapBuilder.js";
+import { buildModuleChunks, classifyKey, splitTopLevelBlocks } from "../services/assistantAppMapBuilder.js";
 import { buildAppMapFromDisk } from "../services/assistantAppMapSources.js";
 import { loadAppMap, syncAppMapKnowledge } from "../services/assistantAppMapSync.service.js";
 
@@ -65,9 +65,14 @@ const MESSAGES = {
     },
 };
 
-const CONFIG = { module: "demo", page: "pages/Demo.jsx", namespace: "demo", moduleLabel: { es: "Demo" } };
+const PAGE_CONFIG = { page: "pages/Demo.jsx", layout: "tabs" };
+const CONFIG = { module: "demo", namespace: "demo", moduleLabel: { es: "Demo" }, pages: [PAGE_CONFIG] };
 const build = () =>
-    buildPageChunks({ config: CONFIG, pageSource: PAGE, importedSources: { "../components/demo/Imported": IMPORTED }, locales: { es: MESSAGES } });
+    buildModuleChunks({
+        config: CONFIG,
+        pages: [{ page: PAGE_CONFIG, pageSource: PAGE, importedSources: { "../components/demo/Imported": IMPORTED } }],
+        locales: { es: MESSAGES },
+    });
 const find = (chunks, title) => chunks.find((chunk) => chunk.title === title);
 
 test("splitTopLevelBlocks finds column-0 declarations and skips imports", () => {
@@ -165,4 +170,74 @@ test("syncAppMapKnowledge creates new, updates changed, deletes removed, skips u
     assert.equal(db.calls.upsert[0].create.title, "Nueva");
     assert.equal(db.calls.update[0].where.id, "changed");
     assert.deepEqual(db.calls.deleteMany[0].where.id.in, ["gone"]);
+});
+
+// "sections" layout (e.g. Finance): one page, blocks listed in the config,
+// "@root" = the page's own component minus the other sections.
+const SECTIONS_PAGE = `import Planner from "../components/demo/Planner";
+
+const Summary = () => <p>{t("demo.summary_help")}</p>;
+
+const Money = () => (
+    <div>
+        {t("demo.money_caption")}
+        <Summary />
+        <Planner />
+    </div>
+);
+
+export default Money;
+`;
+const PLANNER = `export default function Planner() { return t("demo.planner_help"); }`;
+const ERROR_MAP = `export const DEMO_ERRORS = { late: "demo.error_late", ok: "demo.saved" };`;
+
+const MONEY_PAGE = {
+    page: "pages/Money.jsx",
+    layout: "sections",
+    sections: [
+        { key: "main", component: "@root", label: { es: "Principal" }, captionKey: "demo.money_caption" },
+        { key: "planner", component: "Planner", labelKey: "demo.planner_title" },
+    ],
+};
+
+const buildSections = () =>
+    buildModuleChunks({
+        config: { module: "money", namespace: "demo", moduleLabel: { es: "Dinero" }, errorSources: ["utils/demoError.js"], pages: [MONEY_PAGE] },
+        pages: [{ page: MONEY_PAGE, pageSource: SECTIONS_PAGE, importedSources: { "../components/demo/Planner": PLANNER } }],
+        extraSources: { "utils/demoError.js": ERROR_MAP },
+        locales: {
+            es: {
+                demo: {
+                    money_caption: "Para manejar el dinero.",
+                    summary_help: "Ayuda del resumen.",
+                    planner_title: "Planificador",
+                    planner_help: "Ayuda del planificador.",
+                    error_late: "Vas tarde.",
+                    saved: "Guardado.",
+                },
+            },
+        },
+    });
+
+test("sections layout: @root excludes the other sections, each section gets its own chunk", () => {
+    const chunks = buildSections();
+    const main = find(chunks, "Dinero › Principal: cómo funciona");
+    assert.match(main.body, /Para manejar el dinero\.[\s\S]*Ayuda del resumen\./);
+    assert.doesNotMatch(main.body, /planificador/i);
+    assert.match(find(chunks, "Dinero › Planificador: cómo funciona").body, /Ayuda del planificador\./);
+    assert.deepEqual(find(chunks, "Dinero › Planificador: cómo funciona").tags, ["money", "planner"]);
+});
+
+test("errorSources contribute only their error messages to the module's error chunk", () => {
+    const errors = find(buildSections(), "Dinero: mensajes de error y validaciones");
+    assert.match(errors.body, /- Vas tarde\./);
+    assert.doesNotMatch(errors.body, /Guardado/);
+});
+
+test("the real finance app map covers its sections and the reconciliation page", () => {
+    const { chunks } = loadAppMap();
+    const tags = new Set(chunks.filter((chunk) => chunk.module === "finance" && chunk.locale === "es").map((chunk) => chunk.tags[1]));
+    for (const key of ["cash_accounts", "payment_methods", "payables", "receivables", "cash_integrity", "reconciliation", "map", "errors"]) {
+        assert.ok(tags.has(key), `finance app map is missing ${key}`);
+    }
 });
