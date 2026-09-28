@@ -1,5 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
-import PropTypes from "prop-types";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Input, Spin, Tooltip } from "antd";
 import {
@@ -10,9 +9,8 @@ import {
     DislikeOutlined,
     DislikeFilled,
     PlusOutlined,
-    ArrowRightOutlined,
-    AimOutlined,
     DisconnectOutlined,
+    RightOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
@@ -20,10 +18,17 @@ import useIsMobile from "../../hooks/useIsMobile";
 import { assistantService } from "../../services/assistantService";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { useTeam } from "../../context/TeamContext";
-import { getAssistantPageContext, spotlightAnchor } from "./assistantPageContext";
+import { getAssistantPageContext, spotlightAnchor, useAssistantPageContextValue } from "./assistantPageContext";
+import "./assistant.css";
+import { AssistantOrb, AssistantSparkleIcon, ContextLine, InsightCard, NextStep, SourceChips, ThinkingIndicator } from "./AssistantParts";
 import { getConnectivityState, subscribeConnectivity } from "../../offline/connectivity";
 
 const CONVERSATION_STORAGE_KEY = "ohnix.assistant.conversationId";
+// The surface tokens are translucent (e.g. rgba(11,11,11,0.92)) - fine for
+// a card on the page, but a full-screen mobile panel let the page behind
+// show through. The solid --ohnix-bg layer underneath keeps the same look
+// without the bleed.
+const PANEL_BACKGROUND = "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft)), var(--ohnix-bg)";
 const SUGGESTION_KEYS = ["suggestion_1", "suggestion_2", "suggestion_3", "suggestion_4"];
 // Accounting gets its own openers: people there most often don't know what
 // to ask yet, so these start a guided conversation rather than a lookup.
@@ -74,44 +79,14 @@ const useCurrentModule = () => {
     return segments[0] || "dashboard";
 };
 
-// A gradient id is embedded once per rendered <svg>, so every instance needs
-// its own unique id via useId() - reusing a literal string here would make
-// every icon on the page point at whichever instance's <defs> happens to be
-// last in the DOM, silently breaking the fill on all the earlier ones.
-const AssistantSparkleIcon = ({ size = 20 }) => {
-    const gradientId = useId();
-    return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                    <stop offset="0" stopColor="#29D8D5" />
-                    <stop offset="1" stopColor="#44F3F0" />
-                </linearGradient>
-            </defs>
-            <path d="M12 2.5l1.7 4.9 4.9 1.7-4.9 1.7-1.7 4.9-1.7-4.9-4.9-1.7 4.9-1.7L12 2.5z" fill={`url(#${gradientId})`} />
-            <path d="M19 14l.75 2.15L22 17l-2.25.85L19 20l-.75-2.15L16 17l2.25-.85L19 14z" fill={`url(#${gradientId})`} opacity="0.75" />
-        </svg>
-    );
-};
-
-AssistantSparkleIcon.propTypes = {
-    size: PropTypes.number,
-};
-
-const TypingDots = () => (
-    <span className="inline-flex items-center gap-1">
-        <span className="assistant-typing-dot" style={{ animationDelay: "0ms" }} />
-        <span className="assistant-typing-dot" style={{ animationDelay: "160ms" }} />
-        <span className="assistant-typing-dot" style={{ animationDelay: "320ms" }} />
-    </span>
-);
-
 const AssistantWidget = () => {
     const { t, currentLanguage } = useI18n();
     const isMobile = useIsMobile();
     const currentModule = useCurrentModule();
     const navigate = useNavigate();
     const location = useLocation();
+    // Live "you are here" for the header (e.g. which Accounting tab).
+    const pageContext = useAssistantPageContextValue();
     // Mirrors InventoryTourFab's own visibility check - that button sits
     // directly below this one (both right-6, so perfectly column-aligned),
     // so whenever it hides itself (tour open/completed/dismissed, team
@@ -300,12 +275,12 @@ const AssistantWidget = () => {
 
     const handleNavigate = (action) => {
         goToScreen(action);
-        if (action.anchor) spotlightAnchor(action.anchor);
+        if (action.anchor) spotlightAnchor(action.anchor, { label: t("assistant.spotlight_here") });
     };
 
     const handleHighlight = async (action) => {
         goToScreen(action);
-        const found = await spotlightAnchor(action.anchor);
+        const found = await spotlightAnchor(action.anchor, { label: t("assistant.spotlight_here") });
         // Usually a permission gate (e.g. no edit access hides the "new"
         // buttons) rather than a bug - still worth telling the person why
         // nothing lit up.
@@ -435,35 +410,22 @@ const AssistantWidget = () => {
                     }`}
                     style={
                         isMobile
-                            ? { background: "var(--ohnix-surface-card)" }
+                            ? { background: PANEL_BACKGROUND }
                             : {
                                   ...(panelStyle || { width: 400, maxWidth: "calc(100vw - 48px)", height: "min(640px, calc(100vh - 140px))" }),
-                                  background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
+                                  background: PANEL_BACKGROUND,
                                   border: "1px solid var(--ohnix-line-3)",
                                   boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
                               }
                     }
                 >
-                    <div
-                        className="flex items-center gap-2.5 px-4 py-3.5 shrink-0"
-                        style={{
-                            borderBottom: "1px solid var(--ohnix-line-3)",
-                            background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
-                        }}
-                    >
-                        <div
-                            className="flex items-center justify-center h-8 w-8 rounded-xl shrink-0"
-                            style={{ background: "rgba(41,216,213,0.12)" }}
-                        >
-                            <AssistantSparkleIcon size={18} />
-                        </div>
+                    <div className="assistant-header flex items-center gap-3 px-4 py-3.5 shrink-0">
+                        <AssistantOrb size={36} live />
                         <div className="flex-1 min-w-0">
-                            <div className="text-base font-bold text-[var(--ohnix-text-primary)]">
+                            <div className="text-[15px] font-bold leading-tight text-[var(--ohnix-text-primary)]">
                                 {t("assistant.panel_title")}
                             </div>
-                            <div className="text-xs font-normal text-[var(--ohnix-text-muted)]">
-                                {t("assistant.panel_subtitle")}
-                            </div>
+                            <ContextLine module={currentModule} tab={pageContext.tab} fallback={t("assistant.panel_subtitle")} />
                         </div>
                         <Tooltip title={t("assistant.new_conversation")}>
                             <button
@@ -495,44 +457,27 @@ const AssistantWidget = () => {
                     )}
 
                     {!loadingHistory && messages.length === 0 && (
-                        <div className="py-6">
-                            {nudge && (
-                                <div
-                                    className="assistant-message-in rounded-2xl px-3.5 py-3 mx-2 mb-4 text-sm leading-relaxed"
-                                    style={{ background: "rgba(41,216,213,0.08)", border: "1px solid rgba(41,216,213,0.35)", color: "var(--ohnix-text-primary)" }}
-                                >
-                                    <div className="flex items-start gap-2">
-                                        <span className="shrink-0 mt-0.5"><AssistantSparkleIcon size={14} /></span>
-                                        <span>{nudge.message}</span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => sendText(nudge.choice)}
-                                        disabled={!online}
-                                        className="assistant-action-btn inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 mt-2.5 cursor-pointer disabled:opacity-40"
-                                    >
-                                        <ArrowRightOutlined />
-                                        {nudge.choice}
-                                    </button>
+                        <div className="py-2">
+                            <div className="assistant-hero">
+                                <AssistantOrb size={56} live />
+                                <div className="assistant-hero__title">{t("assistant.empty_title")}</div>
+                                <div className="assistant-hero__subtitle">
+                                    {t(NUDGE_MODULES.has(currentModule) ? "assistant.hero_subtitle_company" : "assistant.hero_subtitle")}
                                 </div>
-                            )}
-                            <div className="text-sm text-[var(--ohnix-text-muted)] text-center px-4 mb-4">
-                                {t("assistant.empty_state")}
                             </div>
-                            <div className="flex flex-col gap-2 px-2">
+                            {nudge && <InsightCard nudge={nudge} onAct={sendText} disabled={!online} />}
+                            <div className="assistant-eyebrow assistant-eyebrow--muted mt-5 mb-2 ml-1">{t("assistant.suggestions_label")}</div>
+                            <div className="flex flex-col gap-2">
                                 {(currentModule === "accounting" ? ACCOUNTING_SUGGESTION_KEYS : SUGGESTION_KEYS).map((key) => (
                                     <button
                                         key={key}
                                         type="button"
                                         onClick={() => sendText(t(`assistant.${key}`))}
-                                        className="assistant-suggestion-chip text-left text-sm rounded-xl px-3.5 py-2.5 cursor-pointer transition-colors duration-150"
-                                        style={{
-                                            background: "var(--ohnix-surface-card-soft)",
-                                            border: "1px solid var(--ohnix-line-3)",
-                                            color: "var(--ohnix-text-primary)",
-                                        }}
+                                        disabled={!online}
+                                        className="assistant-suggestion"
                                     >
-                                        {t(`assistant.${key}`)}
+                                        <span className="flex-1 text-left">{t(`assistant.${key}`)}</span>
+                                        <RightOutlined className="assistant-suggestion__chevron" />
                                     </button>
                                 ))}
                             </div>
@@ -544,57 +489,20 @@ const AssistantWidget = () => {
                             key={message.id}
                             className={`assistant-message-in flex items-end gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
                         >
-                            {message.role === "assistant" && (
-                                <div
-                                    className="flex items-center justify-center h-7 w-7 rounded-full shrink-0"
-                                    style={{ background: "rgba(41,216,213,0.12)" }}
-                                >
-                                    <AssistantSparkleIcon size={14} />
-                                </div>
-                            )}
+                            {message.role === "assistant" && <AssistantOrb size={28} />}
                             <div
-                                className="max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap"
-                                style={
-                                    message.role === "user"
-                                        ? { background: "linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%)", color: "#021314" }
-                                        : { background: "var(--ohnix-surface-card-soft)", color: "var(--ohnix-text-primary)", border: "1px solid var(--ohnix-line-3)" }
-                                }
+                                className={`assistant-bubble ${message.role === "user" ? "assistant-bubble--user" : "assistant-bubble--assistant"}`}
                             >
                                 <div>{message.content}</div>
 
-                                {message.role === "assistant" && (message.actions?.navigate || message.actions?.highlight) && (
-                                    <div className="flex flex-wrap gap-2 mt-2.5">
-                                        {message.actions.navigate && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleNavigate(message.actions.navigate)}
-                                                className="assistant-action-btn inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 cursor-pointer"
-                                            >
-                                                <ArrowRightOutlined />
-                                                {t("assistant.go_to", { label: t(message.actions.navigate.labelKey) })}
-                                            </button>
-                                        )}
-                                        {message.actions.highlight && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleHighlight(message.actions.highlight)}
-                                                className="assistant-action-btn inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 cursor-pointer"
-                                            >
-                                                <AimOutlined />
-                                                {t("assistant.show_me", { label: t(message.actions.highlight.labelKey) })}
-                                            </button>
-                                        )}
-                                    </div>
+                                {message.role === "assistant" && (
+                                    <NextStep actions={message.actions} onNavigate={handleNavigate} onHighlight={handleHighlight} />
                                 )}
 
-                                {Array.isArray(message.sources) && message.sources.length > 0 && (
-                                    <div className="mt-2 pt-2 text-xs opacity-70" style={{ borderTop: "1px solid var(--ohnix-line-4)" }}>
-                                        {t("assistant.sources_label")}: {message.sources.map((s) => s.title).join(", ")}
-                                    </div>
-                                )}
+                                {message.role === "assistant" && <SourceChips sources={message.sources} />}
 
                                 {message.role === "assistant" && !message.id.startsWith("local-") && (
-                                    <div className="flex items-center gap-2 mt-2">
+                                    <div className="assistant-feedback">
                                         <button
                                             type="button"
                                             onClick={() => handleFeedback(message.id, "up")}
@@ -620,19 +528,14 @@ const AssistantWidget = () => {
                     ))}
 
                     {!sending && lastChoices.length > 0 && (
-                        <div className="assistant-message-in flex flex-wrap justify-end gap-2 pl-9">
+                        <div className="assistant-message-in flex flex-wrap justify-end gap-2 pl-10">
                             {lastChoices.map((choice) => (
                                 <button
                                     key={choice}
                                     type="button"
                                     onClick={() => sendText(choice)}
                                     disabled={!online}
-                                    className="assistant-suggestion-chip text-sm rounded-full px-3.5 py-1.5 cursor-pointer transition-colors duration-150 disabled:opacity-40"
-                                    style={{
-                                        background: "var(--ohnix-surface-card-soft)",
-                                        border: "1px solid rgba(41,216,213,0.45)",
-                                        color: "var(--ohnix-text-primary)",
-                                    }}
+                                    className="assistant-choice"
                                 >
                                     {choice}
                                 </button>
@@ -642,18 +545,8 @@ const AssistantWidget = () => {
 
                     {sending && (
                         <div className="assistant-message-in flex items-end gap-2 justify-start">
-                            <div
-                                className="flex items-center justify-center h-7 w-7 rounded-full shrink-0"
-                                style={{ background: "rgba(41,216,213,0.12)" }}
-                            >
-                                <AssistantSparkleIcon size={14} />
-                            </div>
-                            <div
-                                className="rounded-2xl px-4 py-3 text-sm flex items-center gap-2"
-                                style={{ background: "var(--ohnix-surface-card-soft)", color: "var(--ohnix-text-muted)", border: "1px solid var(--ohnix-line-3)" }}
-                            >
-                                <TypingDots /> {t("assistant.thinking")}
-                            </div>
+                            <AssistantOrb size={28} live />
+                            <ThinkingIndicator knowsCompany={NUDGE_MODULES.has(currentModule)} />
                         </div>
                     )}
                     <div ref={listEndRef} />
@@ -697,88 +590,6 @@ const AssistantWidget = () => {
                 </div>
             </div>
             )}
-
-            <style>{`
-                .assistant-fab {
-                    animation: ohnix-assistant-fab-pulse 2.6s ease-in-out infinite;
-                }
-                .assistant-fab:hover {
-                    box-shadow: 0 10px 32px rgba(41,216,213,0.5) !important;
-                }
-                @keyframes ohnix-assistant-fab-pulse {
-                    0%, 100% { box-shadow: 0 8px 28px rgba(41,216,213,0.35), 0 0 0 0 rgba(41,216,213,0.35); }
-                    50% { box-shadow: 0 8px 28px rgba(41,216,213,0.35), 0 0 0 8px rgba(41,216,213,0); }
-                }
-                .assistant-fab-wrap.is-draggable .assistant-fab { cursor: grab; }
-                .assistant-fab-wrap.is-draggable.is-dragging .assistant-fab { cursor: grabbing; }
-                .assistant-fab-wrap.is-draggable {
-                    opacity: 0.55;
-                    transition: opacity 220ms ease;
-                }
-                .assistant-fab-wrap.is-draggable:hover,
-                .assistant-fab-wrap.is-draggable.is-dragging {
-                    opacity: 1;
-                }
-                .assistant-suggestion-chip:hover {
-                    border-color: #29D8D5 !important;
-                }
-                .assistant-action-btn {
-                    background: rgba(41,216,213,0.12);
-                    border: 1px solid rgba(41,216,213,0.4);
-                    color: var(--ohnix-text-primary);
-                    transition: background 150ms ease;
-                }
-                .assistant-action-btn:hover {
-                    background: rgba(41,216,213,0.22);
-                }
-                .assistant-spotlight {
-                    position: relative;
-                    z-index: 2;
-                    border-radius: 8px;
-                    animation: ohnix-assistant-spotlight 1.1s ease-in-out 4;
-                }
-                @keyframes ohnix-assistant-spotlight {
-                    0%, 100% { box-shadow: 0 0 0 2px rgba(41,216,213,0.9), 0 0 0 0 rgba(41,216,213,0.45); }
-                    50% { box-shadow: 0 0 0 2px rgba(41,216,213,0.9), 0 0 0 10px rgba(41,216,213,0); }
-                }
-                .assistant-panel-in {
-                    animation: ohnix-assistant-panel-in 200ms ease-out;
-                    transform-origin: bottom right;
-                }
-                @keyframes ohnix-assistant-panel-in {
-                    from { opacity: 0; transform: translateY(12px) scale(0.97); }
-                    to { opacity: 1; transform: translateY(0) scale(1); }
-                }
-                .assistant-message-in {
-                    animation: ohnix-assistant-message-in 220ms ease-out;
-                }
-                @keyframes ohnix-assistant-message-in {
-                    from { opacity: 0; transform: translateY(6px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .assistant-typing-dot {
-                    width: 6px;
-                    height: 6px;
-                    border-radius: 9999px;
-                    background: var(--ohnix-text-muted);
-                    display: inline-block;
-                    animation: ohnix-assistant-typing 1.1s ease-in-out infinite;
-                }
-                @keyframes ohnix-assistant-typing {
-                    0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
-                    40% { opacity: 1; transform: scale(1); }
-                }
-                @media (prefers-reduced-motion: reduce) {
-                    .assistant-fab, .assistant-message-in, .assistant-typing-dot, .assistant-panel-in {
-                        animation: none;
-                    }
-                    .assistant-spotlight {
-                        animation: none;
-                        box-shadow: 0 0 0 2px rgba(41,216,213,0.9);
-                    }
-                    .assistant-fab-wrap.is-draggable { transition: none; }
-                }
-            `}</style>
         </>
     );
 };

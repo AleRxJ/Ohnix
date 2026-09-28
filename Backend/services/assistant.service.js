@@ -228,7 +228,9 @@ export const getAssistantNudge = async ({ user, module, locale }) => {
     const safeLocale = normalizeLocale(locale);
     const top = (await getCompanyState(user, [module]))[module]?.[0];
     if (!top) return null;
-    return { key: top.key, message: top.nudge[safeLocale], choice: top.cta[safeLocale] };
+    // priority/module drive the widget's insight card (signal bars, color,
+    // "lo que veo en tu contabilidad/finanzas" eyebrow).
+    return { key: top.key, module, priority: top.priority, message: top.nudge[safeLocale], choice: top.cta[safeLocale] };
 };
 
 export const listConversations = (userId) =>
