@@ -213,6 +213,29 @@ const AssistantWidget = () => {
             .finally(() => setLoadingHistory(false));
     }, [open, conversationId, messages.length]);
 
+    // Proactive opener: on a fresh conversation, ask the backend for the one
+    // thing worth raising about this company (e.g. "3 comprobantes en
+    // borrador"). Only Accounting has detectors today; the backend returns
+    // null when there's nothing to say or the person can't see those books.
+    // Best-effort - a failure just means no nudge, never an error toast.
+    const [nudge, setNudge] = useState(null);
+    useEffect(() => {
+        if (!open || messages.length > 0 || !online || currentModule !== "accounting") {
+            setNudge(null);
+            return undefined;
+        }
+        let cancelled = false;
+        assistantService
+            .getNudge({ module: currentModule, locale: currentLanguage })
+            .then((result) => {
+                if (!cancelled) setNudge(result);
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [open, messages.length, online, currentModule, currentLanguage]);
+
     const sendText = async (rawText) => {
         const trimmed = rawText.trim();
         if (!trimmed || sending || !online) return;
@@ -470,6 +493,26 @@ const AssistantWidget = () => {
 
                     {!loadingHistory && messages.length === 0 && (
                         <div className="py-6">
+                            {nudge && (
+                                <div
+                                    className="assistant-message-in rounded-2xl px-3.5 py-3 mx-2 mb-4 text-sm leading-relaxed"
+                                    style={{ background: "rgba(41,216,213,0.08)", border: "1px solid rgba(41,216,213,0.35)", color: "var(--ohnix-text-primary)" }}
+                                >
+                                    <div className="flex items-start gap-2">
+                                        <span className="shrink-0 mt-0.5"><AssistantSparkleIcon size={14} /></span>
+                                        <span>{nudge.message}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => sendText(nudge.choice)}
+                                        disabled={!online}
+                                        className="assistant-action-btn inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 mt-2.5 cursor-pointer disabled:opacity-40"
+                                    >
+                                        <ArrowRightOutlined />
+                                        {nudge.choice}
+                                    </button>
+                                </div>
+                            )}
                             <div className="text-sm text-[var(--ohnix-text-muted)] text-center px-4 mb-4">
                                 {t("assistant.empty_state")}
                             </div>

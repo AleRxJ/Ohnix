@@ -1123,27 +1123,30 @@ const ElectronicInvoices = () => {
                                     key={row.id}
                                     type="button"
                                     onClick={() => setSelected(row)}
-                                    className="invoice-mobile-card text-left"
+                                    // w-full/min-w-0: a <button> grid item won't shrink below
+                                    // its content, so the status pill + CUFE pushed the card
+                                    // past the screen edge and cut off the amount.
+                                    className="invoice-mobile-card w-full min-w-0 text-left"
                                 >
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-3">
-                                            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#29D8D5]/25 to-[#44F3F0]/5 text-[#44F3F0]">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex min-w-0 flex-1 basis-40 items-center gap-3">
+                                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#29D8D5]/25 to-[#44F3F0]/5 text-[#44F3F0]">
                                                 <FileTextOutlined />
                                             </span>
-                                            <div>
-                                                <div className="font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
-                                                <div className="text-xs text-[var(--ohnix-text-muted)]">
+                                            <div className="min-w-0">
+                                                <div className="truncate font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
+                                                <div className="truncate text-xs text-[var(--ohnix-text-muted)]">
                                                     {row.order?.customerName || "—"} · {getElectronicInvoicingProviderLabel(row.provider)}
                                                 </div>
                                             </div>
                                         </div>
-                                        <StatusPill status={row.status} />
+                                        <span className="shrink-0"><StatusPill status={row.status} /></span>
                                     </div>
-                                    <div className="mt-3 flex items-center justify-between text-xs">
+                                    <div className="mt-3 flex items-center justify-between gap-3 text-xs">
                                         <div className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.amount")}</div>
                                         <div className="font-semibold text-[var(--ohnix-text-primary)]">{formatCurrency(Number(row.order?.total ?? row.total ?? 0))}</div>
                                     </div>
-                                    <div className="mt-1 flex items-center justify-between text-xs">
+                                    <div className="mt-1 flex items-center justify-between gap-3 text-xs">
                                         <div className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.cufe")}</div>
                                         <CufeCell cufe={row.cufe} />
                                     </div>

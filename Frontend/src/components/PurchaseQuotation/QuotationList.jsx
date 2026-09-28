@@ -106,7 +106,7 @@ const QuotationList = ({
                 <div className="mb-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div className="mb-4 sm:mb-0">
-                            <h1 className="truncate mb-1 text-4xl font-bold flex items-center gap-2 text-[var(--ohnix-text-primary)]">
+                            <h1 className="mb-1 text-2xl sm:text-4xl font-bold flex flex-wrap items-center gap-x-2 text-[var(--ohnix-text-primary)]">
                                 {t("quotations.purchase_title")}
                                 <TagsOutlined className="text-[#44F3F0] inline-block ml-2" />
                             </h1>

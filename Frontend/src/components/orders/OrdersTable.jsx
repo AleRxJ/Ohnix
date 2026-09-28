@@ -263,18 +263,26 @@ const OrdersTable = ({
                     </div>
                 </div>
 
+                {/* Two rows: all four buttons in one row needed ~330px and the
+                    card is ~270px on a phone, so the cancel/return buttons were
+                    cut off at the card edge. They also get labels here - as
+                    icon-only buttons their tooltips never show on touch. */}
                 <div className="flex gap-2 pt-3">
                     <Button type="primary" icon={<EyeOutlined />} onClick={() => onViewDetails(order)} className="flex-1 h-9 font-medium">{t("orders.view_details")}</Button>
-                    <Button
-                        icon={<FilePdfOutlined />}
-                        onClick={() => onGenerateInvoice(order._id, order.invoice_no)}
-                        className={`${order.order_status === "cancelled" ? "invisible" : "flex-1 h-9 font-medium border-red-400 text-red-400 hover:bg-[var(--ohnix-hover-overlay)] hover:border-red-300"}`}
-                        size="middle"
-                        disabled={isTerminal && order.order_status !== "completed"}
-                    >
-                        {t("orders.invoice")}
-                    </Button>
-                    {order.order_status === "completed" && (
+                    {order.order_status !== "cancelled" && (
+                        <Button
+                            icon={<FilePdfOutlined />}
+                            onClick={() => onGenerateInvoice(order._id, order.invoice_no)}
+                            className="flex-1 h-9 font-medium border-red-400 text-red-400 hover:bg-[var(--ohnix-hover-overlay)] hover:border-red-300"
+                            size="middle"
+                            disabled={isTerminal && order.order_status !== "completed"}
+                        >
+                            {t("orders.invoice")}
+                        </Button>
+                    )}
+                </div>
+                {order.order_status === "completed" && (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
                         <Popconfirm
                             title={t("orders.confirm_cancel_completed_title")}
                             description={t("orders.confirm_cancel_completed_desc")}
@@ -287,21 +295,25 @@ const OrdersTable = ({
                                 icon={<StopOutlined />}
                                 danger
                                 size="middle"
+                                className="h-9 min-w-0"
                                 disabled={!canCancelCompleted}
                                 loading={updatingOrderId === order._id}
-                            />
+                            >
+                                <span className="truncate">{t("orders.cancel_completed_order_short")}</span>
+                            </Button>
                         </Popconfirm>
-                    )}
-                    {order.order_status === "completed" && (
                         <Button
                             icon={<UndoOutlined />}
                             size="middle"
+                            className="h-9 min-w-0"
                             disabled={!canEdit}
                             loading={returnPreviewLoadingId === order._id}
                             onClick={() => onReturnPreview(order._id)}
-                        />
-                    )}
-                </div>
+                        >
+                            <span className="truncate">{t("orders.process_return_short")}</span>
+                        </Button>
+                    </div>
+                )}
             </Card>
         );
     };

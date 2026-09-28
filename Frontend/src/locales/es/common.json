@@ -3694,6 +3694,8 @@
     "quantity_exceeds_stock": "Solo hay {{stock}} unidades disponibles",
     "insufficient_stock_detail": "{{product}}: pediste {{requested}}, hay {{available}} disponibles",
     "cancel_completed_order": "Cancelar venta",
+    "cancel_completed_order_short": "Cancelar",
+    "process_return_short": "Devolución",
     "confirm_cancel_completed_title": "¿Cancelar esta venta completada?",
     "confirm_cancel_completed_desc": "El stock vendido se devolverá al inventario. Esta acción queda registrada y no se puede deshacer."
   },

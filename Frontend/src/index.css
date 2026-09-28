@@ -3928,3 +3928,17 @@ html[data-ohnix-theme="lite"] .ohnix-logo-adaptive {
   #withholding-certificate-print { position: fixed; inset: 0; padding: 32px; background: white; color: #111; }
 }
 
+
+/* Floating app widgets (assistant, discoveries, inventory tour) sit at
+   z-index 1050, above antd modals/drawers (1000), so they can be used on top
+   of the app. On phones that meant they covered form fields and the confirm
+   button of every modal and the mobile menu. Below md, hide the FABs while any
+   of those overlays is open; their open panels are left alone. */
+@media (max-width: 767.98px) {
+  body:has(.ant-modal-wrap:not([style*="display: none"])) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap),
+  body:has(.ant-drawer-open) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap),
+  body:has(.ohnix-mobile-menu) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap) {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}

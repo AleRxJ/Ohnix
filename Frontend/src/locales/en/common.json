@@ -3694,6 +3694,8 @@
     "quantity_exceeds_stock": "Only {{stock}} units available",
     "insufficient_stock_detail": "{{product}}: requested {{requested}}, {{available}} available",
     "cancel_completed_order": "Cancel sale",
+    "cancel_completed_order_short": "Cancel",
+    "process_return_short": "Return",
     "confirm_cancel_completed_title": "Cancel this completed sale?",
     "confirm_cancel_completed_desc": "The sold stock will be returned to inventory. This action is recorded and cannot be undone."
   },

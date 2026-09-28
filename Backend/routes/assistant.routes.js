@@ -4,6 +4,7 @@ import {
     getConversations,
     getConversation,
     postFeedback,
+    getNudge,
 } from "../controllers/assistant.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { assistantChatRateLimiter } from "../middleware/rateLimit.middleware.js";
@@ -20,5 +21,9 @@ router.route("/chat").post(assistantChatRateLimiter, sendChatMessage);
 router.route("/conversations").get(getConversations);
 router.route("/conversations/:id").get(getConversation);
 router.route("/feedback").post(postFeedback);
+// Reads the company's accounting state, so it applies the same plan +
+// module-permission gates as /accounting itself (inside getAssistantNudge,
+// not here, since the rest of the assistant stays ungated on purpose).
+router.route("/nudge").get(getNudge);
 
 export default router;

@@ -333,7 +333,7 @@ const Products = () => {
                 <div className="max-w-full lg:max-w-7xl mx-auto">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
                         <div className="flex-1 min-w-0">
-                            <h1 className="truncate mb-1 text-3xl sm:text-4xl font-bold flex items-center gap-2 text-[var(--ohnix-text-primary)]">
+                            <h1 className="mb-1 text-2xl sm:text-4xl font-bold flex flex-wrap items-center gap-x-2 text-[var(--ohnix-text-primary)]">
                                 {t("products.products")}
                                 <ProductOutlined className="text-[#44F3F0] inline-block ml-2" />
                             </h1>

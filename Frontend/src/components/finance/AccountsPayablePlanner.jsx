@@ -220,12 +220,15 @@ const AccountsPayablePlanner = ({ canEdit }) => {
                     </span>
                 }
                 extra={
+                    // Icon-only on phones: with the label, antd's card header
+                    // squeezed the title down to "Planificado..." beside it.
                     <Button
                         icon={<ReloadOutlined />}
                         loading={loading}
                         onClick={load}
+                        aria-label={t("finance.payables_refresh")}
                     >
-                        {t("finance.payables_refresh")}
+                        <span className="hidden sm:inline">{t("finance.payables_refresh")}</span>
                     </Button>
                 }
             >

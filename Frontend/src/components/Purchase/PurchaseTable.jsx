@@ -42,9 +42,9 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                     {t(`purchases.${purchase.purchase_status}`) || purchase.purchase_status.toUpperCase()}
                 </Tag>
             </div>
-            <div className="flex items-center justify-between text-xs text-[var(--ohnix-text-muted)] mb-3">
-                <span>{dayjs(purchase.purchase_date).format("DD/MM/YYYY")}</span>
-                <span>{purchase.created_by?.username || t("common.na")}</span>
+            <div className="flex items-center justify-between gap-3 text-xs text-[var(--ohnix-text-muted)] mb-3">
+                <span className="shrink-0">{dayjs(purchase.purchase_date).format("DD/MM/YYYY")}</span>
+                <span className="min-w-0 truncate text-right">{purchase.created_by?.username || t("common.na")}</span>
             </div>
             <div className="flex gap-2">
                 <Button block icon={<EyeOutlined />} onClick={() => onViewDetails(purchase)}>

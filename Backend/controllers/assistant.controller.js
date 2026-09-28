@@ -5,6 +5,7 @@ import {
     askAssistant,
     listConversations,
     getConversationMessages,
+    getAssistantNudge,
     submitFeedback,
 } from "../services/assistant.service.js";
 
@@ -14,6 +15,10 @@ const sendChatMessage = asyncHandler(async (req, res, next) => {
     try {
         const result = await askAssistant({
             userId: req.user.actorId,
+            // Full req.user (plan, team role) - the assistant checks the same
+            // accounting gates as the accounting routes before reading any
+            // of the company's books.
+            user: req.user,
             conversationId: conversation_id || null,
             message,
             module,
@@ -75,4 +80,14 @@ const postFeedback = asyncHandler(async (req, res, next) => {
     }
 });
 
-export { sendChatMessage, getConversations, getConversation, postFeedback };
+const getNudge = asyncHandler(async (req, res, next) => {
+    try {
+        const nudge = await getAssistantNudge({ user: req.user, module: req.query.module, locale: req.query.locale });
+        return res.status(200).json(new ApiResponse(200, { nudge }, "Assistant nudge fetched successfully"));
+    } catch (error) {
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
+export { sendChatMessage, getConversations, getConversation, postFeedback, getNudge };

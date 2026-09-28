@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { searchKnowledge } from "./assistantKnowledge.service.js";
 import { callAssistantModel } from "./assistantModel.service.js";
 import { runAssistantAgent } from "./assistantAgent.service.js";
+import { getAccountingState, describeAccountingState } from "./assistantAccountingState.service.js";
 
 const MAX_MESSAGE_LENGTH = 2000;
 
@@ -68,10 +69,34 @@ const assertOwnedConversation = async (conversationId, userId) => {
     return conversation;
 };
 
+// The company's accounting state costs a handful of queries and ~100-300
+// prompt tokens, so it's only loaded when the conversation is plausibly
+// about accounting: the person is on that module, or the message (or the
+// question it answers) talks about it.
+const ACCOUNTING_TOPIC = /contab|asiento|comprobante|apertura|saldo|periodo|cierre|depreci|diferid|amortiz|balance|libro|cuenta contable|puc|activo fijo|retenci|\biva\b|\bica\b|accounting|journal|voucher|ledger|opening balance|closing/i;
+
+export const shouldLoadAccountingState = ({ module, message, history = [] }) => {
+    if (module === "accounting") return true;
+    const lastAssistant = [...history].reverse().find((entry) => entry.role === "assistant");
+    return ACCOUNTING_TOPIC.test(`${message} ${lastAssistant?.content || ""}`);
+};
+
+// Never lets a detector/permission failure cost the person their reply -
+// the assistant just answers without company context.
+const loadAccountingState = async (user) => {
+    if (!user) return null;
+    try {
+        return await getAccountingState(user);
+    } catch (error) {
+        console.error("[assistant] accounting state failed:", error);
+        return null;
+    }
+};
+
 const MODULE_KEY_PATTERN = /^[a-z0-9_-]{1,60}$/;
 const cleanPageKey = (value) => (typeof value === "string" && MODULE_KEY_PATTERN.test(value) ? value : null);
 
-export const askAssistant = async ({ userId, conversationId, message, module, tab, locale }) => {
+export const askAssistant = async ({ userId, user = null, conversationId, message, module, tab, locale }) => {
     const trimmed = message?.trim();
     if (!trimmed) {
         throw new ApiError(400, "Message is required");
@@ -117,12 +142,22 @@ export const askAssistant = async ({ userId, conversationId, message, module, ta
     let sources = null;
     let actions = null;
 
+    const accountingState = shouldLoadAccountingState({ module: safeModule, message: trimmed, history })
+        ? await loadAccountingState(user)
+        : null;
+
     if (isGreetingOnly(trimmed)) {
-        content = GREETING_MESSAGE[safeLocale];
-        actions = { choices: (GREETING_CHOICES[safeModule] || GREETING_CHOICES.default)[safeLocale] };
+        const defaultChoices = (GREETING_CHOICES[safeModule] || GREETING_CHOICES.default)[safeLocale];
+        const top = safeModule === "accounting" ? accountingState?.[0] : null;
+        // Proactive greeting: on Accounting, lead with the most important
+        // thing Ohnix sees in this company's books (still no LLM call) and
+        // make "help me with that" the first choice.
+        content = top ? `${GREETING_MESSAGE[safeLocale]}\n\n${top.nudge[safeLocale]}` : GREETING_MESSAGE[safeLocale];
+        actions = { choices: top ? [top.cta[safeLocale], ...defaultChoices.slice(0, 3)] : defaultChoices };
     } else {
         try {
             const result = await runAssistantAgent({
+                companyState: describeAccountingState(accountingState),
                 message: trimmed,
                 history,
                 locale: safeLocale,
@@ -171,6 +206,18 @@ export const askAssistant = async ({ userId, conversationId, message, module, ta
             createdAt: assistantMessage.createdAt,
         },
     };
+};
+
+// What the widget shows when opened on a module with nothing typed yet: the
+// single most important finding about this company, as a message plus one
+// tap-to-send choice. Null when there's nothing worth interrupting for (or
+// the person can't see that module's data).
+export const getAssistantNudge = async ({ user, module, locale }) => {
+    if (module !== "accounting") return null;
+    const safeLocale = normalizeLocale(locale);
+    const top = (await loadAccountingState(user))?.[0];
+    if (!top) return null;
+    return { key: top.key, message: top.nudge[safeLocale], choice: top.cta[safeLocale] };
 };
 
 export const listConversations = (userId) =>

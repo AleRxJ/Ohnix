@@ -1,5 +1,5 @@
 import React from "react";
-import { Input, Button, Space } from "antd";
+import { Input, Button } from "antd";
 import {
     SearchOutlined,
     FilterOutlined,
@@ -31,12 +31,15 @@ const ProductSearchBar = ({
                     />
                 </div>
 
-                <Space size="small" className="w-full sm:w-auto">
+                {/* Plain grid instead of antd <Space>: Space wraps each child
+                    in its own item, so the buttons' flex-1 never applied and
+                    the row ran past the card edge on phones. */}
+                <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto">
                     <Button
                         icon={<FilterOutlined />}
                         onClick={onShowFilters}
                         size="large"
-                        className="flex-1 sm:flex-none hover:shadow-[0_0_22px_rgba(41,216,213,0.12)]"
+                        className="min-w-0 px-2 sm:px-4 hover:shadow-[0_0_22px_rgba(41,216,213,0.12)]"
                     >
                         {t("products.filters")}
                     </Button>
@@ -45,7 +48,7 @@ const ProductSearchBar = ({
                         icon={<ReloadOutlined />}
                         onClick={onReset}
                         size="large"
-                        className="flex-1 sm:flex-none"
+                        className="min-w-0 px-2 sm:px-4"
                     >
                         {t("products.reset")}
                     </Button>
@@ -54,11 +57,11 @@ const ProductSearchBar = ({
                         type="primary"
                         onClick={onSearch}
                         size="large"
-                        className="flex-1 sm:flex-none"
+                        className="min-w-0 px-2 sm:px-4"
                     >
                         {t("common.search")}
                     </Button>
-                </Space>
+                </div>
             </div>
         </div>
     );

@@ -95,6 +95,23 @@ ${currentPage ? `\nLa persona está ahora mismo en: ${currentPage}. Úsalo para 
 ${describeAppMap({ module })}`;
 };
 
+// The company's state rides in the turn's own user message, next to the
+// retrieved knowledge - not in the system prompt. Live-tested with
+// gpt-oss-120b: at the bottom of the (long) system prompt the model ignored
+// it and still asked "¿ya cargaste los saldos iniciales?" of a company with
+// no opening balance; beside the question, it acts on it.
+export const buildTurnMessage = ({ message, knowledge, companyState = null }) => {
+    const parts = [];
+    if (companyState) {
+        parts.push(
+            `${companyState}\nANTES DE PREGUNTAR, REVISA ESTE ESTADO: no le preguntes a la persona nada que ya esté aquí (por ejemplo, si dice que no hay apertura registrada, no preguntes si ya cargó sus saldos: díselo y ofrécele cargarlos). Si algo de aquí afecta lo que pregunta, menciónalo con naturalidad; si no tiene que ver, no lo saques.`
+        );
+    }
+    parts.push(`BASE DE CONOCIMIENTO (resultados para este mensaje):\n${knowledge}`);
+    parts.push(`MENSAJE DE LA PERSONA:\n${message}`);
+    return parts.join("\n\n");
+};
+
 // Belt-and-suspenders for the plain-text rule: models on the free Groq tier
 // reliably ignore a plain "don't use Markdown" instruction and keep emitting
 // **bold**/#headers/> quotes, which the chat bubble renders as literal
@@ -211,6 +228,10 @@ export const runAssistantAgent = async ({
     locale = "es",
     module = null,
     tab = null,
+    // Prompt-ready description of the company's own state (see
+    // assistantAccountingState.service.js) - null when not relevant or the
+    // person isn't allowed to see it.
+    companyState = null,
     callModel,
     searchKnowledge,
 }) => {
@@ -240,7 +261,7 @@ export const runAssistantAgent = async ({
     const messages = [
         { role: "system", content: buildSystemPrompt({ locale, module, tab }) },
         ...buildHistoryMessages(history),
-        { role: "user", content: `BASE DE CONOCIMIENTO (resultados para este mensaje):\n${initialKnowledge}\n\nMENSAJE DE LA PERSONA:\n${message}` },
+        { role: "user", content: buildTurnMessage({ message, knowledge: initialKnowledge, companyState }) },
     ];
     const searchedQueries = new Set();
 

@@ -41,7 +41,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, c
         >
             <div className="flex items-start space-x-3">
                 <Avatar
-                    size={56}
+                    size={44}
                     src={customer.photo !== "default-customer.png" ? customer.photo : null}
                     icon={<UserOutlined />}
                     className="shadow-sm flex-shrink-0"
@@ -49,7 +49,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, c
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                         <div className="min-w-0 flex-1">
-                            <Text strong className="text-base text-[var(--ohnix-text-primary)] block truncate">
+                            <Text strong className="text-base text-[var(--ohnix-text-primary)] block break-words line-clamp-2">
                                 {customer.name}
                             </Text>
                             <Tag
@@ -63,43 +63,6 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, c
                                 {customer.type ? t(`customers.${customer.type}_customer`) : t("common.na")}
                             </Tag>
                         </div>
-                        <Space size="small">
-                            <Button type="text" icon={<EyeOutlined />} size="small" onClick={() => onView(customer)} className="text-[#44F3F0]" />
-                            <Button
-                                type="text"
-                                icon={<EditOutlined />}
-                                size="small"
-                                onClick={() => onEdit(customer)}
-                                className="text-[#29D8D5]"
-                                disabled={!canEdit}
-                            />
-                            {canMove && (
-                                <Button
-                                    type="text"
-                                    icon={<SwapOutlined />}
-                                    size="small"
-                                    onClick={() => onMove(customer)}
-                                    className="text-[#7c6af7]"
-                                />
-                            )}
-                            <Popconfirm
-                                title={t("customers.delete_customer")}
-                                description={t("customers.delete_customer_confirm")}
-                                onConfirm={() => onDelete(customer._id)}
-                                okText={t("common.delete")}
-                                cancelText={t("common.cancel")}
-                                okButtonProps={{ danger: true }}
-                                disabled={!canEdit}
-                            >
-                                <Button
-                                    type="text"
-                                    icon={<DeleteOutlined />}
-                                    size="small"
-                                    className="text-red-400"
-                                    disabled={!canEdit}
-                                />
-                            </Popconfirm>
-                        </Space>
                     </div>
                     
                     <div className="space-y-1">
@@ -125,6 +88,45 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, c
                         )}
                     </div>
                 </div>
+            </div>
+            {/* Own row, like the product cards: next to the name these
+                icons left it ~50px ("Mau...", "Alej..."). */}
+            <div className="mt-3 flex justify-end gap-1 border-t border-[var(--ohnix-line-3)] pt-2">
+                <Button type="text" icon={<EyeOutlined />} size="small" onClick={() => onView(customer)} className="text-[#44F3F0]" />
+                <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    size="small"
+                    onClick={() => onEdit(customer)}
+                    className="text-[#29D8D5]"
+                    disabled={!canEdit}
+                />
+                {canMove && (
+                    <Button
+                        type="text"
+                        icon={<SwapOutlined />}
+                        size="small"
+                        onClick={() => onMove(customer)}
+                        className="text-[#7c6af7]"
+                    />
+                )}
+                <Popconfirm
+                    title={t("customers.delete_customer")}
+                    description={t("customers.delete_customer_confirm")}
+                    onConfirm={() => onDelete(customer._id)}
+                    okText={t("common.delete")}
+                    cancelText={t("common.cancel")}
+                    okButtonProps={{ danger: true }}
+                    disabled={!canEdit}
+                >
+                    <Button
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        size="small"
+                        className="text-red-400"
+                        disabled={!canEdit}
+                    />
+                </Popconfirm>
             </div>
         </Card>
     );

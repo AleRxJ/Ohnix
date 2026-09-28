@@ -66,8 +66,8 @@ const ProductsTable = ({
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                                <Text strong className="text-sm block truncate text-[var(--ohnix-text-primary)]">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <Text strong className="text-sm block break-words line-clamp-2 text-[var(--ohnix-text-primary)]">
                                     {product.product_name}
                                 </Text>
                                 {product.is_kit && (
@@ -89,54 +89,6 @@ const ProductsTable = ({
                             <Text className="text-xs text-[var(--ohnix-text-muted)]">
                                 {t("products.product_code")}: {product.product_code}
                             </Text>
-                        </div>
-                        <div className="flex gap-1 ml-2">
-                            <Button
-                                icon={<EyeOutlined />}
-                                onClick={() => onViewDetails(product)}
-                                type="text"
-                                size="small"
-                                className="text-[#44F3F0] hover:!text-[#44F3F0]"
-                            />
-                            <Tooltip title={canEdit ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
-                                <Button
-                                    icon={<SwapOutlined />}
-                                    onClick={() => onAdjustStock(product)}
-                                    type="text"
-                                    size="small"
-                                    disabled={!canEdit}
-                                    className="text-[#29D8D5] hover:!text-[#29D8D5] disabled:!text-[var(--ohnix-text-dim)]"
-                                />
-                            </Tooltip>
-                            <Button
-                                icon={<EditOutlined />}
-                                onClick={() => onEdit(product)}
-                                type="text"
-                                size="small"
-                                disabled={!canEdit}
-                                className="text-[var(--ohnix-text-muted)] hover:!text-[#44F3F0] disabled:!text-[var(--ohnix-text-dim)]"
-                            />
-                            <Popconfirm
-                                title={t("products.delete_product")}
-                                description={t("common.warning")}
-                                onConfirm={() => onDelete(product._id)}
-                                okText={t("common.yes")}
-                                cancelText={t("common.no")}
-                                disabled={!canEdit}
-                                icon={
-                                    <ExclamationCircleOutlined
-                                        style={{ color: "red" }}
-                                    />
-                                }
-                            >
-                                <Button
-                                    icon={<DeleteOutlined />}
-                                    danger
-                                    type="text"
-                                    size="small"
-                                    disabled={!canEdit}
-                                />
-                            </Popconfirm>
                         </div>
                     </div>
 
@@ -179,6 +131,56 @@ const ProductsTable = ({
                         </div>
                     </div>
                 </div>
+            </div>
+            {/* Actions get their own row: in the title row the 4 icons left
+                the name ~70px, so every product read "Producto D...". */}
+            <div className="mt-3 flex justify-end gap-1 border-t border-[var(--ohnix-line-3)] pt-2">
+                <Button
+                    icon={<EyeOutlined />}
+                    onClick={() => onViewDetails(product)}
+                    type="text"
+                    size="small"
+                    className="text-[#44F3F0] hover:!text-[#44F3F0]"
+                />
+                <Tooltip title={canEdit ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
+                    <Button
+                        icon={<SwapOutlined />}
+                        onClick={() => onAdjustStock(product)}
+                        type="text"
+                        size="small"
+                        disabled={!canEdit}
+                        className="text-[#29D8D5] hover:!text-[#29D8D5] disabled:!text-[var(--ohnix-text-dim)]"
+                    />
+                </Tooltip>
+                <Button
+                    icon={<EditOutlined />}
+                    onClick={() => onEdit(product)}
+                    type="text"
+                    size="small"
+                    disabled={!canEdit}
+                    className="text-[var(--ohnix-text-muted)] hover:!text-[#44F3F0] disabled:!text-[var(--ohnix-text-dim)]"
+                />
+                <Popconfirm
+                    title={t("products.delete_product")}
+                    description={t("common.warning")}
+                    onConfirm={() => onDelete(product._id)}
+                    okText={t("common.yes")}
+                    cancelText={t("common.no")}
+                    disabled={!canEdit}
+                    icon={
+                        <ExclamationCircleOutlined
+                            style={{ color: "red" }}
+                        />
+                    }
+                >
+                    <Button
+                        icon={<DeleteOutlined />}
+                        danger
+                        type="text"
+                        size="small"
+                        disabled={!canEdit}
+                    />
+                </Popconfirm>
             </div>
         </Card>
     );
