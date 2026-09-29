@@ -35,12 +35,12 @@ const Demo = () => {
     const videoStructuredData = {
         "@context": "https://schema.org",
         "@type": "VideoObject",
-        name: "Demo de Ohnix | Inventario, compras y ventas en accion",
+        name: "Demo de Ohnix | Inventario, ventas, contabilidad y facturación DIAN",
         description:
-            "Conoce como Ohnix organiza inventario, compras, pedidos y reportes en una sola experiencia operativa para pymes.",
+            "Una venta en el punto de venta, su factura electrónica validada por la DIAN, y el inventario, la contabilidad y la caja actualizándose solos. Incluso sin internet.",
         thumbnailUrl: ["https://ohnix.co/demo-poster.jpg"],
-        uploadDate: "2026-09-01T00:00:00-05:00",
-        duration: "PT30S",
+        uploadDate: "2026-09-28T00:00:00-05:00",
+        duration: "PT48S",
         contentUrl: "https://ohnix.co/demo-preview.mp4",
         embedUrl: "https://ohnix.co/demo",
     };
@@ -50,8 +50,8 @@ const Demo = () => {
     return (
         <div className="min-h-screen bg-[#050505]">
             <SeoHead
-                title="Demo de Ohnix | Inventario, compras y ventas en accion"
-                description="Conoce como Ohnix organiza inventario, compras, pedidos y reportes en una sola experiencia operativa para pymes."
+                title="Demo de Ohnix | Inventario, ventas, contabilidad y facturación DIAN"
+                description="Mira una venta real de punta a punta: punto de venta, factura electrónica DIAN, inventario, contabilidad y modo sin conexión en Ohnix."
                 canonicalPath="/demo"
                 lang={currentLanguage || "es"}
                 structuredData={structuredData}
