@@ -3834,6 +3834,7 @@
     "cancel_confirm": "¿Anular la cuenta de esta mesa? Se descartan sus productos.",
     "created": "{{count}} mesas creadas",
     "save_failed": "No se pudo guardar",
+    "item_rejected": "No se pudo agregar {{product}} a la mesa: {{reason}}",
     "default_prefix": "Mesa",
     "prefix": "Nombre",
     "from": "Desde",

@@ -7,6 +7,7 @@ import { enqueueOperation, OUTBOX_STATUS } from "../../offline/outbox";
 import { mirrorRemove, mirrorReplaceAll, mirrorUpsert, readMirrorAll } from "../../offline/entityQueue";
 import { subscribeSyncCompleted } from "../../offline/syncEngine";
 import { useDataInvalidation } from "../useDataInvalidation";
+import useI18n from "../useI18n";
 
 // Restaurant mode of the Caja: the location's tables and their open tabs.
 // Every change is applied locally first (state + Dexie mirror), then sent
@@ -32,6 +33,7 @@ const QUEUED = [OUTBOX_STATUS.PENDING, OUTBOX_STATUS.SYNCING, OUTBOX_STATUS.ERRO
 const hasQueuedTableOps = async () => (await db.outbox.where("entity").equals(ENTITY).filter((e) => QUEUED.includes(e.status)).count()) > 0;
 
 export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
+    const { t } = useI18n();
     const [tables, setTables] = useState([]);
     const [tabs, setTabs] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -89,15 +91,20 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
 
     // Online and nothing queued ahead -> call now; otherwise queue behind the
     // earlier operations. A server rejection reloads the authoritative state.
+    // `describe(reason)` turns a rejection into a message that says WHAT
+    // failed; one toast id per kind of failure so rapid taps never stack
+    // four identical errors.
     const send = useCallback(
-        async (request) => {
+        async (request, { describe, toastId = "pos-table-op" } = {}) => {
             if (getConnectivityState() && !(await hasQueuedTableOps())) {
                 try {
                     const response = await api.request({ ...request, headers: { "Idempotency-Key": newId() } });
                     return response.data?.data;
                 } catch (error) {
                     if (error.response) {
-                        toast.error(error.response.data?.message || "No se pudo guardar el cambio de la mesa.");
+                        const reason = error.response.data?.message || t("tables.save_failed");
+                        toast.error(describe ? describe(reason) : reason, { id: toastId });
+                        // Server state wins: drops whatever it did not accept.
                         await reload();
                         throw error;
                     }
@@ -106,7 +113,7 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
             await enqueueOperation({ entity: ENTITY, opType: "custom", request });
             return null;
         },
-        [reload]
+        [reload, t]
     );
 
     const tabForTable = useCallback((tableId) => tabs.find((t) => t.table_id === tableId && t.status === "open"), [tabs]);
@@ -167,13 +174,21 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
                 return;
             }
             await saveTabLocally({ ...tab, items });
-            await send({
-                method: "post",
-                url: `/restaurant/table-tabs/${tabId}/items`,
-                data: { line_id: lineId, product_id: product?._id, quantity_delta: delta, unit_price: unitPrice },
-            }).catch(() => {});
+            await send(
+                {
+                    method: "post",
+                    url: `/restaurant/table-tabs/${tabId}/items`,
+                    data: { line_id: lineId, product_id: product?._id, quantity_delta: delta, unit_price: unitPrice },
+                },
+                {
+                    toastId: `pos-table-item-${product?._id}`,
+                    describe: (reason) => t("tables.item_rejected", { product: product?.product_name || "", reason }),
+                }
+            // On rejection send() already reloaded the server's tab, which drops
+            // the line the server refused - nothing more to undo here.
+            ).catch(() => {});
         },
-        [saveTabLocally, send]
+        [saveTabLocally, send, t]
     );
 
     // Tapping a product adds to its not-yet-sent line (new units after a

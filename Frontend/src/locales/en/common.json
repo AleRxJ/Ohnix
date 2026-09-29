@@ -3834,6 +3834,7 @@
     "cancel_confirm": "Void this table's tab? Its items are discarded.",
     "created": "{{count}} tables created",
     "save_failed": "Couldn't save",
+    "item_rejected": "Couldn't add {{product}} to the table: {{reason}}",
     "default_prefix": "Table",
     "prefix": "Name",
     "from": "From",

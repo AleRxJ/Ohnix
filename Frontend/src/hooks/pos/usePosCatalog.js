@@ -1,6 +1,5 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api/api";
-import AuthContext from "../../context/AuthContext";
 import { financeService } from "../../services/financeService";
 import { paymentProviderService } from "../../services/paymentProviderService";
 import { getConnectivityState } from "../../offline/connectivity";
@@ -44,7 +43,6 @@ const loadWithMirror = async (entity, fetcher) => {
 export const isFinalConsumer = (customer) => customer?.type === "final_consumer";
 
 export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment, ready = true }) => {
-    const { user } = useContext(AuthContext);
     const [products, setProducts] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [cashAccounts, setCashAccounts] = useState(() => readFinanceCache()?.cashAccounts || []);
@@ -58,7 +56,9 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment, ready = true 
     const fetchProducts = useCallback(async () => {
         try {
             const rows = await loadWithMirror("products", async () => {
-                const response = await api.get("/products");
+                // Own company only, even for a platform admin (see
+                // product.controller.js#getAllProducts scope=own).
+                const response = await api.get("/products", { params: { scope: "own" } });
                 return response.data.data.products || response.data.data;
             });
             setProducts(rows || []);
@@ -70,7 +70,8 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment, ready = true 
     const fetchCustomers = useCallback(async () => {
         try {
             const rows = await loadWithMirror("customers", async () => {
-                const response = await api.get(user?.role === "admin" ? "/customers/all" : "/customers");
+                // Never /customers/all: the Caja sells for THIS company only.
+                const response = await api.get("/customers");
                 return response.data.data;
             });
             setCustomers(rows || []);
@@ -79,7 +80,7 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment, ready = true 
             console.error("Error fetching POS customers:", error);
             return [];
         }
-    }, [user?.role]);
+    }, []);
 
     const fetchFinance = useCallback(async () => {
         if (!canRegisterPayment || !getConnectivityState()) return;

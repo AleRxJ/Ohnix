@@ -825,7 +825,11 @@ const getAllProducts = asyncHandler(async (req, res, next) => {
 
     const where = {};
 
-    if (req.user.role !== "admin") {
+    // scope=own: only this company's catalog even for a platform admin (who
+    // otherwise sees every account's products here). The Caja and the
+    // offline mirror use it - selling or queuing another company's product
+    // is never valid, and the server rejects it anyway.
+    if (req.user.role !== "admin" || req.query.scope === "own") {
         where.createdById = req.user.prismaId;
     }
 

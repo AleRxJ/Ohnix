@@ -30,7 +30,9 @@ function registerFullResync(entity, url) {
     });
 }
 
-registerFullResync("products", "/products");
+// scope=own: a platform admin's GET /products spans every account - the
+// offline mirror (and the Caja reading it) must only hold this company's.
+registerFullResync("products", "/products?scope=own");
 registerFullResync("categories", "/categories/user");
 registerFullResync("units", "/units");
 registerFullResync("customers", "/customers");
