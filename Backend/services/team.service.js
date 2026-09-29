@@ -291,9 +291,9 @@ export const transferOwnership = async ({ team, actorId, newOwnerUserId }) => {
 
 // ─── Roles ────────────────────────────────────────────────────────────────
 
-// Enforced server-side (not just hidden in the role-editor UI) so it holds
-// even for a direct API call: "dashboard" always mirrors "reports" - see
-// COUPLED_MODULES in team.permissions.js.
+// Missing/invalid levels become "none", and any COUPLED_MODULES pair (none
+// today - see team.permissions.js) is forced equal, server-side so it holds
+// even for a direct API call.
 const normalizePermissionsInput = (permissions) => {
     const map = {};
     for (const key of MODULE_KEYS) {

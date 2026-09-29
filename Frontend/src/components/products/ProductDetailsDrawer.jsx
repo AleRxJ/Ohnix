@@ -256,6 +256,9 @@ const ProductDetailsDrawer = ({
                     )}
                 </div>
 
+                {/* The kardex is "inventory: view" - Products.jsx omits the fetcher
+                    for roles without it, and then the whole section is hidden. */}
+                {onFetchStockMovements && (
                 <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
                     <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)] flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -291,6 +294,7 @@ const ProductDetailsDrawer = ({
                         )}
                     </div>
                 </div>
+                )}
 
                 <LocationStockPanel product={product} />
                 <BatchesPanel product={product} />

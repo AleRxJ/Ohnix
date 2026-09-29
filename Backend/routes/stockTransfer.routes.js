@@ -27,20 +27,20 @@ router.use(enforcePlanFeature("multiLocation"));
 
 router
     .route("/")
-    .get(requireModulePermission("products", "view"), listTransfers)
-    .post(requireModulePermission("products", "edit"), idempotent("stock-transfer.request"), createTransferRequest);
+    .get(requireModulePermission("inventory", "view"), listTransfers)
+    .post(requireModulePermission("inventory", "edit"), idempotent("stock-transfer.request"), createTransferRequest);
 
 // Quick transfers approve themselves in the same step (status "received"
 // directly - see createQuickTransfer), so they need the same "admin" as
 // /:id/approve or they'd be a way around it.
 router
     .route("/quick")
-    .post(requireModulePermission("products", "admin"), idempotent("stock-transfer.quick"), createQuickTransfer);
+    .post(requireModulePermission("inventory", "admin"), idempotent("stock-transfer.quick"), createQuickTransfer);
 
-router.route("/:id").get(requireModulePermission("products", "view"), getTransfer);
-router.route("/:id/approve").patch(requireModulePermission("products", "admin"), idempotent("stock-transfer.approve"), approveTransfer);
-router.route("/:id/ship").patch(requireModulePermission("products", "edit"), idempotent("stock-transfer.ship"), shipTransfer);
-router.route("/:id/receive").patch(requireModulePermission("products", "edit"), idempotent("stock-transfer.receive"), receiveTransfer);
-router.route("/:id/cancel").patch(requireModulePermission("products", "edit"), idempotent("stock-transfer.cancel"), cancelTransfer);
+router.route("/:id").get(requireModulePermission("inventory", "view"), getTransfer);
+router.route("/:id/approve").patch(requireModulePermission("inventory", "admin"), idempotent("stock-transfer.approve"), approveTransfer);
+router.route("/:id/ship").patch(requireModulePermission("inventory", "edit"), idempotent("stock-transfer.ship"), shipTransfer);
+router.route("/:id/receive").patch(requireModulePermission("inventory", "edit"), idempotent("stock-transfer.receive"), receiveTransfer);
+router.route("/:id/cancel").patch(requireModulePermission("inventory", "edit"), idempotent("stock-transfer.cancel"), cancelTransfer);
 
 export default router;

@@ -113,7 +113,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
         },
         {
             key: "production-orders",
-            moduleKey: "products",
+            moduleKey: "inventory",
             icon: <BuildOutlined />,
             label: <Link to="/production-orders">{t("common.production_orders_nav")}</Link>,
         },
@@ -166,7 +166,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
         },
         ...(showElectronicInvoicing ? [{
             key: "electronic-invoices",
-            moduleKey: "orders",
+            moduleKey: "einvoicing",
             icon: <FileTextOutlined />,
             label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
         }] : []),
@@ -178,7 +178,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
         },
         {
             key: "discoveries",
-            moduleKey: "reports",
+            moduleKey: "discoveries",
             icon: <RadarChartOutlined />,
             // A live count, not a plain nav row - this is Ohnix's own
             // headline capability (findings the engine produced on its own,

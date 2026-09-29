@@ -476,10 +476,10 @@ const InvoiceDetailDrawer = ({
 }) => {
     const { t } = useI18n();
     const isMobile = useIsMobile();
-    // A credit note is an irreversible DIAN document - orders:"admin" on the
-    // backend (order.routes.js), not the "edit" that issuing a sale needs.
+    // A credit note is an irreversible DIAN document - einvoicing:"admin" on
+    // the backend (order.routes.js), not the "edit" that issuing a sale needs.
     const { hasPermission } = useTeam();
-    const canIssueCreditNote = hasPermission("orders", "admin");
+    const canIssueCreditNote = hasPermission("einvoicing", "admin");
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     if (!invoice) return null;
     const issuedAt = invoice.issuedAt ? new Date(invoice.issuedAt) : null;

@@ -32,7 +32,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { upload, bulkUpload } from "../middleware/multer.middleware.js";
-import { requireModulePermission, stripCostFieldsUnlessAllowed } from "../middleware/team.permissions.js";
+import { requireModulePermission, stripCostFieldsUnlessAllowed, requireCapability } from "../middleware/team.permissions.js";
 import { bulkUploadRateLimiter } from "../middleware/rateLimit.middleware.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 
@@ -64,7 +64,7 @@ router.route("/all").get(isAdmin, getAllProductsAdmin);
 router
     .route("/:id")
     .patch(requireModulePermission("products", "edit"), upload.single("product_image"), idempotent("product.update"), updateProduct)
-    .delete(requireModulePermission("products", "edit"), idempotent("product.delete"), deleteProduct);
+    .delete(requireModulePermission("products", "edit"), requireCapability("deleteRecords", "Tu rol no tiene permiso para eliminar registros."), idempotent("product.delete"), deleteProduct);
 
 // Gallery sub-resource. The literal "/reorder" route MUST be registered
 // before "/:imageId" below, or Express matches "reorder" as an :imageId.
@@ -90,15 +90,17 @@ router
 router
     .route("/:id/variants/:variantId")
     .patch(requireModulePermission("products", "edit"), patchVariant)
-    .delete(requireModulePermission("products", "edit"), removeVariant);
+    .delete(requireModulePermission("products", "edit"), requireCapability("deleteRecords", "Tu rol no tiene permiso para eliminar registros."), removeVariant);
 router
     .route("/:id/variants/:variantId/adjust-stock")
-    .post(requireModulePermission("products", "edit"), idempotent("variant.adjust-stock"), postVariantAdjustStock);
+    .post(requireModulePermission("inventory", "edit"), idempotent("variant.adjust-stock"), postVariantAdjustStock);
 
 router
     .route("/:id/adjust-stock")
-    .post(requireModulePermission("products", "edit"), idempotent("product.adjust-stock"), adjustProductStock);
-router.route("/:id/stock-movements").get(requireModulePermission("products", "view"), getProductStockMovements);
+    .post(requireModulePermission("inventory", "edit"), idempotent("product.adjust-stock"), adjustProductStock);
+// Stock adjustments, the kardex and transfers are the "inventory" module
+// (split out of "products" 2026-09-28 - see team.permissions.js).
+router.route("/:id/stock-movements").get(requireModulePermission("inventory", "view"), getProductStockMovements);
 router.route("/:id/location-stock").get(requireModulePermission("products", "view"), getProductLocationStock);
 router.route("/:id/batches").get(requireModulePermission("products", "view"), getProductBatchesList);
 // Direct move with no approval step - "admin", same as an approved/quick
@@ -106,7 +108,7 @@ router.route("/:id/batches").get(requireModulePermission("products", "view"), ge
 router
     .route("/:id/transfer-stock")
     .post(
-        requireModulePermission("products", "admin"),
+        requireModulePermission("inventory", "admin"),
         enforcePlanFeature("multiLocation"),
         idempotent("product.transfer-stock"),
         transferProductStock

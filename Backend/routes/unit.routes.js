@@ -9,7 +9,7 @@ import {
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
-import { requireModulePermission } from "../middleware/team.permissions.js";
+import { requireModulePermission, requireCapability } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
@@ -25,7 +25,7 @@ router.route("/")
 
 router.route("/:id")
     .patch(requireModulePermission("units", "edit"), idempotent("unit.update"), updateUnit)
-    .delete(requireModulePermission("units", "edit"), idempotent("unit.delete"), deleteUnit);
+    .delete(requireModulePermission("units", "edit"), requireCapability("deleteRecords", "Tu rol no tiene permiso para eliminar registros."), idempotent("unit.delete"), deleteUnit);
 
 // Admin only routes
 router.route("/admin/all").get(isAdmin, getAllUnits); // This will get all units for admin

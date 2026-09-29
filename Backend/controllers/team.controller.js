@@ -4,7 +4,15 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { AUTH_COOKIE_OPTIONS } from "../utils/authTokens.js";
 import * as teamService from "../services/team.service.js";
-import { getPermissionCatalog as buildPermissionCatalog } from "../middleware/team.permissions.js";
+import { getPermissionCatalog as buildPermissionCatalog, canAccessModule } from "../middleware/team.permissions.js";
+import {
+    assertCanDelegate,
+    assertCanManageMember,
+    assertScopeWithinActor,
+    grantFromInput,
+    isOwnerActor,
+    loadRoleGrant,
+} from "../services/teamDelegation.service.js";
 
 // ─── Route-level guards (loadTeam + requireTeamOwnerActor) ────────────────
 // Applied by team.routes.js before these handlers run. actorId (the real
@@ -28,6 +36,21 @@ export const requireTeamOwnerActor = asyncHandler(async (req, _res, next) => {
     }
     next();
 });
+
+// Team management for the owner OR a member of this same team whose role
+// grants the "team" module at minLevel (co-administrador). Everything a
+// delegated manager does is further bounded by teamDelegation.service.js -
+// this only answers "may they reach the endpoint at all".
+export const requireTeamManager = (minLevel) =>
+    asyncHandler(async (req, _res, next) => {
+        if (!req.team) {
+            return next(new ApiError(500, "requireTeamManager used without loadTeam"));
+        }
+        if (req.team.ownerId === req.user.actorId) return next();
+        const isMemberOfThisTeam = req.user.isTeamMember && req.user.teamId === req.team.id;
+        if (isMemberOfThisTeam && (await canAccessModule(req.user, "team", minLevel))) return next();
+        return next(new ApiError(403, "Tu rol no tiene permiso para gestionar el equipo."));
+    });
 
 // Members can view (list, roles, etc) if they belong to this exact team, or
 // if they're the owner. Actual module-level view permission is layered on
@@ -127,6 +150,7 @@ export const listRoles = asyncHandler(async (req, res) => {
 });
 
 export const createRole = asyncHandler(async (req, res) => {
+    await assertCanDelegate(req, grantFromInput(req.body || {}));
     const role = await teamService.createRole({
         team: req.team,
         actorId: req.user.actorId,
@@ -138,6 +162,17 @@ export const createRole = asyncHandler(async (req, res) => {
 });
 
 export const updateRole = asyncHandler(async (req, res) => {
+    if (!isOwnerActor(req)) {
+        // Both the role as it is now and as it would become must stay within
+        // the manager's own grant.
+        const { grant: current } = await loadRoleGrant(req.team.id, req.params.roleId);
+        await assertCanDelegate(req, current, { roleId: req.params.roleId });
+        const next = grantFromInput({
+            permissions: req.body?.permissions ?? current.levels,
+            capabilities: req.body?.capabilities ?? current.capabilities,
+        });
+        await assertCanDelegate(req, next, { roleId: req.params.roleId });
+    }
     const role = await teamService.updateRole({
         team: req.team,
         actorId: req.user.actorId,
@@ -150,6 +185,10 @@ export const updateRole = asyncHandler(async (req, res) => {
 });
 
 export const deleteRole = asyncHandler(async (req, res) => {
+    if (!isOwnerActor(req)) {
+        const { grant } = await loadRoleGrant(req.team.id, req.params.roleId);
+        await assertCanDelegate(req, grant, { roleId: req.params.roleId });
+    }
     await teamService.deleteRole({
         team: req.team,
         actorId: req.user.actorId,
@@ -161,6 +200,9 @@ export const deleteRole = asyncHandler(async (req, res) => {
 // ─── Invitations ────────────────────────────────────────────────────────
 
 export const createInvitation = asyncHandler(async (req, res) => {
+    if (!isOwnerActor(req) && req.body?.roleId) {
+        await assertCanDelegate(req, (await loadRoleGrant(req.team.id, req.body.roleId)).grant);
+    }
     const invitation = await teamService.createInvitation({
         team: req.team,
         actorId: req.user.actorId,
@@ -175,7 +217,20 @@ export const listInvitations = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, invitations, "Invitations fetched successfully"));
 });
 
+// Resending/revoking an invitation is bounded like creating it: a manager
+// can't act on an invitation to a role above their own.
+const assertCanManageInvitation = async (req) => {
+    if (isOwnerActor(req)) return;
+    const invitation = await prisma.teamInvitation.findFirst({
+        where: { id: req.params.invId, teamId: req.team.id },
+        select: { roleId: true },
+    });
+    if (!invitation) throw new ApiError(404, "Invitación no encontrada");
+    await assertCanDelegate(req, (await loadRoleGrant(req.team.id, invitation.roleId)).grant);
+};
+
 export const resendInvitation = asyncHandler(async (req, res) => {
+    await assertCanManageInvitation(req);
     const invitation = await teamService.resendInvitation({
         team: req.team,
         actorId: req.user.actorId,
@@ -185,6 +240,7 @@ export const resendInvitation = asyncHandler(async (req, res) => {
 });
 
 export const revokeInvitation = asyncHandler(async (req, res) => {
+    await assertCanManageInvitation(req);
     const invitation = await teamService.revokeInvitation({
         team: req.team,
         actorId: req.user.actorId,
@@ -242,6 +298,16 @@ export const listMembers = asyncHandler(async (req, res) => {
 export const updateMember = asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
     const { roleId, status, scopeAll, pointOfSaleIds } = req.body || {};
+    // Co-administrador bounds (no-ops for the owner): not the owner, not
+    // themselves, not anyone above them - and whatever they assign must stay
+    // within their own role and location scope.
+    await assertCanManageMember(req, userId);
+    if (roleId) {
+        await assertCanDelegate(req, (await loadRoleGrant(req.team.id, roleId)).grant);
+    }
+    if (scopeAll !== undefined || pointOfSaleIds !== undefined) {
+        assertScopeWithinActor(req, { scopeAll: Boolean(scopeAll), pointOfSaleIds });
+    }
 
     if (status === "removed") {
         await teamService.removeMember({ team: req.team, actorId: req.user.actorId, userId });
@@ -273,7 +339,9 @@ export const updateMember = asyncHandler(async (req, res, next) => {
 });
 
 export const listTeamSessions = asyncHandler(async (req, res) => {
-    const sessions = await teamService.listTeamSessions(req.team);
+    const allSessions = await teamService.listTeamSessions(req.team);
+    // A co-administrador doesn't see the owner's devices.
+    const sessions = isOwnerActor(req) ? allSessions : allSessions.filter((session) => session.user?.id !== req.team.ownerId);
     return res.status(200).json(
         new ApiResponse(
             200,
@@ -291,6 +359,7 @@ export const listTeamSessions = asyncHandler(async (req, res) => {
 });
 
 export const listMemberSessions = asyncHandler(async (req, res) => {
+    if (req.params.userId !== req.user.actorId) await assertCanManageMember(req, req.params.userId);
     const sessions = await teamService.getMemberSessions({ team: req.team, userId: req.params.userId });
     return res.status(200).json(
         new ApiResponse(
@@ -308,6 +377,7 @@ export const listMemberSessions = asyncHandler(async (req, res) => {
 });
 
 export const revokeMemberSession = asyncHandler(async (req, res) => {
+    if (req.params.userId !== req.user.actorId) await assertCanManageMember(req, req.params.userId);
     await teamService.revokeMemberSession({
         team: req.team,
         userId: req.params.userId,

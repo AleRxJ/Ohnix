@@ -10,7 +10,7 @@ import {
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
-import { requireModulePermission } from "../middleware/team.permissions.js";
+import { requireModulePermission, requireCapability } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
@@ -23,7 +23,7 @@ router.route("/").post(requireModulePermission("categories", "edit"), enforceEnt
 router.route("/user").get(requireModulePermission("categories", "view"), getUserCategories);
 router.route("/user/:id")
     .patch(requireModulePermission("categories", "edit"), idempotent("category.update"), updateCategory)
-    .delete(requireModulePermission("categories", "edit"), idempotent("category.delete"), deleteCategory);
+    .delete(requireModulePermission("categories", "edit"), requireCapability("deleteRecords", "Tu rol no tiene permiso para eliminar registros."), idempotent("category.delete"), deleteCategory);
 
 // Admin-only routes
 router.use(isAdmin);

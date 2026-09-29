@@ -9,6 +9,6 @@ router.use(verifyJWT);
 // list every DIAN electronic invoice (financial/tax documents) for the
 // whole team account. Electronic invoicing is scoped under "orders"
 // everywhere else (order.routes.js), so this matches that.
-router.get("/", requireModulePermission("orders", "view"), getElectronicInvoices);
+router.get("/", requireModulePermission("einvoicing", "view"), getElectronicInvoices);
 
 export default router;

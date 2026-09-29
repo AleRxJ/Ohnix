@@ -519,7 +519,7 @@ const Products = () => {
                             setIsDetailsVisible(false);
                             setSelectedProduct(null);
                         }}
-                        onFetchStockMovements={fetchStockMovements}
+                        onFetchStockMovements={hasPermission("inventory", "view") ? fetchStockMovements : undefined}
                         placement={window.innerWidth < 768 ? "bottom" : "right"}
                         height={window.innerWidth < 768 ? "80vh" : undefined}
                         width={window.innerWidth < 768 ? "100%" : "500px"}

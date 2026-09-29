@@ -26,7 +26,7 @@ import {
     enforceMonthlyLimit,
     requireActiveSubscription,
 } from "../middleware/pricing.middleware.js";
-import { requireModulePermission } from "../middleware/team.permissions.js";
+import { requireModulePermission, requireCapability } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = express.Router();
@@ -43,7 +43,7 @@ router.route("/:id/return-preview").get(requireModulePermission("orders", "view"
 // purchase.routes.js's "/:id/returns": because it's meant to be called more
 // than once, `idempotent` is what distinguishes an accidental duplicate call
 // (retry, double-click) from a second real return.
-router.route("/:id/returns").post(requireModulePermission("orders", "edit"), idempotent("order.return"), processOrderReturn);
+router.route("/:id/returns").post(requireModulePermission("orders", "edit"), requireCapability("processReturns", "Tu rol no tiene permiso para procesar devoluciones."), idempotent("order.return"), processOrderReturn);
 router.route("/:id/shipping-payload").get(requireModulePermission("orders", "view"), getOrderShippingPayload);
 router.route("/:id/invoice").get(requireModulePermission("orders", "view"), generateInvoice);
 // GET routes here are deliberately never gated by requireActiveSubscription:
@@ -52,19 +52,21 @@ router.route("/:id/invoice").get(requireModulePermission("orders", "view"), gene
 // paused for non-payment (see requireActiveSubscription's comment). Only the
 // write actions below - which create/resend billable DIAN documents - are
 // gated.
-router.route("/:id/electronic-invoice").get(requireModulePermission("orders", "view"), getOrderElectronicInvoice);
-router.route("/:id/electronic-invoice/pdf").get(requireModulePermission("orders", "view"), downloadOrderElectronicInvoicePdf);
-router.route("/:id/electronic-invoice/issue").post(requireModulePermission("orders", "edit"), requireActiveSubscription, issueOrderElectronicInvoice);
-router.route("/:id/electronic-invoice/sync").post(requireModulePermission("orders", "edit"), requireActiveSubscription, syncOrderElectronicInvoice);
+// Sales e-invoices / credit notes are the "einvoicing" module (split out of
+// "orders" 2026-09-28 - see team.permissions.js).
+router.route("/:id/electronic-invoice").get(requireModulePermission("einvoicing", "view"), getOrderElectronicInvoice);
+router.route("/:id/electronic-invoice/pdf").get(requireModulePermission("einvoicing", "view"), downloadOrderElectronicInvoicePdf);
+router.route("/:id/electronic-invoice/issue").post(requireModulePermission("einvoicing", "edit"), requireActiveSubscription, issueOrderElectronicInvoice);
+router.route("/:id/electronic-invoice/sync").post(requireModulePermission("einvoicing", "edit"), requireActiveSubscription, syncOrderElectronicInvoice);
 // Issuing a credit note is a DIAN-facing, irreversible fiscal document -
 // "admin". The retry below stays "edit": it only finishes the local
 // stock/ledger effect of a credit note someone with "admin" already issued.
 router.route("/:id/electronic-invoice/credit-notes")
-    .get(requireModulePermission("orders", "view"), getOrderCreditNotes)
-    .post(requireModulePermission("orders", "admin"), requireActiveSubscription, idempotent("credit-note.issue"), issueOrderCreditNote);
+    .get(requireModulePermission("einvoicing", "view"), getOrderCreditNotes)
+    .post(requireModulePermission("einvoicing", "admin"), requireActiveSubscription, idempotent("credit-note.issue"), issueOrderCreditNote);
 router.post(
     "/:id/electronic-invoice/credit-notes/:creditNoteId/retry-local-effect",
-    requireModulePermission("orders", "edit"),
+    requireModulePermission("einvoicing", "edit"),
     requireActiveSubscription,
     idempotent("credit-note.local-effect"),
     retryOrderCreditNoteLocalEffect

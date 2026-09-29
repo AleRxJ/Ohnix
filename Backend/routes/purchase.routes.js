@@ -27,7 +27,7 @@ import {
     enforceMonthlyLimit,
     requireActiveSubscription,
 } from "../middleware/pricing.middleware.js";
-import { requireModulePermission } from "../middleware/team.permissions.js";
+import { requireModulePermission, requireCapability } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
@@ -55,7 +55,7 @@ router.route("/:id/return-preview").get(requireModulePermission("purchases", "vi
 // quantity - returnedQuantity left. Because it's *meant* to be repeatable,
 // an accidental duplicate call (retry, double-click) looks exactly like a
 // second real return - `idempotent` is what tells them apart.
-router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), idempotent("purchase.return"), processReturn);
+router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), requireCapability("processReturns", "Tu rol no tiene permiso para procesar devoluciones."), idempotent("purchase.return"), processReturn);
 
 // Documento Soporte (DIAN type "05", itcycle-api-dian only) - see
 // purchaseSupportDocument.service.js. Auto-issued on purchase completion;

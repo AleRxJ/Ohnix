@@ -45,6 +45,9 @@ const Team = () => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
     const { team, isOwner, hasPermission, loading: teamLoading } = useTeam();
+    // The management console is for the owner and for a co-administrador
+    // ("team" module); everyone else gets their read-only MemberOverview.
+    const canManageTeam = hasPermission("team", "view");
     const { plan, loading: planLoading } = useSubscription();
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get("tab") || "members";
@@ -56,27 +59,27 @@ const Team = () => {
     const [sessionsLoading, setSessionsLoading] = useState(true);
 
     const loadRoles = useCallback(async () => {
-        if (!team || !isOwner) return;
+        if (!team || !canManageTeam) return;
         try {
             const res = await teamService.getRoles(team.id);
             setRoles(res?.data || []);
         } catch (err) {
             toast.error(err?.response?.data?.message || t("common.error"));
         }
-    }, [team, isOwner, t]);
+    }, [team, canManageTeam, t]);
 
     const loadMembers = useCallback(async () => {
-        if (!team || !isOwner) return;
+        if (!team || !canManageTeam) return;
         try {
             const res = await teamService.getMembers(team.id);
             setMembers(res?.data || []);
         } catch (err) {
             toast.error(err?.response?.data?.message || t("common.error"));
         }
-    }, [team, isOwner, t]);
+    }, [team, canManageTeam, t]);
 
     const loadSessions = useCallback(async () => {
-        if (!team || !isOwner) return;
+        if (!team || !canManageTeam) return;
         setSessionsLoading(true);
         try {
             const res = await teamService.getTeamSessions(team.id);
@@ -86,7 +89,7 @@ const Team = () => {
         } finally {
             setSessionsLoading(false);
         }
-    }, [team, isOwner, t]);
+    }, [team, canManageTeam, t]);
 
     useEffect(() => {
         loadRoles();
@@ -110,12 +113,12 @@ const Team = () => {
     };
 
     useEffect(() => {
-        if (!team || !isOwner) return;
+        if (!team || !canManageTeam) return;
         teamService
             .getInvitations(team.id)
             .then((res) => setPendingCount((res?.data || []).filter((i) => i.status === "pending").length))
             .catch(() => {});
-    }, [team, isOwner]);
+    }, [team, canManageTeam]);
 
     if (teamLoading || planLoading) {
         return (
@@ -141,7 +144,7 @@ const Team = () => {
     // it, what their own role grants) - not the admin console below, and not
     // gated by any module permission: seeing your own team needs no special
     // grant (see team.routes.js).
-    if (!isOwner) {
+    if (!canManageTeam) {
         return (
             <div className="p-4 sm:p-6">
                 <PageHeader title={team.name} subtitle={t("team.page_subtitle")} icon={<UsergroupAddOutlined />} />
@@ -178,18 +181,17 @@ const Team = () => {
                 />
             ),
         },
-        {
-            key: "points-of-sale",
-            label: t("team.tab_points_of_sale"),
-            children: <PointsOfSaleTab />,
-        },
+        ...(isOwner || hasPermission("pointsOfSale", "admin")
+            ? [{ key: "points-of-sale", label: t("team.tab_points_of_sale"), children: <PointsOfSaleTab /> }]
+            : []),
         {
             key: "roles",
             label: t("team.tab_roles"),
             children: <RolesTab roles={roles} members={members} onRolesChanged={loadRoles} />,
         },
         { key: "activity", label: t("team.tab_activity"), children: <ActivityTab /> },
-        { key: "settings", label: t("team.tab_settings"), children: <SettingsTab /> },
+        // Rename / transfer ownership stay owner-only (requireTeamOwnerActor).
+        ...(isOwner ? [{ key: "settings", label: t("team.tab_settings"), children: <SettingsTab /> }] : []),
     ];
 
     const seatLimit = TEAM_SEAT_LIMITS[plan] ?? null;

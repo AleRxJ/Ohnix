@@ -11,11 +11,13 @@ import EmptyState from "../common/EmptyState";
 
 const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onViewDetails = () => {}, onUpdateStatus = () => {}, updatingPurchaseId = null, returnPreviewLoadingId = null, onReturnPreview = () => {} }) => {
     const { t } = useI18n();
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     const isMobile = useIsMobile();
     // Return preview is a read (purchases:view, matches the backend route);
     // marking completed/returned mutates status and needs purchases:edit.
     const canEdit = hasPermission("purchases", "edit");
+    // Returns also need the processReturns capability (team.permissions.js).
+    const canReturn = canEdit && hasCapability("processReturns");
 
     const filteredPurchases = searchText
         ? purchases.filter(
@@ -69,7 +71,7 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                     <Button
                         icon={<UndoOutlined />}
                         danger
-                        disabled={!canEdit}
+                        disabled={!canReturn}
                         loading={returnPreviewLoadingId === purchase._id}
                         onClick={() => onReturnPreview(purchase._id)}
                     />
@@ -155,12 +157,12 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                     )}
 
                     {record.purchase_status === "completed" && (
-                        <Tooltip title={canEdit ? t("purchases.process_return") : t("common.no_permission_to_edit")}>
+                        <Tooltip title={canReturn ? t("purchases.process_return") : t("common.no_permission_to_edit")}>
                             <Button
                                 icon={<UndoOutlined />}
                                 size="small"
                                 danger
-                                disabled={!canEdit}
+                                disabled={!canReturn}
                                 loading={returnPreviewLoadingId === record._id}
                                 onClick={() => onReturnPreview(record._id)}
                                 data-tour="tour-return-purchase"

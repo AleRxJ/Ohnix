@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { searchKnowledge } from "./assistantKnowledge.service.js";
 import { callAssistantModel } from "./assistantModel.service.js";
 import { runAssistantAgent } from "./assistantAgent.service.js";
+import { getAllowedTargets } from "./assistantNavigation.js";
 import { getCompanyState, relevantStateModules, flattenFindings, describeCompanyState } from "./assistantCompanyState.service.js";
 import { recordGuidance, recordKnowledgeGap } from "./assistantLearning.service.js";
 
@@ -140,6 +141,7 @@ export const askAssistant = async ({ userId, user = null, conversationId, messag
         try {
             const result = await runAssistantAgent({
                 companyState: describeCompanyState(companyState),
+                allowedTargets: user ? await getAllowedTargets(user) : null,
                 message: trimmed,
                 history,
                 locale: safeLocale,

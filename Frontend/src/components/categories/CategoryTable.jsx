@@ -26,7 +26,7 @@ const CategoryTable = ({
 }) => {
     const [hoveredRow, setHoveredRow] = useState(null);
     const { t } = useI18n();
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     const isMobile = useIsMobile();
     // Same reasoning as UnitTable.jsx: module-level grant, not per-record
     // "did I create this" - see the comment there.
@@ -62,6 +62,8 @@ const CategoryTable = ({
             align: "center",
             render: (_, record) => {
                 const canEditRecord = canEditModule;
+                // Deleting also needs the deleteRecords capability.
+                const canDeleteRecord = canEditRecord && (isAdmin || hasCapability("deleteRecords"));
 
                 return (
                     <div className="flex items-center justify-center space-x-2">
@@ -96,7 +98,7 @@ const CategoryTable = ({
                         </Tooltip>
                         <Tooltip
                             title={
-                                canEditRecord
+                                canDeleteRecord
                                     ? t("common.delete")
                                         : t("common.no_permission_to_delete")
                             }
@@ -107,7 +109,7 @@ const CategoryTable = ({
                                 icon={
                                     <DeleteOutlined className="text-red-400" />
                                 }
-                                disabled={!canEditRecord}
+                                disabled={!canDeleteRecord}
                                 onClick={() => {
                                     Modal.confirm({
                                         title: t("categories.delete_category"),
@@ -119,7 +121,7 @@ const CategoryTable = ({
                                     });
                                 }}
                                 className={
-                                    canEditRecord
+                                    canDeleteRecord
                                         ? "h-9 w-9 flex items-center justify-center text-[var(--ohnix-text-soft)] hover:text-red-300 hover:bg-[var(--ohnix-hover-overlay)] border-0 rounded-lg transition-all duration-200"
                                         : "h-9 w-9 flex items-center justify-center text-gray-300 cursor-not-allowed border-0 rounded-lg"
                                 }

@@ -16,11 +16,11 @@ router.use(verifyJWT);
 
 router
     .route("/")
-    .get(requireModulePermission("products", "view"), listProductionOrders)
-    .post(requireModulePermission("products", "edit"), idempotent("production-order.create"), createProductionOrder);
+    .get(requireModulePermission("inventory", "view"), listProductionOrders)
+    .post(requireModulePermission("inventory", "edit"), idempotent("production-order.create"), createProductionOrder);
 
-router.route("/:id").get(requireModulePermission("products", "view"), getProductionOrder);
-router.route("/:id/complete").patch(requireModulePermission("products", "edit"), idempotent("production-order.complete"), completeProductionOrder);
-router.route("/:id/cancel").patch(requireModulePermission("products", "edit"), idempotent("production-order.cancel"), cancelProductionOrder);
+router.route("/:id").get(requireModulePermission("inventory", "view"), getProductionOrder);
+router.route("/:id/complete").patch(requireModulePermission("inventory", "edit"), idempotent("production-order.complete"), completeProductionOrder);
+router.route("/:id/cancel").patch(requireModulePermission("inventory", "edit"), idempotent("production-order.cancel"), cancelProductionOrder);
 
 export default router;

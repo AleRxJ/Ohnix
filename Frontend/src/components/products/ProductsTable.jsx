@@ -39,12 +39,16 @@ const ProductsTable = ({
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     // Backend already rejects the mutation for a team member without
     // products:edit, but leaving Edit/Delete visibly enabled here would let
     // them fill out a whole edit form (or confirm a delete) just to hit a
     // 403 - disable + explain instead, matching Categories/Units.
     const canEdit = hasPermission("products", "edit");
+    // Deleting also needs the deleteRecords capability (team.permissions.js).
+    const canDelete = canEdit && hasCapability("deleteRecords");
+    // Stock adjustments are the "inventory" module since 2026-09-28.
+    const canAdjustStock = hasPermission("inventory", "edit");
 
     // Mobile Card View Component
     const MobileProductCard = ({ product }) => (
@@ -142,13 +146,13 @@ const ProductsTable = ({
                     size="small"
                     className="text-[#44F3F0] hover:!text-[#44F3F0]"
                 />
-                <Tooltip title={canEdit ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
+                <Tooltip title={canAdjustStock ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
                     <Button
                         icon={<SwapOutlined />}
                         onClick={() => onAdjustStock(product)}
                         type="text"
                         size="small"
-                        disabled={!canEdit}
+                        disabled={!canAdjustStock}
                         className="text-[#29D8D5] hover:!text-[#29D8D5] disabled:!text-[var(--ohnix-text-dim)]"
                     />
                 </Tooltip>
@@ -166,7 +170,7 @@ const ProductsTable = ({
                     onConfirm={() => onDelete(product._id)}
                     okText={t("common.yes")}
                     cancelText={t("common.no")}
-                    disabled={!canEdit}
+                    disabled={!canDelete}
                     icon={
                         <ExclamationCircleOutlined
                             style={{ color: "red" }}
@@ -178,7 +182,7 @@ const ProductsTable = ({
                         danger
                         type="text"
                         size="small"
-                        disabled={!canEdit}
+                        disabled={!canDelete}
                     />
                 </Popconfirm>
             </div>
@@ -329,13 +333,13 @@ const ProductsTable = ({
                             data-tour="tour-view-product"
                         />
                     </Tooltip>
-                    <Tooltip title={canEdit ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
+                    <Tooltip title={canAdjustStock ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
                         <Button
                             icon={<SwapOutlined />}
                             onClick={() => onAdjustStock(record)}
                             type="text"
                             size="small"
-                            disabled={!canEdit}
+                            disabled={!canAdjustStock}
                             className="text-[#29D8D5] hover:!text-[#29D8D5] hover:bg-[var(--ohnix-hover-overlay)] disabled:!text-[var(--ohnix-text-dim)]"
                             data-tour="tour-adjust-stock"
                         />
@@ -350,14 +354,14 @@ const ProductsTable = ({
                             className="text-[var(--ohnix-text-muted)] hover:!text-[#44F3F0] hover:bg-[var(--ohnix-hover-overlay)] disabled:!text-[var(--ohnix-text-dim)]"
                         />
                     </Tooltip>
-                    <Tooltip title={canEdit ? t("common.delete") : t("common.no_permission_to_delete")}>
+                    <Tooltip title={canDelete ? t("common.delete") : t("common.no_permission_to_delete")}>
                         <Popconfirm
                             title={t("products.delete_product")}
                             description={t("common.warning")}
                             onConfirm={() => onDelete(record._id)}
                             okText={t("common.yes")}
                             cancelText={t("common.no")}
-                            disabled={!canEdit}
+                            disabled={!canDelete}
                             icon={
                                 <ExclamationCircleOutlined
                                     style={{ color: "red" }}
@@ -369,7 +373,7 @@ const ProductsTable = ({
                                 danger
                                 type="text"
                                 size="small"
-                                disabled={!canEdit}
+                                disabled={!canDelete}
                             />
                         </Popconfirm>
                     </Tooltip>

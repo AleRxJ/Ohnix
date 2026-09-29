@@ -9,10 +9,9 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 // operational data. "billing" IS grantable (unlike API keys) - the owner can
 // choose to let a trusted member see/manage the subscription.
 //
-// "dashboard" is not independently grantable - see COUPLED_TO_REPORTS below.
-// It stays a real module (its own requireModulePermission check on
-// GET /reports/dashboard) purely so the dashboard overview and the reports
-// section always turn on and off together, never one without the other.
+// "dashboard" used to mirror "reports"; since the 2026-09-28 regrouping it's
+// independently grantable (the migration copied each role's reports level
+// into it, which is what it already held).
 export const MODULE_KEYS = [
     "dashboard",
     "products",
@@ -48,6 +47,22 @@ export const MODULE_KEYS = [
     // touching the notification templates/toggles needs "admin" - see
     // warranty.routes.js for the exact level per endpoint.
     "warranties",
+    // --- 2026-09-28 regrouping (migration 20260928180000 copied each role's
+    // old level into these, so nobody's effective access changed) ---
+    // Sales electronic invoices and credit notes (DIAN), split out of
+    // "orders": issue/sync = edit, credit note = admin. Purchase-side DIAN
+    // documents (support document, RADIAN) stay under "purchases".
+    "einvoicing",
+    // Stock adjustments, transfers between locations and production orders,
+    // split out of "products" (which keeps the catalog itself).
+    "inventory",
+    // Discovery Engine findings, split out of "reports".
+    "discoveries",
+    // Delegated team management ("co-administrador"): view = members,
+    // sessions, activity; edit = invite, change a member's role/scope,
+    // revoke sessions; admin = create/edit/delete roles. Never lets anyone
+    // grant more than they hold themselves - see assertNoEscalation.
+    "team",
 ];
 
 // Modules the UI never shows as an independent toggle - their level always
@@ -55,7 +70,9 @@ export const MODULE_KEYS = [
 // team.service.js, not just in the frontend, so it holds even if someone
 // calls the API directly). Keep MODULE_KEYS as the full backend-enforced
 // set; use this to filter what a role-editing UI renders.
-export const COUPLED_MODULES = { dashboard: "reports" };
+// Empty since "dashboard" became independently grantable (2026-09-28) - the
+// mechanism stays for any future coupling.
+export const COUPLED_MODULES = {};
 
 // Modules another module can't work without, at "view" - e.g. an order form
 // has to list customers and products. Advisory only (the role editor raises
@@ -66,6 +83,8 @@ export const MODULE_DEPENDENCIES = {
     purchases: ["suppliers", "products"],
     products: ["categories", "units"],
     warranties: ["orders", "customers"],
+    einvoicing: ["orders", "customers"],
+    inventory: ["products"],
 };
 
 const LEVEL_ORDER = { none: 0, view: 1, edit: 2, admin: 3 };
@@ -148,6 +167,10 @@ export const MODULE_LABELS_ES = {
     accounting: "contabilidad",
     payroll: "nómina",
     warranties: "garantías",
+    einvoicing: "facturación electrónica",
+    inventory: "inventario",
+    discoveries: "descubrimientos",
+    team: "el equipo",
 };
 
 export const requireModulePermission = (moduleKey, minLevel = "view") =>
@@ -182,12 +205,22 @@ export const CAPABILITIES = {
     // fields are stripped from product/inventory/report responses
     // (stripCostFieldsUnlessAllowed) and the margin report is blocked.
     catalogViewCosts: { type: "boolean", module: "products" },
+    // Delete products/variants, categories, units, customers, suppliers and
+    // employees - "edit" alone can create and change them but not remove.
+    deleteRecords: { type: "boolean", module: "products" },
+    // Process returns on sales and purchases (stock + money reversal).
+    processReturns: { type: "boolean", module: "orders" },
+    // Export reports to PDF / Excel / CSV - "reports: view" alone only shows them.
+    reportsExport: { type: "boolean", module: "reports" },
 };
 
 export const FULL_CAPABILITIES = {
     salesPriceOverride: true,
     salesMaxDiscountPct: 100,
     catalogViewCosts: true,
+    deleteRecords: true,
+    processReturns: true,
+    reportsExport: true,
 };
 
 export const normalizeCapabilities = (raw) => {

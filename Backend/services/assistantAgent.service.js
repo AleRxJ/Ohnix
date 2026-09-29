@@ -64,7 +64,9 @@ const RESPONSE_FORMAT = {
     json_schema: { name: "assistant_turn", strict: true, schema: TURN_SCHEMA },
 };
 
-export const buildSystemPrompt = ({ locale, module, tab }) => {
+// allowedTargets: Set from getAllowedTargets (assistantNavigation.js) - the
+// screens this person's role can open; null = unrestricted.
+export const buildSystemPrompt = ({ locale, module, tab, allowedTargets = null }) => {
     const currentPage = describeCurrentPage({ module, tab });
     return `Eres el Asistente de Ohnix, un ERP contable para pequeñas y medianas empresas en Colombia (inventario, ventas, compras, clientes, proveedores, finanzas, contabilidad y facturación electrónica DIAN).
 
@@ -94,7 +96,7 @@ FORMATO DE SALIDA
 - knowledge_gap: true solo si la persona preguntó algo sobre Ohnix que la BASE DE CONOCIMIENTO y el mapa no cubren (tuviste que decir que no lo sabes o sugerir soporte); false en cualquier otro caso, incluidas preguntas generales de contabilidad.
 11. Escribe message y choices en ${locale === "en" ? "inglés" : "español"}.
 ${currentPage ? `\nLa persona está ahora mismo en: ${currentPage}. Úsalo para ubicarla, pero no asumas que su pregunta es sobre esa pantalla si no lo es.\n` : ""}
-${describeAppMap({ module })}`;
+${describeAppMap({ module, allowed: allowedTargets })}`;
 };
 
 // The company's state rides in the turn's own user message, next to the
@@ -129,7 +131,7 @@ export const stripMarkdown = (text) =>
 // Model output -> what gets stored and sent to the widget. Anything outside
 // the navigation registry or malformed is dropped rather than failing the
 // turn: a bad highlight key shouldn't cost the person the answer itself.
-export const sanitizeRespondArgs = (args, { module = null, tab = null } = {}) => {
+export const sanitizeRespondArgs = (args, { module = null, tab = null, allowedTargets = null } = {}) => {
     const message = stripMarkdown(typeof args?.message === "string" ? args.message : "").trim();
 
     const choices = Array.isArray(args?.choices)
@@ -145,10 +147,10 @@ export const sanitizeRespondArgs = (args, { module = null, tab = null } = {}) =>
     // where the model highlighted "Resumen" while the user sat on it.
     const here = currentScreenKey({ module, tab });
     const navigate =
-        typeof args?.navigate_to === "string" && args.navigate_to !== here ? resolveNavigation(args.navigate_to) : null;
+        typeof args?.navigate_to === "string" && args.navigate_to !== here ? resolveNavigation(args.navigate_to, allowedTargets) : null;
     const hereAnchor = here ? NAVIGATION_TARGETS[here]?.anchor : null;
     const highlight =
-        typeof args?.highlight === "string" && args.highlight !== hereAnchor ? resolveHighlight(args.highlight) : null;
+        typeof args?.highlight === "string" && args.highlight !== hereAnchor ? resolveHighlight(args.highlight, allowedTargets) : null;
 
     const actions = {};
     if (choices.length) actions.choices = choices;
@@ -234,6 +236,9 @@ export const runAssistantAgent = async ({
     // assistantAccountingState.service.js) - null when not relevant or the
     // person isn't allowed to see it.
     companyState = null,
+    // Screens the person's role can open (getAllowedTargets) - the map in
+    // the prompt and any navigate/highlight action are limited to these.
+    allowedTargets = null,
     callModel,
     searchKnowledge,
 }) => {
@@ -261,7 +266,7 @@ export const runAssistantAgent = async ({
 
     const initialKnowledge = await search(buildRetrievalQuery(message, history));
     const messages = [
-        { role: "system", content: buildSystemPrompt({ locale, module, tab }) },
+        { role: "system", content: buildSystemPrompt({ locale, module, tab, allowedTargets }) },
         ...buildHistoryMessages(history),
         { role: "user", content: buildTurnMessage({ message, knowledge: initialKnowledge, companyState }) },
     ];
@@ -289,7 +294,7 @@ export const runAssistantAgent = async ({
             continue;
         }
 
-        const { message: finalMessage, actions } = sanitizeRespondArgs(turn, { module, tab });
+        const { message: finalMessage, actions } = sanitizeRespondArgs(turn, { module, tab, allowedTargets });
         if (finalMessage) {
             return { content: finalMessage, actions, sources: citedSources(turn), knowledgeGap: turn.knowledge_gap === true };
         }

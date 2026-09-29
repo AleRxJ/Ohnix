@@ -145,7 +145,12 @@ const LocationStockPanel = ({ product }) => {
     // Approving a request, and quick/direct transfers (which approve
     // themselves), are products:"admin" on the backend - and a team member
     // can't approve a request they created (stockTransfer.controller.js).
-    const canApproveTransfers = hasPermission("products", "admin");
+    const canApproveTransfers = hasPermission("inventory", "admin");
+    // Requesting/shipping/receiving a transfer, and even listing them, is
+    // "inventory" (split out of "products" 2026-09-28). Without it the panel
+    // still shows stock per location, just no transfer section.
+    const canSeeTransfers = hasPermission("inventory", "view");
+    const canMoveStock = hasPermission("inventory", "edit");
     const isOwnRequest = (tr) => isTeamMember && tr.requested_by?._id === user?.id;
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [summary, setSummary] = useState(null);
@@ -194,7 +199,7 @@ const LocationStockPanel = ({ product }) => {
             const [posRes, stockRes, transfersRes] = await Promise.all([
                 pointOfSaleService.list(),
                 api.get(`/products/${product._id}/location-stock`),
-                stockTransferService.list({ productId: product._id }),
+                canSeeTransfers ? stockTransferService.list({ productId: product._id }) : Promise.resolve({ data: [] }),
             ]);
             setPointsOfSale((posRes?.data || []).filter((pos) => pos.isActive));
             const nextSummary = stockRes?.data?.data || null;
@@ -241,7 +246,7 @@ const LocationStockPanel = ({ product }) => {
             toast.error(err?.response?.data?.message || t("common.error"));
             setStatus("error");
         }
-    }, [product?._id, t]);
+    }, [product?._id, t, canSeeTransfers]);
 
     useEffect(() => {
         loadAll();
@@ -446,6 +451,7 @@ const LocationStockPanel = ({ product }) => {
                     )}
                 </div>
                 <div className="flex gap-2">
+                    {canMoveStock && (
                     <Button
                         size="small"
                         icon={<SendOutlined />}
@@ -454,6 +460,7 @@ const LocationStockPanel = ({ product }) => {
                     >
                         {t("products.request_transfer")}
                     </Button>
+                    )}
                     {/* Quick transfer needs both ends in scope (symmetric
                         rule, see stockTransfer.controller.js) - with 0 or 1
                         visible locations there's no valid from/to pair the
@@ -651,7 +658,7 @@ const LocationStockPanel = ({ product }) => {
                                                             {t("products.transfer_approve")}
                                                         </Button>
                                                     )}
-                                                    {tr.status === "approved" && hasSourceAccess(tr) && (
+                                                    {tr.status === "approved" && hasSourceAccess(tr) && canMoveStock && (
                                                         <Button
                                                             size="small"
                                                             icon={<CarOutlined />}
@@ -669,7 +676,7 @@ const LocationStockPanel = ({ product }) => {
                                                             {t("products.transfer_ship")}
                                                         </Button>
                                                     )}
-                                                    {tr.status === "in_transit" && hasDestinationAccess(tr) && (
+                                                    {tr.status === "in_transit" && hasDestinationAccess(tr) && canMoveStock && (
                                                         <Button
                                                             size="small"
                                                             icon={<InboxOutlined />}
@@ -680,6 +687,7 @@ const LocationStockPanel = ({ product }) => {
                                                         </Button>
                                                     )}
                                                     {["requested", "approved", "in_transit"].includes(tr.status) &&
+                                                        canMoveStock &&
                                                         (hasSourceAccess(tr) || hasDestinationAccess(tr)) && (
                                                         <Popconfirm
                                                             title={t("products.transfer_cancel_confirm_title")}

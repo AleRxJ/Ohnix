@@ -11,7 +11,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
-import { requireModulePermission } from "../middleware/team.permissions.js";
+import { requireModulePermission, requireCapability } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
@@ -29,7 +29,7 @@ router
 router
     .route("/:id")
     .patch(requireModulePermission("suppliers", "edit"), upload.single("photo"), idempotent("supplier.update"), updateSupplier)
-    .delete(requireModulePermission("suppliers", "edit"), idempotent("supplier.delete"), deleteSupplier);
+    .delete(requireModulePermission("suppliers", "edit"), requireCapability("deleteRecords", "Tu rol no tiene permiso para eliminar registros."), idempotent("supplier.delete"), deleteSupplier);
 
 router
     .route("/:id/point-of-sale")

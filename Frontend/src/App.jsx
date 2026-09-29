@@ -187,7 +187,8 @@ const ColombiaInvoiceRoute = ({ children }) => {
     const { hasPermission, loading: teamLoading } = useTeam();
     if (!ELECTRONIC_INVOICING_ENABLED) return <Navigate to="/dashboard" replace />;
     if (loading || teamLoading) return <RouteLoadingFallback />;
-    return user?.company?.countryCode === "CO" && hasPermission("orders", "view")
+    // Sales e-invoices are the "einvoicing" module since 2026-09-28.
+    return user?.company?.countryCode === "CO" && hasPermission("einvoicing", "view")
         ? children
         : <Navigate to="/dashboard" replace />;
 };
@@ -269,10 +270,10 @@ const requireModuleAccess = (moduleKey) => ({ children }) => {
         : <Navigate to="/dashboard" replace />;
 };
 const RequireReportsAccess = requireModuleAccess("reports");
-// Discoveries piggybacks on the "reports" module permission, same as its
-// backend route (see Backend/routes/discovery.routes.js's own comment) -
-// not an independently grantable module.
-const RequireDiscoveriesAccess = requireModuleAccess("reports");
+// Discoveries has its own module since 2026-09-28 (split out of "reports").
+const RequireDiscoveriesAccess = requireModuleAccess("discoveries");
+// Stock adjustments, transfers and production (split out of "products").
+const RequireInventoryAccess = requireModuleAccess("inventory");
 const RequireProductsAccess = requireModuleAccess("products");
 const RequireOrdersAccess = requireModuleAccess("orders");
 const RequirePurchasesAccess = requireModuleAccess("purchases");
@@ -417,7 +418,7 @@ function App() {
                             >
                                 <Route path="dashboard" element={<Dashboard />} />
                                 <Route path="products" element={<RequireProductsAccess><Products /></RequireProductsAccess>} />
-                                <Route path="production-orders" element={<RequireProductsAccess><ProductionOrders /></RequireProductsAccess>} />
+                                <Route path="production-orders" element={<RequireInventoryAccess><ProductionOrders /></RequireInventoryAccess>} />
                                 <Route path="payroll" element={<RequirePayrollAccess><Payroll /></RequirePayrollAccess>} />
                                 <Route path="orders" element={<RequireOrdersAccess><Orders /></RequireOrdersAccess>} />
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />

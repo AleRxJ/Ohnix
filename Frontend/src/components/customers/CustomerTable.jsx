@@ -19,8 +19,10 @@ const { Text } = Typography;
 
 const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, canMove = false }) => {
     const { t } = useI18n();
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     const canEdit = hasPermission("customers", "edit");
+    // Deleting also needs the deleteRecords capability (team.permissions.js).
+    const canDelete = canEdit && hasCapability("deleteRecords");
     const tableShellClass = "rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]";
 
     // `customers` is the full, unpaginated list (desktop pages it
@@ -117,14 +119,14 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, c
                     okText={t("common.delete")}
                     cancelText={t("common.cancel")}
                     okButtonProps={{ danger: true }}
-                    disabled={!canEdit}
+                    disabled={!canDelete}
                 >
                     <Button
                         type="text"
                         icon={<DeleteOutlined />}
                         size="small"
                         className="text-red-400"
-                        disabled={!canEdit}
+                        disabled={!canDelete}
                     />
                 </Popconfirm>
             </div>
@@ -261,15 +263,15 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, c
                         okText={t("common.delete")}
                         cancelText={t("common.cancel")}
                         okButtonProps={{ danger: true }}
-                        disabled={!canEdit}
+                        disabled={!canDelete}
                     >
-                        <Tooltip title={canEdit ? t("customers.delete_customer") : t("common.no_permission_to_delete")}>
+                        <Tooltip title={canDelete ? t("customers.delete_customer") : t("common.no_permission_to_delete")}>
                             <Button
                                 type="text"
                                 icon={<DeleteOutlined />}
                                 size="small"
                                 className="text-red-400 hover:text-red-300 hover:bg-[var(--ohnix-hover-overlay)]"
-                                disabled={!canEdit}
+                                disabled={!canDelete}
                             />
                         </Tooltip>
                     </Popconfirm>

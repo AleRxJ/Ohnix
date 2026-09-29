@@ -15,9 +15,9 @@ router.use(enforcePlanFeature("discoveryEngine"));
 // Piggybacks on the "reports" module permission for Fase 1 rather than
 // introducing a new grantable module - revisit if discoveries end up
 // needing their own independent access level from reports.
-router.route("/").get(requireModulePermission("reports", "view"), listDiscoveries);
-router.route("/:id").get(requireModulePermission("reports", "view"), getDiscovery);
-router.route("/:id/status").patch(requireModulePermission("reports", "edit"), updateDiscoveryStatus);
-router.route("/:id/explanation").patch(requireModulePermission("reports", "edit"), setDiscoveryExplanation);
+router.route("/").get(requireModulePermission("discoveries", "view"), listDiscoveries);
+router.route("/:id").get(requireModulePermission("discoveries", "view"), getDiscovery);
+router.route("/:id/status").patch(requireModulePermission("discoveries", "edit"), updateDiscoveryStatus);
+router.route("/:id/explanation").patch(requireModulePermission("discoveries", "edit"), setDiscoveryExplanation);
 
 export default router;

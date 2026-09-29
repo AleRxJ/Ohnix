@@ -3,10 +3,14 @@ import { Button, Tooltip } from "antd";
 import { FileExcelOutlined, FileTextOutlined, FilePdfOutlined, LockOutlined } from "@ant-design/icons";
 import useSubscription from "../../hooks/useSubscription";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const ReportExportButtons = ({ hasData, onExportCsv, onExportExcel, onExportPdf, className = "" }) => {
     const { can } = useSubscription();
     const { t } = useI18n();
+    // Exporting needs the reportsExport capability (team.permissions.js) on
+    // top of seeing the report - the backend 403s the export otherwise.
+    const { hasCapability } = useTeam();
     const [pdfLoading, setPdfLoading] = useState(false);
 
     const canCsv = can("exportCsv");
@@ -22,6 +26,8 @@ const ReportExportButtons = ({ hasData, onExportCsv, onExportExcel, onExportPdf,
             setPdfLoading(false);
         }
     };
+
+    if (!hasCapability("reportsExport")) return null;
 
     return (
         <div className={`flex flex-col sm:flex-row gap-2 ${className}`}>

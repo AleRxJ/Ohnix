@@ -22,7 +22,7 @@ const { Content } = Layout;
 
 const PERIOD_STATUS_COLORS = { draft: "#8b98a0", calculated: "#7c6af7", approved: "#f59e0b", paid: "#44f3f0", cancelled: "#fb7185" };
 
-const EmployeesPanel = ({ canEdit, canAdmin }) => {
+const EmployeesPanel = ({ canEdit, canAdmin, canDelete }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const { employees, loading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
@@ -86,8 +86,8 @@ const EmployeesPanel = ({ canEdit, canAdmin }) => {
                             <Button type="text" size="small" icon={<StopOutlined />} disabled={!canAdmin} onClick={() => setTerminating(row)} />
                         </Tooltip>
                     )}
-                    <Popconfirm title={t("common.warning")} okText={t("common.yes")} cancelText={t("common.no")} onConfirm={() => deleteEmployee(row._id)} disabled={!canEdit}>
-                        <Button type="text" danger size="small" icon={<DeleteOutlined />} disabled={!canEdit} />
+                    <Popconfirm title={t("common.warning")} okText={t("common.yes")} cancelText={t("common.no")} onConfirm={() => deleteEmployee(row._id)} disabled={!canDelete}>
+                        <Button type="text" danger size="small" icon={<DeleteOutlined />} disabled={!canDelete} />
                     </Popconfirm>
                 </div>
             ),
@@ -261,14 +261,14 @@ const BenefitsPanel = ({ canEdit }) => {
 const Payroll = () => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     const canEdit = hasPermission("payroll", "edit");
     // Approve/pay/cancel a period and settle a termination need "admin".
     const canAdmin = hasPermission("payroll", "admin");
     const isAdmin = user?.role === "admin";
 
     const items = [
-        { key: "employees", label: t("payroll.tab_employees"), children: <EmployeesPanel canEdit={canEdit} canAdmin={canAdmin} /> },
+        { key: "employees", label: t("payroll.tab_employees"), children: <EmployeesPanel canEdit={canEdit} canAdmin={canAdmin} canDelete={canEdit && hasCapability("deleteRecords")} /> },
         { key: "periods", label: t("payroll.tab_periods"), children: <PeriodsPanel canEdit={canEdit} canAdmin={canAdmin} /> },
         { key: "benefits", label: t("payroll.tab_benefits"), children: <BenefitsPanel canEdit={canEdit} /> },
         ...(isAdmin ? [{ key: "legal", label: <span className="inline-flex items-center gap-1"><SettingOutlined />{t("payroll.tab_legal_parameters")}</span>, children: <LegalParametersPanel /> }] : []),

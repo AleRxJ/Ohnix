@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createEmployee, getEmployees, getEmployee, updateEmployee, deleteEmployee } from "../controllers/employee.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
-import { requireModulePermission } from "../middleware/team.permissions.js";
+import { requireModulePermission, requireCapability } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
@@ -17,6 +17,6 @@ router
     .route("/:id")
     .get(requireModulePermission("payroll", "view"), getEmployee)
     .patch(requireModulePermission("payroll", "edit"), idempotent("employee.update"), updateEmployee)
-    .delete(requireModulePermission("payroll", "edit"), idempotent("employee.delete"), deleteEmployee);
+    .delete(requireModulePermission("payroll", "edit"), requireCapability("deleteRecords", "Tu rol no tiene permiso para eliminar registros."), idempotent("employee.delete"), deleteEmployee);
 
 export default router;

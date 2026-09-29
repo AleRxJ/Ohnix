@@ -11,7 +11,10 @@ import usePermissionCatalog from "../../hooks/usePermissionCatalog";
 const RolesTab = ({ roles, members = [], onRolesChanged }) => {
     const { t } = useI18n();
     const { moduleKeys } = usePermissionCatalog();
-    const { team, isOwner } = useTeam();
+    const { team, hasPermission } = useTeam();
+    // Owner, or a co-administrador with "team: admin" (never above their own
+    // role - enforced by the backend's teamDelegation.service.js).
+    const canManageRoles = hasPermission("team", "admin");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
     const [duplicatingRole, setDuplicatingRole] = useState(null);
@@ -72,7 +75,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
         <div>
             <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-[var(--ohnix-text-muted)]">{t("team.roles_description")}</p>
-                {isOwner && (
+                {canManageRoles && (
                     <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                         {t("team.add_role")}
                     </Button>
@@ -97,7 +100,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                                         </Tag>
                                     )}
                                 </div>
-                                {isOwner && (
+                                {canManageRoles && (
                                     <div className="flex gap-1">
                                         {!role.isOwnerRole && (
                                             <Button

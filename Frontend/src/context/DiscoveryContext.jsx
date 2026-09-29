@@ -27,7 +27,7 @@ export const DiscoveryProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     const anyLoading = teamLoading || subscriptionLoading;
-    const canView = !anyLoading && hasPermission("reports", "view") && can("discoveryEngine");
+    const canView = !anyLoading && hasPermission("discoveries", "view") && can("discoveryEngine");
 
     const refresh = useCallback(() => {
         if (!canView) {

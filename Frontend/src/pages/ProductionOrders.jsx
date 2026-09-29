@@ -24,7 +24,8 @@ const ProductionOrders = () => {
     const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
     const { hasPermission } = useTeam();
-    const canEdit = hasPermission("products", "edit");
+    // Production is the "inventory" module since 2026-09-28.
+    const canEdit = hasPermission("inventory", "edit");
     const { products, loading: productsLoading, fetchProducts } = useProducts();
     const { orders, loading, createOrder, completeOrder, cancelOrder } = useProductionOrders();
     const [isCreateVisible, setIsCreateVisible] = useState(false);

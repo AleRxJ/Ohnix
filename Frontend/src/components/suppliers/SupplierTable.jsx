@@ -27,12 +27,14 @@ const SupplierTable = ({
     isAdmin = false,
 }) => {
     const { t } = useI18n();
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     const isMobile = useIsMobile();
     // isAdmin here is the platform-admin "view everyone's suppliers" mode
     // (unrelated to team roles) - canEditTeam is the separate team-role gate
     // for a regular account's own suppliers.
     const canEditTeam = hasPermission("suppliers", "edit");
+    // Deleting also needs the deleteRecords capability (team.permissions.js).
+    const canDeleteTeam = canEditTeam && hasCapability("deleteRecords");
 
     // Shared between the desktop table's action column and the mobile card's
     // "More" dropdown so the visibility rules (admin-view ownership, team
@@ -62,22 +64,26 @@ const SupplierTable = ({
                             },
                         ]
                       : []),
-                  {
-                      key: "delete",
-                      label: t("common.delete"),
-                      icon: <DeleteOutlined />,
-                      danger: true,
-                      onClick: () => {
-                          Modal.confirm({
-                              title: t("suppliers.delete_supplier"),
-                              content: t("suppliers.delete_supplier_confirm", { name: record.name }),
-                              okText: t("common.yes"),
-                              okType: "danger",
-                              cancelText: t("common.no"),
-                              onOk: () => onDelete(record._id),
-                          });
-                      },
-                  },
+                  ...(canDeleteTeam
+                      ? [
+                            {
+                                key: "delete",
+                                label: t("common.delete"),
+                                icon: <DeleteOutlined />,
+                                danger: true,
+                                onClick: () => {
+                                    Modal.confirm({
+                                        title: t("suppliers.delete_supplier"),
+                                        content: t("suppliers.delete_supplier_confirm", { name: record.name }),
+                                        okText: t("common.yes"),
+                                        okType: "danger",
+                                        cancelText: t("common.no"),
+                                        onOk: () => onDelete(record._id),
+                                    });
+                                },
+                            },
+                        ]
+                      : []),
               ]
             : []),
     ];

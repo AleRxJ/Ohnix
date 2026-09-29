@@ -2,42 +2,63 @@
 // Only pre-fills the form - the owner reviews and saves it like any other
 // role, and anything not listed here stays "none" / capability off.
 // Keys match Backend MODULE_KEYS; labels are team.template_<key>.
+// Backend/test/teamPermissionCatalog.test.js checks every template against
+// the real module list, MODULE_DEPENDENCIES and the locale files.
+const NONE = { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false, deleteRecords: false, processReturns: false, reportsExport: false };
+
 export const ROLE_TEMPLATES = [
     {
         key: "cashier",
-        permissions: { orders: "edit", customers: "edit", products: "view", categories: "view", units: "view", warranties: "view" },
-        capabilities: { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false },
+        permissions: { dashboard: "view", orders: "edit", einvoicing: "edit", customers: "edit", products: "view", categories: "view", units: "view", warranties: "view" },
+        capabilities: NONE,
     },
     {
         key: "store_supervisor",
-        // orders "admin": cancel completed sales and issue credit notes.
-        permissions: { orders: "admin", customers: "edit", products: "edit", categories: "view", units: "view", warranties: "edit", reports: "view" },
-        capabilities: { salesPriceOverride: false, salesMaxDiscountPct: 15, catalogViewCosts: false },
+        // orders "admin": cancel completed sales; einvoicing "admin": credit notes.
+        permissions: {
+            dashboard: "view", orders: "admin", einvoicing: "admin", customers: "edit", products: "edit", categories: "view", units: "view",
+            inventory: "edit", warranties: "edit", reports: "view",
+        },
+        capabilities: { ...NONE, salesMaxDiscountPct: 15, processReturns: true, reportsExport: true },
     },
     {
         key: "warehouse",
-        permissions: { products: "edit", categories: "view", units: "view", purchases: "view", suppliers: "view" },
-        capabilities: { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false },
+        permissions: { inventory: "edit", products: "view", categories: "view", units: "view", purchases: "view", suppliers: "view" },
+        capabilities: NONE,
     },
     {
         key: "buyer",
-        permissions: { purchases: "edit", suppliers: "edit", products: "edit", categories: "view", units: "view" },
-        capabilities: { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: true },
+        permissions: { purchases: "edit", suppliers: "edit", products: "edit", categories: "view", units: "view", inventory: "view" },
+        capabilities: { ...NONE, catalogViewCosts: true, processReturns: true },
     },
     {
         key: "accounting_assistant",
-        permissions: { finance: "edit", accounting: "edit", reports: "view", orders: "view", purchases: "view", customers: "view", suppliers: "view", products: "view", categories: "view", units: "view" },
-        capabilities: { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: true },
+        permissions: {
+            dashboard: "view", finance: "edit", accounting: "edit", reports: "view", orders: "view", einvoicing: "view", purchases: "view",
+            customers: "view", suppliers: "view", products: "view", categories: "view", units: "view",
+        },
+        capabilities: { ...NONE, catalogViewCosts: true, reportsExport: true },
     },
     {
         key: "accountant",
-        permissions: { accounting: "admin", finance: "admin", payroll: "view", reports: "view", orders: "view", purchases: "view", customers: "view", suppliers: "view", products: "view", categories: "view", units: "view" },
-        capabilities: { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: true },
+        permissions: {
+            dashboard: "view", accounting: "admin", finance: "admin", einvoicing: "admin", payroll: "view", reports: "view", orders: "view",
+            purchases: "view", customers: "view", suppliers: "view", products: "view", categories: "view", units: "view", inventory: "view",
+        },
+        capabilities: { ...NONE, catalogViewCosts: true, reportsExport: true },
     },
     {
         key: "hr",
         // Prepares payroll; approving/paying a period stays with "admin".
         permissions: { payroll: "edit" },
-        capabilities: { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false },
+        capabilities: NONE,
+    },
+    {
+        key: "co_admin",
+        // Manages people and roles - but never above their own role (see
+        // Backend teamDelegation.service.js), so pair it with the modules
+        // they should be able to hand out.
+        permissions: { dashboard: "view", team: "admin", reports: "view" },
+        capabilities: NONE,
     },
 ];

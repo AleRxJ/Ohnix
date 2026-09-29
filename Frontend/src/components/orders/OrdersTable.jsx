@@ -62,13 +62,15 @@ const OrdersTable = ({
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     // Invoice download only needs orders:view (matches the backend route),
     // but changing status is an orders:edit action.
     const canEdit = hasPermission("orders", "edit");
     // Cancelling a completed sale reverses stock/cash/ledger - orders:"admin"
     // on the backend (order.service.js#updateOrderStatus).
     const canCancelCompleted = hasPermission("orders", "admin");
+    // Returns also need the processReturns capability (team.permissions.js).
+    const canReturn = canEdit && hasCapability("processReturns");
 
     const columns = [
         {
@@ -205,11 +207,11 @@ const OrdersTable = ({
                         )}
 
                         {record.order_status === "completed" && (
-                            <Tooltip title={canEdit ? t("orders.process_return") : t("common.no_permission_to_edit")}>
+                            <Tooltip title={canReturn ? t("orders.process_return") : t("common.no_permission_to_edit")}>
                                 <Button
                                     type="text"
                                     icon={<UndoOutlined />}
-                                    disabled={!canEdit}
+                                    disabled={!canReturn}
                                     loading={returnPreviewLoadingId === record._id}
                                     onClick={() => onReturnPreview(record._id)}
                                     className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-[var(--ohnix-hover-overlay)]"
@@ -306,7 +308,7 @@ const OrdersTable = ({
                             icon={<UndoOutlined />}
                             size="middle"
                             className="h-9 min-w-0"
-                            disabled={!canEdit}
+                            disabled={!canReturn}
                             loading={returnPreviewLoadingId === order._id}
                             onClick={() => onReturnPreview(order._id)}
                         >

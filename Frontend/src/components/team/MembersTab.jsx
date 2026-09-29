@@ -21,7 +21,15 @@ const avatarSrc = (person) =>
 const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
-    const { team, isOwner, refreshTeam } = useTeam();
+    const { team, isOwner, hasPermission, refreshTeam } = useTeam();
+    // Owner, or a co-administrador via the "team" module (hasPermission is
+    // always true for the owner). The backend (teamDelegation.service.js)
+    // still refuses anything above the manager's own role.
+    const canViewTeam = hasPermission("team", "view");
+    const canManageMembers = hasPermission("team", "edit");
+    const canManageRoles = hasPermission("team", "admin");
+    // A co-administrador can't change their own access.
+    const canActOn = (record) => isOwner || record.userId !== user?.id;
     const { plan } = useSubscription();
 
     const [members, setMembers] = useState([]);
@@ -53,7 +61,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
         try {
             const [membersRes, invitationsRes] = await Promise.all([
                 teamService.getMembers(team.id),
-                isOwner ? teamService.getInvitations(team.id) : Promise.resolve({ data: [] }),
+                canViewTeam ? teamService.getInvitations(team.id) : Promise.resolve({ data: [] }),
             ]);
             setMembers(membersRes?.data || []);
             setInvitations((invitationsRes?.data || []).filter((i) => i.status === "pending"));
@@ -63,7 +71,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
         } finally {
             setLoading(false);
         }
-    }, [team, isOwner, t]);
+    }, [team, canViewTeam, t]);
 
     useEffect(() => {
         load();
@@ -213,7 +221,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                 return (
                     <div>
                         <div className="flex items-center gap-2">
-                            {isOwner ? (
+                            {canManageMembers && canActOn(record) ? (
                                 <Select
                                     size="small"
                                     value={record.role?.id}
@@ -224,7 +232,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                             ) : (
                                 <span className="text-[var(--ohnix-text-primary)]">{record.role?.name}</span>
                             )}
-                            {isOwner && fullRole && (
+                            {canManageRoles && fullRole && canActOn(record) && (
                                 <Button
                                     size="small"
                                     type="text"
@@ -273,7 +281,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                           return (
                               <div className="flex items-center gap-2">
                                   {badge}
-                                  {isOwner && (
+                                  {canManageMembers && canActOn(record) && (
                                       <Button
                                           size="small"
                                           type="text"
@@ -297,13 +305,13 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                 </span>
             ),
         },
-        ...(isOwner
+        ...(canManageMembers
             ? [
                   {
                       title: t("team.col_actions"),
                       key: "actions",
                       render: (_, record) =>
-                          record.isOwner ? null : (
+                          record.isOwner || !canActOn(record) ? null : (
                               <div className="flex items-center gap-1">
                                   <Button
                                       size="small"
@@ -332,7 +340,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
 
     return (
         <div>
-            {isOwner && (
+            {canManageMembers && (
                 <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[#29D8D5]/25 bg-[#29D8D5]/[0.06] px-4 py-3">
                     <SafetyCertificateOutlined className="mt-0.5 text-[#44F3F0]" />
                     <p className="m-0 text-xs leading-relaxed text-[#CFE8E8]">
@@ -348,7 +356,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                         ? t("team.seats_unlimited", { used: seatsUsed })
                         : t("team.seats_used", { used: seatsUsed, limit: seatLimit })}
                 </div>
-                {isOwner && (
+                {canManageMembers && (
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
@@ -370,7 +378,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                 scroll={{ x: "max-content" }}
             />
 
-            {isOwner && (
+            {canViewTeam && (
                 <div className="mt-6">
                     <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-[var(--ohnix-text-muted)]">
                         {t("team.status_pending")}
@@ -389,6 +397,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                                         {inv.email}
                                         <Tag className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-muted)]">{inv.role?.name}</Tag>
                                     </div>
+                                    {canManageMembers && (
                                     <div className="flex gap-2">
                                         <Button size="small" icon={<ReloadOutlined />} onClick={() => handleResend(inv.id)}>
                                             {t("team.resend_invitation")}
@@ -405,6 +414,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                                             </Button>
                                         </Popconfirm>
                                     </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

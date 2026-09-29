@@ -1,3 +1,5 @@
+import { canAccessModule } from "../middleware/team.permissions.js";
+
 // The only places inside Ohnix the assistant can send someone (navigate_to)
 // or point at (highlight). The model picks a key from these enums; the
 // path/state the frontend actually navigates with always comes from here,
@@ -94,9 +96,59 @@ export const HIGHLIGHT_ANCHORS = {
 
 // Resolves a target key into what the frontend needs to act on it, or null
 // for anything not in the registry.
-export const resolveNavigation = (targetKey) => {
+// What each screen needs, mirroring the frontend route guards (App.jsx):
+// a module key (view), a list = any of them, "owner" = hard owner-only
+// surfaces, null = open to everyone signed in. Sub-screens ("accounting.x")
+// inherit their parent's rule.
+const TARGET_ACCESS = {
+    dashboard: null,
+    team: null,
+    products: "products",
+    categories: "categories",
+    orders: "orders",
+    quotations: ["purchases", "orders"],
+    purchases: "purchases",
+    customers: "customers",
+    suppliers: "suppliers",
+    finance: "finance",
+    reports: "reports",
+    discoveries: "discoveries",
+    "electronic-invoices": "einvoicing",
+    "purchase-support-documents": "purchases",
+    "production-orders": "inventory",
+    accounting: "accounting",
+    billing: "billing",
+    "fiscal-setup": "owner",
+    integrations: "owner",
+};
+
+const ruleFor = (key) => (key in TARGET_ACCESS ? TARGET_ACCESS[key] : TARGET_ACCESS[key.split(".")[0]]);
+
+// Set of NAVIGATION_TARGETS keys this user can actually open, so the
+// assistant never offers a button that the route guard would just bounce
+// back to the dashboard. Owner/solo users (not team members) get everything.
+export const getAllowedTargets = async (user) => {
+    const keys = Object.keys(NAVIGATION_TARGETS);
+    if (!user?.isTeamMember) return new Set(keys);
+    const levelCache = new Map();
+    const canView = async (moduleKey) => {
+        if (!levelCache.has(moduleKey)) levelCache.set(moduleKey, await canAccessModule(user, moduleKey, "view"));
+        return levelCache.get(moduleKey);
+    };
+    const allowed = new Set();
+    for (const key of keys) {
+        const rule = ruleFor(key);
+        if (rule === null || rule === undefined) allowed.add(key);
+        else if (rule === "owner") continue;
+        else if (Array.isArray(rule) ? (await Promise.all(rule.map(canView))).some(Boolean) : await canView(rule)) allowed.add(key);
+    }
+    return allowed;
+};
+
+// allowed: optional Set from getAllowedTargets - omitted means unrestricted.
+export const resolveNavigation = (targetKey, allowed = null) => {
     const target = NAVIGATION_TARGETS[targetKey];
-    if (!target) return null;
+    if (!target || (allowed && !allowed.has(targetKey))) return null;
     return {
         target: targetKey,
         path: target.path,
@@ -106,9 +158,9 @@ export const resolveNavigation = (targetKey) => {
     };
 };
 
-export const resolveHighlight = (anchorKey) => {
+export const resolveHighlight = (anchorKey, allowed = null) => {
     const anchor = HIGHLIGHT_ANCHORS[anchorKey];
-    if (!anchor) return null;
+    if (!anchor || (allowed && !allowed.has(anchor.target))) return null;
     const screen = NAVIGATION_TARGETS[anchor.target];
     return {
         anchor: anchorKey,
@@ -125,10 +177,11 @@ export const resolveHighlight = (anchorKey) => {
 // take two model calls, so every line here is paid for twice per question.
 const moduleOf = (key) => key.split(".")[0];
 
-export const describeAppMap = ({ module } = {}) => {
+export const describeAppMap = ({ module, allowed = null } = {}) => {
     const lines = [];
     const collapsed = {};
     for (const [key, target] of Object.entries(NAVIGATION_TARGETS)) {
+        if (allowed && !allowed.has(key)) continue;
         if (!key.includes(".") || moduleOf(key) === module) {
             lines.push(`- ${key}: ${target.description}`);
         } else {
@@ -139,11 +192,16 @@ export const describeAppMap = ({ module } = {}) => {
         lines.push(`- ${parent}.<${children.join("|")}>`);
     }
     const controls = Object.entries(CONTROL_ANCHORS)
-        .filter(([, anchor]) => moduleOf(anchor.target) === module)
+        .filter(([, anchor]) => moduleOf(anchor.target) === module && (!allowed || allowed.has(anchor.target)))
         .map(([key, anchor]) => `- ${key} (en ${anchor.target}): ${anchor.description}`);
     let map = `PANTALLAS (claves válidas para navigate_to):\n${lines.join("\n")}`;
-    map += `\n\nPARA SEÑALAR (highlight): "accounting-tab-<pestaña>" señala una pestaña de Contabilidad.`;
+    if (!allowed || [...allowed].some((key) => moduleOf(key) === "accounting")) {
+        map += `\n\nPARA SEÑALAR (highlight): "accounting-tab-<pestaña>" señala una pestaña de Contabilidad.`;
+    }
     if (controls.length) map += ` Botones de esta sección:\n${controls.join("\n")}`;
+    if (allowed && allowed.size < Object.keys(NAVIGATION_TARGETS).length) {
+        map += `\n\nESTA PERSONA SOLO TIENE ACCESO A LAS PANTALLAS DE ARRIBA (según su rol en el equipo). Si lo que pide se hace en otra pantalla, explícale que su rol no la incluye y que le pida acceso al dueño de la cuenta; no le ofrezcas ir allí.`;
+    }
     return map;
 };
 

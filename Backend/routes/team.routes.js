@@ -8,6 +8,7 @@ import {
 import {
     loadTeam,
     requireTeamOwnerActor,
+    requireTeamManager,
     requireTeamAccess,
     createTeam,
     getCurrentTeam,
@@ -68,31 +69,35 @@ router.route("/teams/:id")
 
 router.route("/teams/:id/members")
     .get(requireTeamAccess, listMembers);
+// Owner, or a co-administrador with the "team" module (view: see members'
+// sessions, invitations, roles, activity; edit: invite, change a member's
+// role/scope, revoke sessions; admin: manage roles). Every write is further
+// bounded by teamDelegation.service.js - no granting above one's own role.
 router.route("/teams/:id/members/:userId")
-    .patch(requireTeamOwnerActor, updateMember);
+    .patch(requireTeamManager("edit"), updateMember);
 router.route("/teams/:id/sessions")
-    .get(requireTeamOwnerActor, listTeamSessions);
+    .get(requireTeamManager("view"), listTeamSessions);
 router.route("/teams/:id/members/:userId/sessions")
-    .get(requireTeamOwnerActor, listMemberSessions);
+    .get(requireTeamManager("view"), listMemberSessions);
 router.route("/teams/:id/members/:userId/sessions/:sessionId")
-    .delete(requireTeamOwnerActor, revokeMemberSession);
+    .delete(requireTeamManager("edit"), revokeMemberSession);
 
 router.route("/teams/:id/invitations")
-    .get(requireTeamOwnerActor, listInvitations)
-    .post(requireTeamOwnerActor, teamInvitationRateLimiter, createInvitation);
+    .get(requireTeamManager("view"), listInvitations)
+    .post(requireTeamManager("edit"), teamInvitationRateLimiter, createInvitation);
 router.route("/teams/:id/invitations/:invId/resend")
-    .post(requireTeamOwnerActor, teamInvitationRateLimiter, resendInvitation);
+    .post(requireTeamManager("edit"), teamInvitationRateLimiter, resendInvitation);
 router.route("/teams/:id/invitations/:invId")
-    .delete(requireTeamOwnerActor, revokeInvitation);
+    .delete(requireTeamManager("edit"), revokeInvitation);
 
 router.route("/teams/:id/roles")
-    .get(requireTeamOwnerActor, listRoles)
-    .post(requireTeamOwnerActor, createRole);
+    .get(requireTeamManager("view"), listRoles)
+    .post(requireTeamManager("admin"), createRole);
 router.route("/teams/:id/roles/:roleId")
-    .patch(requireTeamOwnerActor, updateRole)
-    .delete(requireTeamOwnerActor, deleteRole);
+    .patch(requireTeamManager("admin"), updateRole)
+    .delete(requireTeamManager("admin"), deleteRole);
 
 router.route("/teams/:id/activity")
-    .get(requireTeamOwnerActor, listActivity);
+    .get(requireTeamManager("view"), listActivity);
 
 export default router;
