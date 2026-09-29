@@ -57,7 +57,8 @@ const SalesQuotations = () => {
             const [quotationResponse, customerResponse, productResponse] = await Promise.all([
                 api.get("/sales-quotations"),
                 api.get("/customers"),
-                api.get("/products"),
+                // Own company only, even for a platform admin.
+                api.get("/products", { params: { scope: "own" } }),
             ]);
             setQuotations(quotationResponse.data?.data || []);
             setCustomers(customerResponse.data?.data || []);

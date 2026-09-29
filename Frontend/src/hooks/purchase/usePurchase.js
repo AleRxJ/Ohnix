@@ -1,9 +1,8 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { message } from "antd";
 import toast from "react-hot-toast";
 import { api } from "../../api/api.js";
 import { calculateStats } from "../../utils/purchaseUtils.js";
-import AuthContext from "../../context/AuthContext.jsx";
 import { formatCurrency } from "../../utils/currency.js";
 import { financeService } from "../../services/financeService.js";
 import useI18n from "../useI18n";
@@ -52,7 +51,6 @@ export const usePurchase = () => {
         total: 0,
     });
 
-    const { user } = useContext(AuthContext);
 
     // Guards against the initial mount fetch and a post-create refetch
     // racing and resolving out of order - see useOrders.js for the
@@ -106,11 +104,10 @@ export const usePurchase = () => {
         }
         let response;
         try {
-            if (user.role === "admin") {
-                response = await api.get("/suppliers/admin/all");
-            } else {
-                response = await api.get("/suppliers");
-            }
+            // scope=own / non-admin endpoints: a document is always built from THIS
+            // company's catalog, even for a platform admin (whose plain list
+            // spans every account - see product.controller.js#getAllProducts).
+            response = await api.get("/suppliers");
             if (response.data.success) {
                 setSuppliers(response.data.data);
             }
@@ -131,7 +128,7 @@ export const usePurchase = () => {
             return;
         }
         try {
-            const response = await api.get("/products");
+            const response = await api.get("/products", { params: { scope: "own" } });
             if (response.data.success) {
                 setProducts(response.data.data);
             }

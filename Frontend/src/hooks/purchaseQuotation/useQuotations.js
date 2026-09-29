@@ -1,8 +1,7 @@
-import { useState, useContext, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { api } from "../../api/api.js";
 import { calculateQuotationStats } from "../../utils/quotationUtils.js";
-import AuthContext from "../../context/AuthContext.jsx";
 import useI18n from "../useI18n";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { idempotencyHeaders } from "../../utils/idempotency";
@@ -29,7 +28,6 @@ export const useQuotations = () => {
     const [updatingQuotationId, setUpdatingQuotationId] = useState(null);
     const [stats, setStats] = useState({ total: 0, draft: 0, received: 0, approved: 0, rejected: 0 });
 
-    const { user } = useContext(AuthContext);
 
     // Same out-of-order-response guard as usePurchase.js#fetchPurchases.
     const latestRequestId = useRef(0);
@@ -76,7 +74,10 @@ export const useQuotations = () => {
             return;
         }
         try {
-            const response = await api.get(user.role === "admin" ? "/suppliers/admin/all" : "/suppliers");
+            // scope=own / non-admin endpoints: a document is always built from THIS
+            // company's catalog, even for a platform admin (whose plain list
+            // spans every account - see product.controller.js#getAllProducts).
+            const response = await api.get("/suppliers");
             if (response.data.success) setSuppliers(response.data.data);
         } catch (error) {
             if (!error.response) {
@@ -94,7 +95,7 @@ export const useQuotations = () => {
             return;
         }
         try {
-            const response = await api.get("/products");
+            const response = await api.get("/products", { params: { scope: "own" } });
             if (response.data.success) setProducts(response.data.data);
         } catch (error) {
             if (!error.response) {

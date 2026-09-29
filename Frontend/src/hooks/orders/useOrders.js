@@ -1,8 +1,7 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
 import { calculateStats } from "../../utils/orderHelpers";
-import AuthContext from "../../context/AuthContext";
 import useI18n from "../useI18n";
 import { useDataInvalidation } from "../useDataInvalidation";
 import { getConnectivityState } from "../../offline/connectivity";
@@ -68,7 +67,6 @@ export const useOrders = () => {
         revenue: 0,
     });
 
-    const { user } = useContext(AuthContext);
 
     // Guards against out-of-order responses: e.g. the initial mount fetch
     // and a fetch triggered right after creating an order can race, and
@@ -176,9 +174,10 @@ export const useOrders = () => {
             return;
         }
         try {
-            const isAdmin = user?.role === "admin";
-            const endpoint = isAdmin ? "/customers/all" : "/customers";
-            const response = await api.get(endpoint);
+            // scope=own / non-admin endpoints: a document is always built from THIS
+            // company's catalog, even for a platform admin (whose plain list
+            // spans every account - see product.controller.js#getAllProducts).
+            const response = await api.get("/customers");
             setCustomers(response.data.data);
         } catch (error) {
             if (!error.response) {
@@ -195,7 +194,7 @@ export const useOrders = () => {
             return;
         }
         try {
-            const response = await api.get("/products");
+            const response = await api.get("/products", { params: { scope: "own" } });
             setProducts(response.data.data.products || response.data.data);
         } catch (error) {
             if (!error.response) {
