@@ -11,9 +11,16 @@ import {
 } from "@ant-design/icons";
 import { C, GRAD, clamp, fontFamily, pop, rand, ramp } from "./theme.js";
 
+// The same scenes render both the 16:9 landing cut and the 9:16 Reels/TikTok cut.
+export const useIsVertical = () => {
+    const { width, height } = useVideoConfig();
+    return height > width;
+};
+
 /* ---------- Backdrop: drifting grid, glows, dust ---------- */
 export const Backdrop = ({ hue = 0, intensity = 1 }) => {
     const frame = useCurrentFrame();
+    const { width: W, height: H } = useVideoConfig();
     const drift = frame * 0.35;
     return (
         <AbsoluteFill style={{ background: C.bg, overflow: "hidden" }}>
@@ -50,15 +57,15 @@ export const Backdrop = ({ hue = 0, intensity = 1 }) => {
                 }}
             />
             {Array.from({ length: 40 }).map((_, i) => {
-                const x = rand(i + 1) * 1920;
-                const y = (rand(i + 50) * 1080 - frame * (0.2 + rand(i + 9) * 0.6)) % 1080;
+                const x = rand(i + 1) * W;
+                const y = (rand(i + 50) * H - frame * (0.2 + rand(i + 9) * 0.6)) % H;
                 return (
                     <div
                         key={i}
                         style={{
                             position: "absolute",
                             left: x,
-                            top: y < 0 ? y + 1080 : y,
+                            top: y < 0 ? y + H : y,
                             width: 2 + rand(i + 3) * 2,
                             height: 2 + rand(i + 3) * 2,
                             borderRadius: 9,
@@ -436,3 +443,13 @@ export const Sub = ({ text, delay = 0, width, style }) => {
     const appear = useAppear(delay, 16);
     return <div style={{ fontFamily, fontSize: 28, lineHeight: 1.4, color: C.muted, width, ...appear, ...style }}>{text}</div>;
 };
+
+/* ---------- 9:16 presets for the app-shell scenes ----------
+   Camera starts wide (rail visible), then pushes into the main content so the UI
+   stays legible on a phone; the headline sits above it, clear of the top UI band. */
+export const V_CAMERA = {
+    from: { x: 0, y: 560, rx: 26, ry: -12, s: 0.58 },
+    to: { x: -138, y: 80, rx: 4, ry: -6, s: 0.85 },
+};
+
+export const V_HEADLINE_BOX = { justifyContent: "flex-start", alignItems: "flex-start", padding: "230px 80px 0" };

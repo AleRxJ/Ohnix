@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { ArrowRightOutlined, BellFilled, SendOutlined, StarFilled } from "@ant-design/icons";
-import { AppFrame, Backdrop, Camera, Headline, Sub, Vignette, useAppear } from "../ui.jsx";
+import { AppFrame, Backdrop, Camera, Headline, Sub, Vignette, useAppear, useIsVertical } from "../ui.jsx";
 import { C, GRAD, fontFamily, pop, ramp } from "../theme.js";
 
 const QUESTION = "¿Cómo registro una compra a crédito?";
@@ -53,7 +53,7 @@ const Typing = ({ from, to }) => {
     );
 };
 
-const Panel = () => {
+const Panel = ({ width = 640, height = 860 }) => {
     const frame = useCurrentFrame();
     const typed = QUESTION.slice(0, Math.floor(ramp(frame, Q_START, Q_START + 30, (t) => t) * QUESTION.length));
     const steps = ["Abre Compras → Nueva compra.", "Elige el proveedor y agrega los productos.", "En forma de pago marca «A crédito» y la fecha de vencimiento."];
@@ -61,8 +61,8 @@ const Panel = () => {
     return (
         <div
             style={{
-                width: 640,
-                height: 860,
+                width,
+                height,
                 borderRadius: 30,
                 border: `1px solid ${C.accentLine}`,
                 background: "linear-gradient(180deg, #101415 0%, #0a0c0d 100%)",
@@ -157,7 +157,10 @@ const Panel = () => {
     );
 };
 
-export const Assistant = () => (
+export const Assistant = () => {
+    const vertical = useIsVertical();
+    if (vertical) return <AssistantVertical />;
+    return (
     <AbsoluteFill>
         <Backdrop hue={10} />
         <Camera from={{ x: 280, y: 40, rx: 8, ry: -10, s: 0.66 }} to={{ x: 180, y: 0, rx: 4, ry: -8, s: 0.7 }} start={0} end={160}>
@@ -173,6 +176,23 @@ export const Assistant = () => (
         <AbsoluteFill style={{ justifyContent: "center", paddingLeft: 110 }}>
             <Headline eyebrow="Asistente Ohnix" text="Un asistente que *conoce* *tu* *negocio.*" width={640} size={70} delay={8} />
             <Sub delay={36} width={560} style={{ marginTop: 26 }} text="Te avisa lo que necesita tu atención y te guía paso a paso hasta la pantalla correcta." />
+        </AbsoluteFill>
+        <Vignette />
+    </AbsoluteFill>
+    );
+};
+
+// 9:16: headline on top, the chat panel scaled up underneath so the bubbles read on a phone.
+const AssistantVertical = () => (
+    <AbsoluteFill>
+        <Backdrop hue={10} />
+        <AbsoluteFill style={{ alignItems: "center", paddingTop: 590 }}>
+            <div style={{ transform: "scale(1.35)", transformOrigin: "top center" }}>
+                <Panel width={680} height={700} />
+            </div>
+        </AbsoluteFill>
+        <AbsoluteFill style={{ justifyContent: "flex-start", alignItems: "flex-start", padding: "230px 80px 0" }}>
+            <Headline eyebrow="Asistente Ohnix" text="Un asistente que *conoce* *tu* *negocio.*" width={920} size={80} delay={8} />
         </AbsoluteFill>
         <Vignette />
     </AbsoluteFill>

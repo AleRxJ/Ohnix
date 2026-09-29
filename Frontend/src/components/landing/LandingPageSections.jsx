@@ -5,6 +5,7 @@ import { isBuildTimePrerender } from "../../i18n/geoLanguage";
 import { api } from "../../api/api";
 import { trackContactFormConversion } from "../../utils/googleAds";
 import { trackContactFormLead } from "../../utils/metaPixel";
+import { DEMO_POSTER_SRC, DEMO_VIDEO_SRC } from "../../data/demoMedia";
 import {
     ArrowRightOutlined,
     ApiOutlined,
@@ -1199,8 +1200,8 @@ export const DemoTeaserSection = ({ heading, onContactClick }) => {
                 <div className="relative aspect-video overflow-hidden rounded-[22px] border border-white/8 bg-[#0a0a0a]">
                     <video
                         ref={videoRef}
-                        src="/demo-preview.mp4"
-                        poster="/demo-poster.jpg"
+                        src={DEMO_VIDEO_SRC}
+                        poster={DEMO_POSTER_SRC}
                         controls={playing}
                         preload="metadata"
                         playsInline

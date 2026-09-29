@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { CheckOutlined, LoadingOutlined, SafetyCertificateFilled } from "@ant-design/icons";
-import { Backdrop, Camera, Card, Headline, Sub, Vignette } from "../ui.jsx";
+import { Backdrop, Camera, Card, Headline, Sub, Vignette, useIsVertical } from "../ui.jsx";
 import { C, GRAD, clamp, cop, fontFamily, pop, rand, ramp } from "../theme.js";
 
 const CUFE = Array.from({ length: 96 }, (_, i) => "0123456789abcdef"[Math.floor(rand(i + 311) * 16)]).join("");
@@ -36,16 +36,17 @@ const Qr = ({ size = 150, reveal }) => {
 };
 
 const STEPS = [
-    { label: "Firmada digitalmente", at: 40 },
-    { label: "Enviada a la DIAN", at: 70 },
-    { label: "Validada", at: 104 },
+    { label: "Firmada digitalmente", short: "Firmada", at: 40 },
+    { label: "Enviada a la DIAN", short: "Enviada", at: 70 },
+    { label: "Validada", short: "Validada", at: 104 },
 ];
 
-const Stepper = () => {
+// `row` = compact single line for the 9:16 cut.
+const Stepper = ({ row = false }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 44 }}>
+        <div style={{ display: "flex", flexDirection: row ? "row" : "column", gap: row ? 28 : 18, marginTop: row ? 34 : 44 }}>
             {STEPS.map((s, i) => {
                 const started = frame >= s.at - 22;
                 const done = frame >= s.at;
@@ -69,7 +70,7 @@ const Stepper = () => {
                         >
                             {done ? <CheckOutlined style={{ transform: `scale(${check})` }} /> : started ? <LoadingOutlined spin={false} style={{ transform: `rotate(${frame * 12}deg)` }} /> : null}
                         </div>
-                        <span style={{ fontSize: 28, fontWeight: 700, color: done ? C.text : C.muted }}>{s.label}</span>
+                        <span style={{ fontSize: row ? 30 : 28, fontWeight: 700, color: done ? C.text : C.muted }}>{row ? s.short : s.label}</span>
                     </div>
                 );
             })}
@@ -149,16 +150,30 @@ const Invoice = () => {
 export const Dian = () => {
     const frame = useCurrentFrame();
     const flash = interpolate(frame, [108, 111, 126], [0, 0.35, 0], clamp);
+    const vertical = useIsVertical();
+    const cam = vertical
+        ? { from: { x: 0, y: 560, rx: 30, ry: -20, s: 0.75 }, to: { x: 0, y: 150, rx: 4, ry: -4, s: 1.2 } }
+        : { from: { x: 420, y: 120, rx: 30, ry: -30, s: 0.8 }, to: { x: 400, y: 0, rx: 4, ry: -10, s: 1 } };
     return (
         <AbsoluteFill>
             <Backdrop hue={4} />
-            <Camera from={{ x: 420, y: 120, rx: 30, ry: -30, s: 0.8 }} to={{ x: 400, y: 0, rx: 4, ry: -10, s: 1 }} start={0} end={50}>
+            <Camera {...cam} start={0} end={50}>
                 <Invoice />
             </Camera>
-            <AbsoluteFill style={{ justifyContent: "center", paddingLeft: 130 }}>
-                <Headline eyebrow="Facturación electrónica" text="Emitida, firmada y *validada* *por* *la* *DIAN.*" width={760} size={72} delay={6} />
-                <Stepper />
-                <Sub delay={112} width={640} style={{ marginTop: 36, fontSize: 24 }} text="Con nuestro propio motor de facturación, sin salir de Ohnix." />
+            <AbsoluteFill
+                style={vertical ? { justifyContent: "flex-start", padding: "230px 80px 0" } : { justifyContent: "center", paddingLeft: 130 }}
+            >
+                <Headline
+                    eyebrow="Facturación electrónica"
+                    text="Emitida, firmada y *validada* *por* *la* *DIAN.*"
+                    width={vertical ? 920 : 760}
+                    size={vertical ? 76 : 72}
+                    delay={6}
+                />
+                <Stepper row={vertical} />
+                {!vertical && (
+                    <Sub delay={112} width={640} style={{ marginTop: 36, fontSize: 24 }} text="Con nuestro propio motor de facturación, sin salir de Ohnix." />
+                )}
             </AbsoluteFill>
             <AbsoluteFill style={{ background: C.ok, opacity: flash, mixBlendMode: "screen" }} />
             <Vignette />

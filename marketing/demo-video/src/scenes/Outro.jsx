@@ -18,7 +18,7 @@ import {
     StarFilled,
     TeamOutlined,
 } from "@ant-design/icons";
-import { Backdrop, Headline, Vignette } from "../ui.jsx";
+import { Backdrop, Headline, Vignette, useIsVertical } from "../ui.jsx";
 import { C, GRAD, clamp, fontFamily, pop } from "../theme.js";
 
 const MODULES = [
@@ -43,18 +43,20 @@ const MODULES = [
 export const Modules = () => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
+    const vertical = useIsVertical();
+    const cols = vertical ? 2 : 4;
     return (
         <AbsoluteFill style={{ fontFamily }}>
             <Backdrop hue={12} />
-            <AbsoluteFill style={{ alignItems: "center", paddingTop: 110 }}>
-                <Headline align="center" width={1500} size={70} delay={0} text="Y todo lo que tu pyme *necesita.*" />
+            <AbsoluteFill style={{ alignItems: "center", paddingTop: vertical ? 230 : 110 }}>
+                <Headline align="center" width={vertical ? 920 : 1500} size={vertical ? 80 : 70} delay={0} text="Y todo lo que tu pyme *necesita.*" />
             </AbsoluteFill>
-            <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", paddingTop: 130, perspective: 1800 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 405px)", gap: 20 }}>
+            <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", paddingTop: vertical ? 260 : 130, perspective: 1800 }}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, ${vertical ? 450 : 405}px)`, gap: vertical ? 16 : 20 }}>
                     {MODULES.map(([Icon, label], i) => {
-                        const col = i % 4;
-                        const row = Math.floor(i / 4);
-                        const delay = 10 + (col + row) * 4;
+                        const col = i % cols;
+                        const row = Math.floor(i / cols);
+                        const delay = 10 + (col + row) * (vertical ? 3 : 4);
                         const p = pop(frame, fps, delay, { damping: 14, stiffness: 130 });
                         const lit = interpolate(frame, [delay + 10, delay + 16, delay + 34], [0, 1, 0], clamp);
                         return (
@@ -109,17 +111,18 @@ export const EndCard = () => {
     const logo = pop(frame, fps, 0, { damping: 13, stiffness: 100 });
     const cta = pop(frame, fps, 44, { damping: 12, stiffness: 140 });
     const pulse = 0.5 + 0.5 * Math.sin(frame / 8);
+    const vertical = useIsVertical();
     return (
         <AbsoluteFill style={{ fontFamily }}>
             <Backdrop hue={14} />
-            <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+            <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", paddingBottom: vertical ? 260 : 0 }}>
                 <div style={{ mixBlendMode: "screen", transform: `scale(${0.7 + logo * 0.3})`, opacity: Math.min(1, logo), marginTop: -60 }}>
-                    <Img src={staticFile("ohnix-logo-full.png")} style={{ width: 420, height: 420, display: "block" }} />
+                    <Img src={staticFile("ohnix-logo-full.png")} style={{ width: vertical ? 540 : 420, height: vertical ? 540 : 420, display: "block" }} />
                 </div>
                 <Headline
                     align="center"
-                    width={1500}
-                    size={62}
+                    width={vertical ? 920 : 1500}
+                    size={vertical ? 68 : 62}
                     delay={16}
                     text="Inventario, ventas y contabilidad de tu pyme, | *en* *un* *solo* *lugar.*"
                 />

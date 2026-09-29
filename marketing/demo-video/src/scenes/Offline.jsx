@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { CheckCircleFilled, ClockCircleOutlined, CloudSyncOutlined, DisconnectOutlined } from "@ant-design/icons";
-import { AppFrame, Backdrop, Camera, Card, Chip, Headline, Sub, Vignette } from "../ui.jsx";
+import { AppFrame, Backdrop, Camera, Card, Chip, Headline, Sub, V_CAMERA, V_HEADLINE_BOX, Vignette, useIsVertical } from "../ui.jsx";
 import { C, clamp, cop, pop, ramp } from "../theme.js";
 
 const CUT = 30;
@@ -97,19 +97,29 @@ export const Offline = () => {
     const glitch = (frame >= CUT && frame < CUT + 6) || (frame >= BACK && frame < BACK + 4);
     const dim = interpolate(frame, [CUT, CUT + 10, BACK, BACK + 10], [0, 1, 1, 0], clamp);
     const greenFlash = interpolate(frame, [BACK, BACK + 3, BACK + 18], [0, 0.22, 0], clamp);
+    const vertical = useIsVertical();
+    const cam = vertical ? V_CAMERA : { from: { x: 330, y: 40, rx: 10, ry: -20, s: 0.7 }, to: { x: 300, y: 0, rx: 4, ry: -12, s: 0.74 } };
     return (
         <AbsoluteFill>
             <Backdrop hue={8} intensity={1 - dim * 0.7} />
-            <Camera from={{ x: 330, y: 40, rx: 10, ry: -20, s: 0.7 }} to={{ x: 300, y: 0, rx: 4, ry: -12, s: 0.74 }} start={0} end={60}>
+            <Camera {...cam} start={0} end={60}>
                 <div style={{ filter: `saturate(${1 - dim * 0.5})`, transform: glitch ? `translateX(${frame % 2 ? 14 : -14}px)` : "none" }}>
                     <AppFrame group="sell" activeItem="Punto de venta" title="Punto de venta" online={!offline}>
                         <OfflineContent />
                     </AppFrame>
                 </div>
             </Camera>
-            <AbsoluteFill style={{ justifyContent: "center", paddingLeft: 110 }}>
-                <Headline eyebrow="Modo sin conexión" text="¿Se fue el internet? *Sigue* *vendiendo.*" width={560} size={70} delay={6} />
-                <Sub delay={40} width={520} style={{ marginTop: 26 }} text="Ohnix guarda cada venta en el equipo y la sincroniza sola cuando vuelve la señal." />
+            <AbsoluteFill style={vertical ? V_HEADLINE_BOX : { justifyContent: "center", paddingLeft: 110 }}>
+                <Headline
+                    eyebrow="Modo sin conexión"
+                    text="¿Se fue el internet? *Sigue* *vendiendo.*"
+                    width={vertical ? 920 : 560}
+                    size={vertical ? 80 : 70}
+                    delay={6}
+                />
+                {!vertical && (
+                    <Sub delay={40} width={520} style={{ marginTop: 26 }} text="Ohnix guarda cada venta en el equipo y la sincroniza sola cuando vuelve la señal." />
+                )}
             </AbsoluteFill>
             {glitch && <AbsoluteFill style={{ background: offline ? "rgba(245,165,36,0.12)" : "rgba(52,211,153,0.12)" }} />}
             <AbsoluteFill style={{ background: C.ok, opacity: greenFlash, mixBlendMode: "screen" }} />

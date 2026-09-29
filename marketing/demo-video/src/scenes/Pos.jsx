@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { CheckCircleFilled, SearchOutlined, UserOutlined } from "@ant-design/icons";
-import { AppFrame, Backdrop, Camera, Card, Chip, Cursor, Headline, Sub, Vignette, useAppear } from "../ui.jsx";
+import { AppFrame, Backdrop, Camera, Card, Chip, Cursor, Headline, Sub, V_CAMERA, V_HEADLINE_BOX, Vignette, useAppear, useIsVertical } from "../ui.jsx";
 import { C, GRAD, cop, pop, ramp } from "../theme.js";
 
 export const PRODUCTS = [
@@ -199,21 +199,27 @@ const PosContent = () => {
     );
 };
 
-export const Pos = () => (
-    <AbsoluteFill>
-        <Backdrop hue={2} />
-        <Camera from={{ x: -380, y: 80, rx: 18, ry: 24, s: 0.72 }} to={{ x: -290, y: 0, rx: 4, ry: 12, s: 0.74 }} start={0} end={60}>
-            <AppFrame group="sell" activeItem="Punto de venta" title="Punto de venta">
-                <PosContent />
-            </AppFrame>
-        </Camera>
-        <AbsoluteFill style={{ justifyContent: "center", alignItems: "flex-end", paddingRight: 110 }}>
-            <Headline eyebrow="Punto de venta" text="Vende en *segundos.*" width={470} size={78} delay={8} />
-            <div style={{ width: 470, marginTop: 26 }}>
-                <Sub delay={30} text="Escanea, cobra y listo. Con factura electrónica desde el mismo botón." />
-            </div>
+export const Pos = () => {
+    const vertical = useIsVertical();
+    const cam = vertical ? V_CAMERA : { from: { x: -380, y: 80, rx: 18, ry: 24, s: 0.72 }, to: { x: -290, y: 0, rx: 4, ry: 12, s: 0.74 } };
+    return (
+        <AbsoluteFill>
+            <Backdrop hue={2} />
+            <Camera {...cam} start={0} end={60}>
+                <AppFrame group="sell" activeItem="Punto de venta" title="Punto de venta">
+                    <PosContent />
+                </AppFrame>
+            </Camera>
+            <AbsoluteFill style={vertical ? V_HEADLINE_BOX : { justifyContent: "center", alignItems: "flex-end", paddingRight: 110 }}>
+                <Headline eyebrow="Punto de venta" text="Vende en *segundos.*" width={vertical ? 920 : 470} size={vertical ? 84 : 78} delay={8} />
+                {!vertical && (
+                    <div style={{ width: 470, marginTop: 26 }}>
+                        <Sub delay={30} text="Escanea, cobra y listo. Con factura electrónica desde el mismo botón." />
+                    </div>
+                )}
+            </AbsoluteFill>
+            <Vignette />
         </AbsoluteFill>
-        <Vignette />
-    </AbsoluteFill>
-);
+    );
+};
 

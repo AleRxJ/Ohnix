@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { AppFrame, Backdrop, Camera, Card, Chip, Headline, Sheen, Vignette, useAppear } from "../ui.jsx";
+import { AppFrame, Backdrop, Camera, Card, Chip, Headline, Sheen, V_CAMERA, V_HEADLINE_BOX, Vignette, useAppear, useIsVertical } from "../ui.jsx";
 import { C, GRAD, cop, pop, rand, ramp } from "../theme.js";
 
 const KPIS = [
@@ -145,22 +145,27 @@ const DashboardContent = () => {
     );
 };
 
-export const Dashboard = () => (
-    <AbsoluteFill>
-        <Backdrop />
-        <Camera
-            from={{ x: 420, y: 260, rx: 28, ry: -22, s: 0.7 }}
-            to={{ x: 300, y: 10, rx: 6, ry: -14, s: 0.74 }}
-            start={0}
-            end={70}
-        >
-            <AppFrame group="home" title="Panel de Control" badges={{ inventory: 2 }}>
-                <DashboardContent />
-            </AppFrame>
-        </Camera>
-        <AbsoluteFill style={{ justifyContent: "center", paddingLeft: 110 }}>
-            <Headline eyebrow="Panel de control" text="Tu negocio, *de* *un* *vistazo.*" width={520} size={74} delay={10} />
+export const Dashboard = () => {
+    const vertical = useIsVertical();
+    const cam = vertical ? V_CAMERA : { from: { x: 420, y: 260, rx: 28, ry: -22, s: 0.7 }, to: { x: 300, y: 10, rx: 6, ry: -14, s: 0.74 } };
+    return (
+        <AbsoluteFill>
+            <Backdrop />
+            <Camera {...cam} start={0} end={70}>
+                <AppFrame group="home" title="Panel de Control" badges={{ inventory: 2 }}>
+                    <DashboardContent />
+                </AppFrame>
+            </Camera>
+            <AbsoluteFill style={vertical ? V_HEADLINE_BOX : { justifyContent: "center", paddingLeft: 110 }}>
+                <Headline
+                    eyebrow="Panel de control"
+                    text="Tu negocio, *de* *un* *vistazo.*"
+                    width={vertical ? 920 : 520}
+                    size={vertical ? 84 : 74}
+                    delay={10}
+                />
+            </AbsoluteFill>
+            <Vignette />
         </AbsoluteFill>
-        <Vignette />
-    </AbsoluteFill>
-);
+    );
+};

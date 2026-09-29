@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { Backdrop, Headline, Vignette } from "../ui.jsx";
+import { Backdrop, Headline, Vignette, useIsVertical } from "../ui.jsx";
 import { C, clamp, fontFamily, pop, rand, ramp } from "../theme.js";
 
 const TOOLS = [
@@ -14,10 +14,23 @@ const TOOLS = [
     { t: "Nómina en papel", x: 820, y: 930 },
 ];
 
+// 9:16 layout: chips ring the headline, kept out of the Reels/TikTok UI bands.
+const TOOLS_V = [
+    { x: 80, y: 300 },
+    { x: 560, y: 380 },
+    { x: 120, y: 560 },
+    { x: 600, y: 1300 },
+    { x: 640, y: 620 },
+    { x: 60, y: 1220 },
+    { x: 150, y: 1420 },
+    { x: 560, y: 1500 },
+];
+
 // 0–150: the tools a pyme juggles float and jitter, then get sucked into one point.
 export const Intro = () => {
     const frame = useCurrentFrame();
-    const { fps } = useVideoConfig();
+    const { fps, width: W, height: H } = useVideoConfig();
+    const vertical = useIsVertical();
     const collapse = ramp(frame, 118, 140, (t) => t * t * t);
     const dot = interpolate(frame, [128, 140, 150], [0, 1, 1.6], clamp);
     return (
@@ -27,8 +40,9 @@ export const Intro = () => {
                 const p = pop(frame, fps, 4 + i * 5, { damping: 12, stiffness: 160 });
                 const jitterX = Math.sin(frame / 7 + i) * 6 + (rand(i + frame * 0.01) - 0.5) * 2;
                 const jitterY = Math.cos(frame / 9 + i * 2) * 6;
-                const x = tool.x + (960 - tool.x - 150) * collapse;
-                const y = tool.y + (540 - tool.y - 30) * collapse;
+                const pos = vertical ? TOOLS_V[i] : tool;
+                const x = pos.x + (W / 2 - pos.x - 150) * collapse;
+                const y = pos.y + (H / 2 - pos.y - 30) * collapse;
                 const glitch = frame % (23 + i) < 2 && frame < 112;
                 return (
                     <div
@@ -58,8 +72,8 @@ export const Intro = () => {
             <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", opacity: 1 - ramp(frame, 112, 122) }}>
                 <Headline
                     align="center"
-                    width={1300}
-                    size={88}
+                    width={vertical ? 940 : 1300}
+                    size={vertical ? 96 : 88}
                     delay={24}
                     text="Tu negocio no debería vivir en *ocho* herramientas."
                 />
@@ -89,6 +103,7 @@ export const LogoReveal = () => {
     const flash = interpolate(frame, [0, 3, 18], [0.9, 0.9, 0], clamp);
     const logo = pop(frame, fps, 2, { damping: 11, stiffness: 90 });
     const ring = interpolate(frame, [0, 40], [0, 1], clamp);
+    const vertical = useIsVertical();
     return (
         <AbsoluteFill>
             <Backdrop intensity={1} />
@@ -117,22 +132,22 @@ export const LogoReveal = () => {
                         height: 900,
                         borderRadius: 9999,
                         background: "radial-gradient(circle, rgba(41,216,213,0.28) 0%, transparent 60%)",
-                        transform: `translateY(-80px) scale(${0.7 + ring * 0.3})`,
+                        transform: `translateY(${vertical ? -220 : -80}px) scale(${0.7 + ring * 0.3})`,
                         opacity: logo,
                     }}
                 />
                 {/* The PNG has a solid black background; screen-blending drops it onto the backdrop. */}
                 <div
                     style={{
-                        transform: `scale(${0.6 + logo * 0.4}) translateY(-40px)`,
+                        transform: `scale(${0.6 + logo * 0.4}) translateY(${vertical ? -180 : -40}px)`,
                         opacity: Math.min(1, logo),
                         mixBlendMode: "screen",
                     }}
                 >
                     <Img src={staticFile("ohnix-logo-full.png")} style={{ width: 640, height: 640, display: "block" }} />
                 </div>
-                <div style={{ position: "absolute", bottom: 150 }}>
-                    <Headline align="center" width={1400} size={56} delay={26} text="Todo tu negocio. *Un* *solo* *lugar.*" />
+                <div style={{ position: "absolute", bottom: vertical ? 520 : 150 }}>
+                    <Headline align="center" width={vertical ? 940 : 1400} size={vertical ? 72 : 56} delay={26} text="Todo tu negocio. *Un* *solo* *lugar.*" />
                 </div>
             </AbsoluteFill>
             <AbsoluteFill style={{ background: "#e9ffff", opacity: flash, mixBlendMode: "screen" }} />

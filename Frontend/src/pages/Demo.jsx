@@ -6,6 +6,7 @@ import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
 import useI18n from "../hooks/useI18n";
+import { DEMO_POSTER_SRC, DEMO_VIDEO_SRC } from "../data/demoMedia";
 
 const Demo = () => {
     const navigate = useNavigate();
@@ -38,7 +39,7 @@ const Demo = () => {
         name: "Demo de Ohnix | Inventario, ventas, contabilidad y facturación DIAN",
         description:
             "Una venta en el punto de venta, su factura electrónica validada por la DIAN, y el inventario, la contabilidad y la caja actualizándose solos. Incluso sin internet.",
-        thumbnailUrl: ["https://ohnix.co/demo-poster.jpg"],
+        thumbnailUrl: [`https://ohnix.co${DEMO_POSTER_SRC}`],
         uploadDate: "2026-09-28T00:00:00-05:00",
         duration: "PT48S",
         contentUrl: "https://ohnix.co/demo-preview.mp4",
@@ -71,8 +72,8 @@ const Demo = () => {
                         <div className="relative aspect-video overflow-hidden rounded-[22px] border border-white/8 bg-[#0a0a0a]">
                             <video
                                 ref={videoRef}
-                                src="/demo-preview.mp4"
-                                poster="/demo-poster.jpg"
+                                src={DEMO_VIDEO_SRC}
+                                poster={DEMO_POSTER_SRC}
                                 controls={playing}
                                 preload="metadata"
                                 playsInline

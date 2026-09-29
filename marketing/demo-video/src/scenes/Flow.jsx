@@ -1,16 +1,40 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { AppstoreOutlined, BarChartOutlined, BookOutlined, ThunderboltFilled } from "@ant-design/icons";
-import { Backdrop, Card, Chip, Headline, Vignette, useAppear } from "../ui.jsx";
+import { getLength, getPointAtLength } from "@remotion/paths";
+import { Backdrop, Card, Chip, Headline, Vignette, useAppear, useIsVertical } from "../ui.jsx";
 import { C, GRAD, clamp, cop, fontFamily, pop, ramp } from "../theme.js";
 
-const NODE = { x: 960, y: 370 };
-const CARDS = [
-    { x: 355, y: 580, arrive: 58 },
-    { x: 960, y: 620, arrive: 66 },
-    { x: 1565, y: 580, arrive: 74 },
-];
-const CARD_W = 560;
+const ARRIVE = [58, 66, 74];
+
+// 16:9: node on top, the three cards fanned out underneath it.
+const LAYOUT_H = {
+    node: { x: 960, y: 370 },
+    cardW: 560,
+    scale: 1,
+    cards: [
+        { left: 75, top: 580 },
+        { left: 680, top: 620 },
+        { left: 1285, top: 580 },
+    ],
+    headline: { paddingTop: 90, width: 1500, size: 68 },
+    wire: (n, c, w) => `M${n.x},${n.y + 40} C${n.x},${n.y + 140} ${c.left + w / 2},${c.top - 140} ${c.left + w / 2},${c.top}`,
+};
+
+// 9:16: cards stacked, wires drop down a trunk on the left edge and turn into each card.
+const LAYOUT_V = {
+    node: { x: 540, y: 500 },
+    cardW: 880,
+    scale: 0.9,
+    cards: [
+        { left: 140, top: 640 },
+        { left: 140, top: 896 },
+        { left: 140, top: 1214 },
+    ],
+    headline: { paddingTop: 230, width: 920, size: 76 },
+    wire: (n, c) =>
+        `M${n.x},${n.y + 36} L${n.x},${n.y + 80} Q${n.x},${n.y + 100} ${n.x - 20},${n.y + 100} L100,${n.y + 100} Q80,${n.y + 100} 80,${n.y + 120} L80,${c.top + 40} Q80,${c.top + 60} 100,${c.top + 60} L${c.left},${c.top + 60}`,
+};
 
 const Rolling = ({ from, to, at, format = (n) => n }) => {
     const frame = useCurrentFrame();
@@ -136,35 +160,40 @@ const BODIES = [Inventory, Journal, Cash];
 
 export const Flow = () => {
     const frame = useCurrentFrame();
-    const { fps } = useVideoConfig();
+    const { fps, width, height } = useVideoConfig();
+    const L = useIsVertical() ? LAYOUT_V : LAYOUT_H;
+    const NODE = L.node;
     const node = pop(frame, fps, 10, { damping: 11, stiffness: 140 });
     const nodePulse = 1 + Math.max(0, Math.sin((frame - 34) / 3)) * (frame > 34 && frame < 44 ? 0.08 : 0);
     return (
         <AbsoluteFill style={{ fontFamily }}>
             <Backdrop hue={6} />
-            <AbsoluteFill style={{ alignItems: "center", paddingTop: 90 }}>
-                <Headline align="center" width={1500} size={68} delay={2} text="Una venta. *Todo* *se* *actualiza* *solo.*" />
+            <AbsoluteFill style={{ alignItems: "center", paddingTop: L.headline.paddingTop }}>
+                <Headline align="center" width={L.headline.width} size={L.headline.size} delay={2} text="Una venta. *Todo* *se* *actualiza* *solo.*" />
             </AbsoluteFill>
-            <svg width="1920" height="1080" style={{ position: "absolute", inset: 0 }}>
+            <svg width={width} height={height} style={{ position: "absolute", inset: 0 }}>
                 <defs>
                     <linearGradient id="wire" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={C.accent} stopOpacity="0.9" />
                         <stop offset="100%" stopColor={C.accent} stopOpacity="0.15" />
                     </linearGradient>
                 </defs>
-                {CARDS.map((c, i) => {
-                    const d = `M${NODE.x},${NODE.y + 40} C${NODE.x},${NODE.y + 140} ${c.x},${c.y - 140} ${c.x},${c.y}`;
+                {L.cards.map((c, i) => {
+                    const d = L.wire(NODE, c, L.cardW);
                     const draw = ramp(frame, 30 + i * 4, 50 + i * 4);
-                    const travel = interpolate(frame, [34 + i * 4, c.arrive], [0, 1], clamp);
-                    // point along the cubic bezier for the pulse
-                    const t = travel;
-                    const bx = (1 - t) ** 3 * NODE.x + 3 * (1 - t) ** 2 * t * NODE.x + 3 * (1 - t) * t ** 2 * c.x + t ** 3 * c.x;
-                    const by = (1 - t) ** 3 * (NODE.y + 40) + 3 * (1 - t) ** 2 * t * (NODE.y + 140) + 3 * (1 - t) * t ** 2 * (c.y - 140) + t ** 3 * c.y;
+                    const travel = interpolate(frame, [34 + i * 4, ARRIVE[i]], [0, 1], clamp);
+                    const pulse = getPointAtLength(d, getLength(d) * travel);
                     return (
                         <g key={i}>
                             <path d={d} fill="none" stroke="url(#wire)" strokeWidth="3" pathLength="1" strokeDasharray="1" strokeDashoffset={1 - draw} />
-                            {frame >= 34 + i * 4 && frame <= c.arrive + 2 && (
-                                <circle cx={bx} cy={by} r="10" fill={C.accent2} style={{ filter: `drop-shadow(0 0 14px ${C.accent}) drop-shadow(0 0 30px ${C.accent})` }} />
+                            {frame >= 34 + i * 4 && frame <= ARRIVE[i] + 2 && (
+                                <circle
+                                    cx={pulse.x}
+                                    cy={pulse.y}
+                                    r="10"
+                                    fill={C.accent2}
+                                    style={{ filter: `drop-shadow(0 0 14px ${C.accent}) drop-shadow(0 0 30px ${C.accent})` }}
+                                />
                             )}
                         </g>
                     );
@@ -191,23 +220,25 @@ export const Flow = () => {
             >
                 <ThunderboltFilled /> Venta FE-1043 · {cop(119000)}
             </div>
-            {CARDS.map((c, i) => (
-                <FlowCard key={i} c={c} i={i} Body={BODIES[i]} />
+            {L.cards.map((c, i) => (
+                <FlowCard key={i} c={c} i={i} arrive={ARRIVE[i]} width={L.cardW} scale={L.scale} Body={BODIES[i]} />
             ))}
             <Vignette />
         </AbsoluteFill>
     );
 };
 
-const FlowCard = ({ c, i, Body }) => {
+const FlowCard = ({ c, i, arrive, width, scale, Body }) => {
     const frame = useCurrentFrame();
     const appear = useAppear(20 + i * 5, 40);
-    const hit = interpolate(frame, [c.arrive, c.arrive + 4, c.arrive + 20], [0, 1, 0], clamp);
+    const hit = interpolate(frame, [arrive, arrive + 4, arrive + 20], [0, 1, 0], clamp);
     return (
-        <div style={{ position: "absolute", left: c.x - CARD_W / 2, top: c.y, width: CARD_W, ...appear }}>
-            <Card glow={hit > 0.1} style={{ padding: 30, transform: `scale(${1 + hit * 0.03})` }}>
-                <Body at={c.arrive} />
-            </Card>
+        <div style={{ position: "absolute", left: c.left, top: c.top, width, ...appear }}>
+            <div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
+                <Card glow={hit > 0.1} style={{ padding: 30, transform: `scale(${1 + hit * 0.03})` }}>
+                    <Body at={arrive} />
+                </Card>
+            </div>
         </div>
     );
 };

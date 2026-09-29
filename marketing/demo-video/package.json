@@ -2,17 +2,19 @@
   "name": "ohnix-demo-video",
   "private": true,
   "version": "1.0.0",
-  "description": "Landing demo video for Ohnix, built as code with Remotion. `npm run render` writes Frontend/public/demo-preview.mp4 + demo-poster.jpg.",
+  "description": "Landing demo video for Ohnix, built as code with Remotion. `npm run render` writes Frontend/public/demo-preview.mp4 + demo-poster.jpg - then bump DEMO_MEDIA_VERSION in Frontend/src/data/demoMedia.js so browsers drop the cached copies. `npm run render:vertical` writes the 9:16 Reels/TikTok cut to out/.",
   "type": "module",
   "scripts": {
     "studio": "remotion studio src/index.jsx",
     "render": "remotion render src/index.jsx OhnixDemo ../../Frontend/public/demo-preview.mp4 --codec=h264 --crf=27 --x264-preset=slow --concurrency=50% && npm run poster",
-    "poster": "remotion still src/index.jsx OhnixDemo ../../Frontend/public/demo-poster.jpg --frame=380 --image-format=jpeg --jpeg-quality=85 --scale=0.6667"
+    "poster": "remotion still src/index.jsx OhnixDemo ../../Frontend/public/demo-poster.jpg --frame=380 --image-format=jpeg --jpeg-quality=85 --scale=0.6667",
+    "render:vertical": "remotion render src/index.jsx OhnixDemoVertical out/ohnix-demo-vertical.mp4 --codec=h264 --crf=18 --x264-preset=slow --concurrency=50% && remotion still src/index.jsx OhnixDemoVertical out/ohnix-demo-vertical-cover.jpg --frame=95 --image-format=jpeg --jpeg-quality=92"
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
     "@remotion/cli": "^4.0.529",
     "@remotion/google-fonts": "^4.0.529",
+    "@remotion/paths": "^4.0.529",
     "@remotion/transitions": "^4.0.529",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
