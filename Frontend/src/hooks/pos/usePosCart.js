@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useReducer } from "react";
 import { calculateOrderTotals } from "../../utils/orderHelpers";
 
-// A product is sellable from the grid when it has stock to claim - services
-// (is_physical === false) never do, and the backend doesn't hold them to it.
-export const tracksStock = (product) => product?.is_physical !== false;
-export const availableStock = (product) => (tracksStock(product) ? Math.max(0, Number(product?.stock) || 0) : Infinity);
+// Every product is held to its stock at checkout (order.service.js claims
+// location stock for all of them - is_physical is shipping metadata, NOT
+// "doesn't track inventory"), so the Caja caps every line at what the
+// catalog reports for this location (GET /products?point_of_sale_id=...).
+export const availableStock = (product) => Math.max(0, Number(product?.stock) || 0);
 
 const initialState = { lines: [], lastAddedId: null, bump: 0 };
 

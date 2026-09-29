@@ -12,6 +12,7 @@ import {
     creditLocationStockWithCost,
     getLocationStockSummary,
     scopedStockForProducts,
+    sellableStockAtLocation,
 } from "../services/productLocationStock.service.js";
 import { quickTransfer } from "../services/stockTransfer.service.js";
 import { creditBatch, claimBatchesFEFO, listBatches } from "../services/productBatch.service.js";
@@ -21,7 +22,7 @@ import { getColombiaTaxSettings } from "../utils/systemSettings.js";
 import { emitAccountEvent, emitPosEvent } from "../live/dataEvents.js";
 import { enqueueWebhookEvent } from "../services/webhookDispatch.service.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
-import { resolveOrAssertPointOfSaleId, assertPosAccess } from "../middleware/pos.permissions.js";
+import { resolveOrAssertPointOfSaleId, assertPosAccess, hasPosAccess } from "../middleware/pos.permissions.js";
 import { getCapabilities } from "../middleware/team.permissions.js";
 import { normalizeProductImage } from "../utils/productImage.js";
 import { attachImage, replacePrimaryImage } from "../services/productImage.service.js";
@@ -906,10 +907,24 @@ const getAllProducts = asyncHandler(async (req, res, next) => {
         // The catalog itself (this query) stays account-wide on purpose -
         // see mapProduct's comment - only the displayed quantity narrows to
         // the viewer's own location(s).
-        const scopedStock = await scopedStockForProducts(
-            req.user,
-            products.map((p) => p.id)
-        );
+        // point_of_sale_id: "what can I sell HERE" (the Caja) - stock becomes
+        // that one location's sellable quantity instead of an account total
+        // that a checkout at this location could never actually claim.
+        const requestedPos = req.query.point_of_sale_id ? String(req.query.point_of_sale_id) : null;
+        let scopedStock;
+        if (requestedPos) {
+            const pos = await prisma.pointOfSale.findFirst({ where: { id: requestedPos, accountId: req.user.prismaId }, select: { id: true } });
+            if (!pos) return next(new ApiError(404, "Punto de venta no encontrado."));
+            if (req.user.role !== "admin" && !hasPosAccess(req.user, pos.id)) {
+                return next(new ApiError(403, "No tienes acceso a este punto de venta."));
+            }
+            scopedStock = await sellableStockAtLocation(products, pos.id);
+        } else {
+            scopedStock = await scopedStockForProducts(
+                req.user,
+                products.map((p) => p.id)
+            );
+        }
 
         return res
             .status(200)

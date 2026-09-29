@@ -5,7 +5,7 @@ import { BarcodeOutlined, SearchOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { formatCurrency } from "../../utils/currency";
 import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../utils/productUtils";
-import { availableStock, tracksStock } from "../../hooks/pos/usePosCart";
+import { availableStock } from "../../hooks/pos/usePosCart";
 
 // Deterministic hue per product name, so a catalog without photos still
 // reads as distinct, colorful tiles (same treatment as the demo reel).
@@ -36,13 +36,8 @@ const ProductTile = ({ product, quantity, flashKey, onAdd }) => {
     const threshold = product.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
     const hue = hueOf(product.product_name);
 
-    let stockLabel = t("pos.service");
-    let stockClass = "";
-    if (tracksStock(product)) {
-        stockLabel = stock < 1 ? t("pos.sold_out") : t("pos.units_left", { count: stock });
-        if (stock < 1) stockClass = "is-out";
-        else if (stock <= threshold) stockClass = "is-low";
-    }
+    const stockLabel = stock < 1 ? t("pos.sold_out") : t("pos.units_left", { count: stock });
+    const stockClass = stock < 1 ? "is-out" : stock <= threshold ? "is-low" : "";
 
     return (
         <button

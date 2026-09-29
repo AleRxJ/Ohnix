@@ -146,6 +146,35 @@ export const scopedStockForProducts = async (user, productIds) => {
     return map;
 };
 
+// What can actually be SOLD from one location right now - the same rule
+// order.service.js#createOrder enforces: a plain product needs its own
+// ProductLocationStock there; a kit is limited by its scarcest component
+// there. Used by the Caja (GET /products?point_of_sale_id=...), which must
+// never offer units the checkout would then reject. `products` need
+// `isKit` and `kitComponents` ({ componentProductId, quantity }).
+export const sellableStockAtLocation = async (products, pointOfSaleId) => {
+    const ids = new Set();
+    for (const p of products) {
+        if (p.isKit) (p.kitComponents || []).forEach((c) => ids.add(c.componentProductId));
+        else ids.add(p.id);
+    }
+    const rows = ids.size
+        ? await prisma.productLocationStock.findMany({
+              where: { pointOfSaleId, productId: { in: [...ids] } },
+              select: { productId: true, stock: true },
+          })
+        : [];
+    const byId = new Map(rows.map((row) => [row.productId, row.stock]));
+    return new Map(
+        products.map((p) => {
+            if (!p.isKit) return [p.id, Math.max(0, byId.get(p.id) ?? 0)];
+            const components = p.kitComponents || [];
+            if (!components.length) return [p.id, 0];
+            return [p.id, Math.max(0, Math.min(...components.map((c) => Math.floor((byId.get(c.componentProductId) ?? 0) / Number(c.quantity)))))];
+        })
+    );
+};
+
 // Full per-location breakdown for one product - available (this table),
 // inTransit (computed live from StockTransfer, never stored - see that
 // model's comment for why a separate counter would risk drifting from the

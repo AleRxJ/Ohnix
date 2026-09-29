@@ -58,14 +58,16 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment, ready = true 
             const rows = await loadWithMirror("products", async () => {
                 // Own company only, even for a platform admin (see
                 // product.controller.js#getAllProducts scope=own).
-                const response = await api.get("/products", { params: { scope: "own" } });
+                // point_of_sale_id: stock = what THIS location can sell (kits
+                // from their components) - the same rule the checkout enforces.
+                const response = await api.get("/products", { params: { scope: "own", ...(pointOfSaleId ? { point_of_sale_id: pointOfSaleId } : {}) } });
                 return response.data.data.products || response.data.data;
             });
             setProducts(rows || []);
         } catch (error) {
             console.error("Error fetching POS products:", error);
         }
-    }, []);
+    }, [pointOfSaleId]);
 
     const fetchCustomers = useCallback(async () => {
         try {

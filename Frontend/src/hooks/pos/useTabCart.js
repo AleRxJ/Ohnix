@@ -21,7 +21,8 @@ export const useTabCart = (tab, tablesApi, products) => {
                     _id: item.product_id,
                     product_name: item.product_name,
                     selling_price: item.unit_price,
-                    is_physical: false,
+                    // Not in this location's catalog: nothing more can be added.
+                    stock: 0,
                 },
                 quantity: item.quantity,
                 unitPrice: item.unit_price,
