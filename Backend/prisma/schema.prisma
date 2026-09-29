@@ -378,6 +378,8 @@ model User {
   discoveriesOwned     Discovery[]
   metricSnapshotsOwned MetricSnapshot[]
 
+  demoRequestsProvisioned DemoRequest[] @relation("DemoRequestProvisionedUser")
+
   @@map("users")
 }
 
@@ -5312,4 +5314,58 @@ model WarrantyModuleSettings {
   updatedAt                   DateTime         @updatedAt @map("updated_at")
 
   @@map("warranty_module_settings")
+}
+
+enum DemoRequestStatus {
+  new
+  contacted
+  scheduled
+  completed
+  converted
+  discarded
+}
+
+// A prospect asking for a live demo from the public /agenda-demo page - the
+// landing point of the Instagram/TikTok "comenta DEMO" funnel (ManyChat DMs
+// the link). The optional product list is parsed in the prospect's own
+// browser (Frontend xlsx) and arrives here as catalogHeaders/catalogRows
+// JSON; the original file is kept only as a reference for the team and is
+// deliberately NOT uploaded to R2, whose URLs are public - a price list is
+// business data. provisionedUserId is the prospect's own account, created by
+// an admin with that catalog already imported (demoProvisioning.service.js).
+model DemoRequest {
+  id                String            @id @default(cuid())
+  name              String
+  email             String
+  phone             String
+  companyName       String            @map("company_name")
+  businessType      String?           @map("business_type")
+  productCountRange String?           @map("product_count_range")
+  preferredDate     DateTime?         @map("preferred_date") @db.Date
+  preferredSlot     String?           @map("preferred_slot")
+  message           String?           @db.Text
+  catalogFileName   String?           @map("catalog_file_name")
+  catalogFileMime   String?           @map("catalog_file_mime")
+  catalogFileData   Bytes?            @map("catalog_file_data")
+  catalogHeaders    Json?             @map("catalog_headers")
+  catalogRows       Json?             @map("catalog_rows")
+  catalogRowCount   Int               @default(0) @map("catalog_row_count")
+  utmSource         String?           @map("utm_source")
+  utmMedium         String?           @map("utm_medium")
+  utmCampaign       String?           @map("utm_campaign")
+  utmContent        String?           @map("utm_content")
+  status            DemoRequestStatus @default(new)
+  internalNotes     String?           @map("internal_notes") @db.Text
+  provisionedUserId String?           @map("provisioned_user_id")
+  provisionedAt     DateTime?         @map("provisioned_at")
+  importSummary     Json?             @map("import_summary")
+  accessSentAt      DateTime?         @map("access_sent_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  provisionedUser User? @relation("DemoRequestProvisionedUser", fields: [provisionedUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([email])
+  @@map("demo_requests")
 }

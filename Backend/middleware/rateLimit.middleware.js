@@ -62,6 +62,10 @@ export const bulkUploadRateLimiter = makeLimiter(60, 10);
 // is spamming the sales inbox / burning email-provider quota.
 export const contactFormRateLimiter = makeLimiter(60, 5);
 
+// Public /agenda-demo form: same abuse vector as the contact form, plus a
+// stored upload (up to 5MB) per request.
+export const demoRequestRateLimiter = makeLimiter(60, 5);
+
 // Assistant chat: each message is a paid/rate-limited model call (Groq free
 // tier is shared across the whole app - see assistantModel.service.js), so
 // this protects that shared budget from a single account, not just abuse.

@@ -113,10 +113,10 @@ const Demo = () => {
                         </button>
                         <button
                             type="button"
-                            onClick={() => navigate("/")}
+                            onClick={() => navigate("/agenda-demo")}
                             className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:border-[#29D8D5]/40 hover:bg-white/[0.06]"
                         >
-                            {t("landing.demo.secondary_cta")}
+                            {t("demo_booking.cta")}
                         </button>
                     </div>
                 </ContentSection>

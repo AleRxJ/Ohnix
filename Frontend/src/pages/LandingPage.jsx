@@ -615,7 +615,7 @@ const LandingPage = () => {
                         title: t("landing.demo.title"),
                         description: t("landing.demo.description"),
                     }}
-                    onContactClick={() => scrollToSection("contact")}
+                    onContactClick={() => navigate("/agenda-demo")}
                 />
 
                 <ContactFormSection

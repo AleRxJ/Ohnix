@@ -1236,7 +1236,7 @@ export const DemoTeaserSection = ({ heading, onContactClick }) => {
                     onClick={onContactClick}
                     className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#29D8D5] px-6 py-3.5 text-sm font-semibold text-[#021314] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#44F3F0]"
                 >
-                    {t("landing.demo.contact_cta")}
+                    {t("demo_booking.cta")}
                     <ArrowRightOutlined className="transition-transform duration-300 group-hover:translate-x-1" />
                 </button>
             </div>

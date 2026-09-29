@@ -154,9 +154,17 @@ db.version(12).stores({
     warranties: "_id",
 });
 
+// Admin "Solicitudes de demo" (AdminDemoRequests.jsx). Platform-admin only,
+// so it's a write-through mirror filled by the page itself - NOT a
+// registerFullResync pull, which would hit an admin-only endpoint from every
+// regular account on each reconnect.
+db.version(13).stores({
+    demoRequests: "_id",
+});
+
 // Mirror tables added as each module is wired for offline support - keep in
 // sync with the list above so account/logout resets actually clear them.
-export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods", "warranties"];
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods", "warranties", "demoRequests"];
 
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 

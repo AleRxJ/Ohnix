@@ -43,7 +43,7 @@ const generateUsernameCandidate = (email) => {
     return `guest${randomBytes(3).toString("hex")}`;
 };
 
-const findAvailableUsername = async (email) => {
+export const findAvailableUsername = async (email) => {
     const base = generateUsernameCandidate(email);
 
     const baseTaken = await prisma.user.findFirst({

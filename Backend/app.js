@@ -181,6 +181,7 @@ import apiDocsRouter from "./routes/apiDocs.routes.js";
 import assistantRouter from "./routes/assistant.routes.js";
 import guestCertificateCheckoutRouter from "./routes/guestCertificateCheckout.routes.js";
 import externalApiBillingRouter from "./routes/externalApiBilling.routes.js";
+import { demoRequestAdminRouter, demoRequestPublicRouter } from "./routes/demoRequest.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -208,6 +209,9 @@ app.use("/api/v1/certificate-checkout", guestCertificateCheckoutRouter);
 // billing of external API clients - see externalApiBilling.routes.js for why
 // it carries no auth middleware.
 app.use("/api/v1/api-billing", externalApiBillingRouter);
+// Public /agenda-demo form (no auth - see demoRequest.routes.js) and its admin side.
+app.use("/api/v1/demo-requests", demoRequestPublicRouter);
+app.use("/api/v1/admin/demo-requests", demoRequestAdminRouter);
 app.use("/api/v1/admin/dian-test-matrix", dianTestMatrixRouter);
 app.use("/api/v1/company/dian-test-matrix", dianTestMatrixSelfRouter);
 app.use("/api/v1/company", companySelfRouter);

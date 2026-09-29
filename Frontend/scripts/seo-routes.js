@@ -16,6 +16,7 @@ export const MARKETING_ROUTES = [
     "/",
     "/precios",
     "/demo",
+    "/agenda-demo",
     "/software-inventario-pymes",
     "/facturacion-electronica-dian",
     "/facturacion-electronica-sin-inventario",

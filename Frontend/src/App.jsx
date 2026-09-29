@@ -128,6 +128,7 @@ const Precios = lazy(() => import("./pages/Precios"));
 const SoftwareInventarioPymes = lazy(() => import("./pages/SoftwareInventarioPymes"));
 const FacturacionElectronica = lazy(() => import("./pages/FacturacionElectronica"));
 const FacturacionSinInventario = lazy(() => import("./pages/FacturacionSinInventario"));
+const DemoBooking = lazy(() => import("./pages/DemoBooking"));
 const CertificadosDigitales = lazy(() => import("./pages/CertificadosDigitales"));
 const OhnixVsAlegra = lazy(() => import("./pages/OhnixVsAlegra"));
 const ColaboracionEquipo = lazy(() => import("./pages/ColaboracionEquipo"));
@@ -159,6 +160,7 @@ const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const AdminFirmaPassValidations = lazy(() => import("./pages/AdminFirmaPassValidations"));
 const AdminCertificateOrders = lazy(() => import("./pages/AdminCertificateOrders"));
+const AdminDemoRequests = lazy(() => import("./pages/AdminDemoRequests"));
 const AdminApiClients = lazy(() => import("./pages/AdminApiClients"));
 const AdminDianTestMatrix = lazy(() => import("./pages/AdminDianTestMatrix"));
 const AdminIncomeTaxConfig = lazy(() => import("./pages/AdminIncomeTaxConfig"));
@@ -368,6 +370,7 @@ function App() {
                             <Route path="/deteccion-riesgos-oportunidades-negocio" element={<DeteccionRiesgosNegocio />} />
                             <Route path="/integraciones" element={<Integraciones />} />
                             <Route path="/demo" element={<Demo />} />
+                            <Route path="/agenda-demo" element={<DemoBooking />} />
 
                             {/* Everything below uses antd components (Form, Table, etc.) */}
                             <Route element={<AntdRoutesLayout />}>
@@ -449,6 +452,7 @@ function App() {
                                 <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
                                 <Route path="admin/firmapass-validations" element={<AdminFirmaPassValidations />} />
                                 <Route path="admin/certificate-orders" element={<AdminCertificateOrders />} />
+                                <Route path="admin/demo-requests" element={<AdminDemoRequests />} />
                                 <Route path="admin/api-clients" element={<AdminApiClients />} />
                                 <Route path="admin/dian-test-matrix" element={<AdminDianTestMatrix />} />
                                 <Route path="admin/income-tax-config" element={<AdminIncomeTaxConfig />} />

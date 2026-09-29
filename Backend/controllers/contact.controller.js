@@ -3,15 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { sendMailSafe } from "../utils/nodemailer.js";
 import { sendContactFormLeadEvent } from "../services/metaConversionsApi.service.js";
-
-const escapeHtml = (value) =>
-    `${value ?? ""}`.replace(/[&<>"']/g, (char) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-    }[char]));
+import { escapeHtml } from "../utils/escapeHtml.js";
 
 // Landing page "Contact us" form (public, unauthenticated) - previously only
 // simulated a network call in the frontend and never reached the backend,

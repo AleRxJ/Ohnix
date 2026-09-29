@@ -71,3 +71,22 @@ export const bulkUpload = multer({
         }
     },
 });
+
+// A demo prospect's own product list (/agenda-demo). Memory-only on purpose:
+// the bytes go straight into demo_requests.catalog_file_data and must never
+// land on disk or in R2 (public URLs) - see the DemoRequest schema comment.
+export const demoCatalogUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+        files: 1,
+    },
+    fileFilter: function (req, file, cb) {
+        const name = file.originalname.toLowerCase();
+        if (name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".csv")) {
+            cb(null, true);
+        } else {
+            cb(new Error("Only Excel (.xlsx, .xls) or CSV files are allowed"), false);
+        }
+    },
+});

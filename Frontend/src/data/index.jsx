@@ -25,6 +25,7 @@ import {
     BuildOutlined,
     CalculatorOutlined,
     BulbOutlined,
+    ScheduleOutlined,
     ClusterOutlined,
     IdcardOutlined,
 } from "@ant-design/icons";
@@ -390,6 +391,14 @@ export const getNavItems = (t, role, showElectronicInvoicing = false, showTeam =
             textKey: "common.admin_assistant_insights",
             icon: <BulbOutlined />,
             label: <Link to="/admin/assistant-insights">{t("common.admin_assistant_insights")}</Link>,
+        });
+        items.push({
+            key: "admin-demo-requests",
+            group: "admin",
+            path: "/admin/demo-requests",
+            textKey: "admin_demo_requests.nav",
+            icon: <ScheduleOutlined />,
+            label: <Link to="/admin/demo-requests">{t("admin_demo_requests.nav")}</Link>,
         });
     }
 

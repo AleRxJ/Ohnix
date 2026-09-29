@@ -27,6 +27,7 @@ export const ENTITY_LABELS = {
     employees: { es: "Empleado", en: "Employee" },
     payrollPeriods: { es: "Período de nómina", en: "Payroll period" },
     warranties: { es: "Garantía", en: "Warranty" },
+    demoRequests: { es: "Solicitud de demo", en: "Demo request" },
 };
 
 export const OP_LABELS = {
