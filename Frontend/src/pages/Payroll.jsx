@@ -17,6 +17,7 @@ import BenefitAccrualsPanel from "../components/payroll/BenefitAccrualsPanel";
 import LegalParametersPanel from "../components/payroll/LegalParametersPanel";
 import TerminationSettlementModal from "../components/payroll/TerminationSettlementModal";
 import EmptyState from "../components/common/EmptyState";
+import SectionGuide from "../components/common/SectionGuide";
 
 const { Content } = Layout;
 
@@ -283,6 +284,20 @@ const Payroll = () => {
                         <DollarOutlined className="text-[#44F3F0] inline-block ml-2" />
                     </h1>
                     <p className="text-[var(--ohnix-text-muted)] text-base md:text-sm mb-4 hidden sm:block">{t("payroll.subtitle")}</p>
+                    <SectionGuide
+                        storageKey="ohnix:payroll-guide"
+                        title={t("payroll.guide_title")}
+                        summary={t("payroll.guide_summary")}
+                        steps={[t("payroll.guide_step_1"), t("payroll.guide_step_2"), t("payroll.guide_step_3"), t("payroll.guide_step_4")]}
+                        result={t("payroll.guide_result")}
+                        concepts={[
+                            { label: t("payroll.concept_earnings"), help: t("payroll.concept_earnings_help") },
+                            { label: t("payroll.concept_deductions"), help: t("payroll.concept_deductions_help") },
+                            { label: t("payroll.concept_employer_contributions"), help: t("payroll.concept_employer_contributions_help") },
+                            { label: t("payroll.concept_benefits"), help: t("payroll.concept_benefits_help") },
+                            { label: t("payroll.concept_legal_parameters"), help: t("payroll.concept_legal_parameters_help") },
+                        ]}
+                    />
                     <Tabs items={items} />
                 </div>
             </Content>

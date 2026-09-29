@@ -5,6 +5,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { WarningOutlined, CloseOutlined, FireOutlined, RocketOutlined, LockOutlined } from "@ant-design/icons";
 import DashboardHeader from "./DashboardHeader";
 import DashboardSidebar from "./DashboardSidebar";
+import CommandPalette from "./CommandPalette";
 import MobileMenu from "./MobileMenu";
 import ImpersonationBanner from "./ImpersonationBanner";
 import AuthContext from "../../context/AuthContext";
@@ -500,9 +501,9 @@ const DashboardLayout = () => {
             <DiscoveryWidget />
             <DiscoveryRevealOverlay />
             <div className="pointer-events-none absolute inset-0 opacity-70 section-glow" />
+            <CommandPalette currentPage={currentPage} />
             <DashboardSidebar
                 collapsed={collapsed}
-                setCollapsed={setCollapsed}
                 currentPage={currentPage}
             />
 
@@ -510,6 +511,8 @@ const DashboardLayout = () => {
                 <DashboardHeader
                     collapsed={collapsed}
                     setCollapsed={setCollapsed}
+                    currentPage={currentPage}
+                    pageTitle={PAGE_TITLE_KEYS[currentPage] ? t(PAGE_TITLE_KEYS[currentPage]) : null}
                 />
 
                 <MobileMenu

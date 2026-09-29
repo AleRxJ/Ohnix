@@ -1,51 +1,77 @@
 // components/layout/DashboardSidebar.jsx
-import React, { useContext } from "react";
-import { Layout, Menu, Avatar, Skeleton } from "antd";
-import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { Layout, Popover, Skeleton, Tooltip } from "antd";
+import {
+    SearchOutlined,
+    CrownOutlined,
+    CheckCircleFilled,
+    RightOutlined,
+} from "@ant-design/icons";
+import { Link, useNavigate } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
-import { useTeam } from "../../context/TeamContext";
-import { useDiscoveries } from "../../context/DiscoveryContext";
-import useSubscription from "../../hooks/useSubscription";
-import { getMenuItems } from "../../data";
+import useNavItems, { NAV_GROUPS } from "../../hooks/useNavItems";
+import useNavSignals, { TONE_RANK } from "../../hooks/useNavSignals";
 import useI18n from "../../hooks/useI18n";
 import { useTheme } from "../../context/ThemeContext";
-import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
+import { openCommandPalette, COMMAND_PALETTE_SHORTCUT } from "./commandPaletteEvents";
+import { NAV_GROUP_ICONS } from "./navGroupIcons";
+import "./navigation.css";
 
 const { Sider } = Layout;
 
-const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
+const RAIL_WIDTH = 76;
+const EXPANDED_WIDTH = 312;
 
-const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
-    const { user, logout } = useContext(AuthContext);
-    const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
-    const { openCount: openDiscoveriesCount } = useDiscoveries();
-    const { plan, can, loading: planLoading } = useSubscription();
-    const { t, currentLanguage } = useI18n();
+
+// Most urgent signal first: alert > warn > info, then bigger counts.
+const sortSignals = (a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone] || b.count - a.count;
+const topTone = (signals) => (signals.length ? [...signals].sort(sortSignals)[0].tone : null);
+
+// Two-level navigation: a rail of business areas (Inicio, Ventas,
+// Inventario, ...) plus a contextual panel listing that area's modules with
+// live "needs attention" signals read from the offline mirror (see
+// useNavSignals). Replaces the old flat 20+ item antd Menu. Collapsed, only
+// the rail shows and each area opens as a flyout on hover.
+const DashboardSidebar = ({ collapsed, currentPage }) => {
+    const { t } = useI18n();
     const { isLite } = useTheme();
     const navigate = useNavigate();
-    const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
-    const showFiscalSetup = ELECTRONIC_INVOICING_ENABLED && (!user?.company || user?.company?.countryCode === "CO") && !isTeamMember;
-    const needsFiscalSetup = showFiscalSetup && !user?.company?.electronicInvoicingEnabled;
+    const { items, loading, can, needsFiscalSetup, openDiscoveriesCount } = useNavItems();
+    const signals = useNavSignals({ items, can, needsFiscalSetup, openDiscoveriesCount });
 
-    const handleLogoClick = () => {
-        navigate("/dashboard");
-    };
+    const groups = useMemo(
+        () =>
+            NAV_GROUPS.map((key) => {
+                const groupItems = items.filter((item) => item.group === key);
+                const groupSignals = groupItems.flatMap((item) => signals[item.key] || []);
+                return { key, items: groupItems, signals: groupSignals };
+            }).filter((group) => group.items.length > 0),
+        [items, signals]
+    );
 
-    const handleLogout = async () => {
-        await logout();
-        navigate("/login");
+    const currentGroup = items.find((item) => item.key === currentPage)?.group || "home";
+    // Browsing another area in the panel doesn't navigate - it just previews
+    // it. Landing on a new page snaps the panel back to that page's area.
+    const [activeGroup, setActiveGroup] = useState(currentGroup);
+    useEffect(() => setActiveGroup(currentGroup), [currentGroup]);
+    const shownGroup = groups.find((group) => group.key === activeGroup) || groups[0];
+
+    const handleGroupClick = (group) => {
+        if (group.items.length === 1) {
+            navigate(group.items[0].path);
+            return;
+        }
+        setActiveGroup(group.key);
     };
 
     return (
         <Sider
-            collapsible
             collapsed={collapsed}
-            onCollapse={setCollapsed}
             trigger={null}
             theme={isLite ? "light" : "dark"}
-            width={260}
-            className="hidden md:block no-print flex flex-col overflow-hidden [&_.ant-layout-sider-children]:flex [&_.ant-layout-sider-children]:min-h-0 [&_.ant-layout-sider-children]:flex-col"
+            width={EXPANDED_WIDTH}
+            collapsedWidth={RAIL_WIDTH}
+            className="ohnix-nav hidden md:block no-print overflow-hidden"
             style={{
                 height: "100vh",
                 position: "sticky",
@@ -56,156 +82,200 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 borderRight: "1px solid var(--ohnix-line-4)",
             }}
         >
-            <SidebarLogo collapsed={collapsed} isLite={isLite} onClick={handleLogoClick} />
-            <div className="mx-4 mb-4 h-px bg-[var(--ohnix-line-4)]"></div>
+            <div className="ohnix-nav__shell">
+                <nav className="ohnix-nav__rail" aria-label={t("nav.sections")}>
+                    <Link to="/dashboard" className="ohnix-nav__logo" aria-label="Ohnix">
+                        {/* The round app icon, not Ohnix_Icon_Transparent.png: that one bakes the
+                            "OHNIX" wordmark into the raster, which turns to mush at rail size. */}
+                        <img src={isLite ? "/Ohnix_Icon_Lite.png" : "/ohnix-icon-v2-192.png"} alt="" />
+                    </Link>
 
-            <div className="ohnix-scrollbar-thin min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto px-3">
-                {teamLoading || planLoading ? (
-                    // Never render the unfiltered menu while permissions are
-                    // still resolving - a restricted member briefly seeing
-                    // (and then losing) items they can't use was the "menu
-                    // flicker" bug. A few skeleton bars is a fixed, tiny cost
-                    // instead of a visible flash of the wrong menu.
-                    <div className="space-y-3 px-2 py-2">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                            <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
-                        ))}
+                    <div className="ohnix-nav__rail-groups ohnix-scrollbar-thin">
+                        {loading
+                            ? Array.from({ length: 5 }).map((_, i) => <span key={i} className="ohnix-nav__rail-skeleton" />)
+                            : groups.map((group) => {
+                                  const button = (
+                                      <RailButton
+                                          key={group.key}
+                                          group={group}
+                                          label={t(`nav.group_${group.key}`)}
+                                          isActive={!collapsed && group.key === shownGroup?.key}
+                                          isCurrent={group.key === currentGroup}
+                                          onClick={() => handleGroupClick(group)}
+                                      />
+                                  );
+                                  if (!collapsed) return button;
+                                  return (
+                                      <Popover
+                                          key={group.key}
+                                          placement="rightTop"
+                                          arrow={false}
+                                          mouseEnterDelay={0.05}
+                                          overlayClassName="ohnix-nav-flyout"
+                                          content={<GroupPanel group={group} currentPage={currentPage} signals={signals} can={can} compact />}
+                                      >
+                                          {button}
+                                      </Popover>
+                                  );
+                              })}
                     </div>
-                ) : (
-                    <Menu
-                        theme={isLite ? "light" : "dark"}
-                        selectedKeys={[currentPage]}
-                        mode="inline"
-                        items={getMenuItems(
-                            t,
-                            user?.role,
-                            // Documentos electrónicos tracks DIAN invoices/credit
-                            // notes actually issued - showing it as soon as the
-                            // company is merely Colombian (regardless of whether
-                            // fiscal-setup was ever completed) sent brand-new
-                            // companies to a confusing always-empty page. Gate on
-                            // electronicInvoicingEnabled instead, same milestone
-                            // ElectronicInvoicingSettings.jsx treats as "actually
-                            // organized" (see fiscal_setup.status_active there).
-                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && Boolean(user?.company?.electronicInvoicingEnabled),
-                            showTeam,
-                            hasPermission,
-                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
-                            showFiscalSetup,
-                            needsFiscalSetup,
-                            openDiscoveriesCount,
-                            can,
-                            currentLanguage
-                        ).map((item) => ({
-                            ...item,
-                        }))}
-                        className="border-r-0"
-                        style={{
-                            background: "transparent",
-                        }}
-                    />
+
+                    <Tooltip title={`${t("nav.search")} · ${COMMAND_PALETTE_SHORTCUT}`} placement="right">
+                        <button type="button" className="ohnix-nav__rail-search" onClick={openCommandPalette} aria-label={t("nav.search")}>
+                            <SearchOutlined />
+                        </button>
+                    </Tooltip>
+                </nav>
+
+                {!collapsed && (
+                    <div className="ohnix-nav__panel">
+                        <CompanyHeader />
+                        <button type="button" className="ohnix-nav__search" onClick={openCommandPalette}>
+                            <SearchOutlined />
+                            <span className="ohnix-nav__search-text">{t("nav.search_placeholder")}</span>
+                            <kbd>{COMMAND_PALETTE_SHORTCUT}</kbd>
+                        </button>
+
+                        <div className="ohnix-nav__panel-scroll ohnix-scrollbar-thin">
+                            {loading ? (
+                                <div className="space-y-3 px-1 py-2">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
+                                    ))}
+                                </div>
+                            ) : (
+                                shownGroup && <GroupPanel key={shownGroup.key} group={shownGroup} currentPage={currentPage} signals={signals} can={can} />
+                            )}
+                        </div>
+
+                        {!loading && <BusinessPulse items={items} signals={signals} />}
+                    </div>
                 )}
             </div>
-
-            {!collapsed && <SidebarUserProfile user={user} isTeamMember={isTeamMember} logout={handleLogout} t={t} />}
         </Sider>
     );
 };
 
-// Ohnix_Icon_Transparent.png's pale strokes are tuned for a dark surface, and
-// it bakes the "OHNIX" wordmark into the raster itself - fine at the ~256px
-// this image ships at, but that text turns to mush once it's downscaled into
-// a 44-96px nav slot, and no color/CSS fix can recover text that was never
-// vector to begin with. Lite gets a different treatment instead of a filter
-// on the same file: Ohnix_Icon_Lite.png is cropped to just the cube+ring
-// glyph (no wordmark, no stray background dots) and pre-recoloured (dark
-// strokes, brand cyan kept) at 480px, so it stays crisp when scaled down and
-// reads fine directly on the white sidebar - no dark backing tile needed.
-// The "OHNIX" label is real text here instead, which is always crisp.
-const SidebarLogo = ({ collapsed, isLite, onClick }) => (
-    <div
-        className={`flex flex-col items-center justify-center gap-2 py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
-        onClick={onClick}
-    >
-        <div
-            className={`flex items-center justify-center rounded-2xl transition-transform duration-200 ${collapsed ? "p-2" : "p-3"}`}
+const RailButton = React.forwardRef(({ group, label, isActive, isCurrent, onClick, ...rest }, ref) => {
+    const tone = topTone(group.signals);
+    return (
+        <button
+            ref={ref}
+            type="button"
+            onClick={onClick}
+            aria-current={isCurrent ? "page" : undefined}
+            className={`ohnix-nav__rail-btn ${isActive ? "is-active" : ""} ${isCurrent ? "is-current" : ""}`}
+            {...rest}
         >
-            {collapsed ? (
-                <img
-                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
-                    alt="Ohnix icon"
-                    className="h-12 w-12 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110 drop-shadow-lg"
-                />
-            ) : (
-                <img
-                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
-                    alt="Ohnix logo"
-                    className={`object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg ${isLite ? "h-16 w-16" : "h-24 w-24"}`}
-                />
-            )}
+            <span className="ohnix-nav__rail-icon">
+                {NAV_GROUP_ICONS[group.key]}
+                {tone && <span className={`ohnix-nav__dot is-${tone}`} />}
+            </span>
+            <span className="ohnix-nav__rail-label">{label}</span>
+        </button>
+    );
+});
+RailButton.displayName = "RailButton";
+
+const CompanyHeader = () => {
+    const { user } = useContext(AuthContext);
+    const { t } = useI18n();
+    const name = user?.company?.name || user?.username || "Ohnix";
+    return (
+        <div className="ohnix-nav__company">
+            <span className="ohnix-nav__company-mark">{name.trim().charAt(0).toUpperCase()}</span>
+            <div className="min-w-0">
+                <p className="ohnix-nav__company-name" title={name}>{name}</p>
+                <p className="ohnix-nav__company-sub">{t("nav.workspace")}</p>
+            </div>
         </div>
-        {!collapsed && isLite && (
-            <span className="text-sm font-bold tracking-[0.22em] text-[var(--ohnix-text-primary)]">OHNIX</span>
-        )}
-    </div>
-);
+    );
+};
 
-const SidebarUserProfile = ({ user, isTeamMember, logout, t }) => {
-    // Generar avatar por defecto si no existe o está vacío
-    const getAvatarSrc = () => {
-        if (user?.avatar && user.avatar.trim()) {
-            let avatarUrl = user.avatar;
+const GroupPanel = ({ group, currentPage, signals, can, compact = false }) => {
+    const { t } = useI18n();
+    const pending = group.signals.reduce((sum, signal) => sum + signal.count, 0);
+    return (
+        <div className={`ohnix-nav__group ${compact ? "is-compact" : ""}`}>
+            <div className="ohnix-nav__group-head">
+                <h2>{t(`nav.group_${group.key}`)}</h2>
+                <p>{pending > 0 ? t("nav.group_pending", { count: pending }) : t(`nav.group_${group.key}_desc`)}</p>
+            </div>
+            <ul>
+                {group.items.map((item, index) => {
+                    const itemSignals = [...(signals[item.key] || [])].sort(sortSignals);
+                    const locked = item.planFeature && !can(item.planFeature);
+                    const isActive = item.key === currentPage;
+                    return (
+                        <li key={item.key} style={{ "--i": index }}>
+                            <Link to={item.path} className={`ohnix-nav__item ${isActive ? "is-active" : ""}`} aria-current={isActive ? "page" : undefined}>
+                                <span className="ohnix-nav__item-icon">{item.icon}</span>
+                                <span className="ohnix-nav__item-text">
+                                    <span className="ohnix-nav__item-label">{t(item.textKey)}</span>
+                                    {!locked && itemSignals.length > 0 && (
+                                        <span className={`ohnix-nav__item-hint is-${itemSignals[0].tone}`}>
+                                            {itemSignals.map((signal) => t(signal.labelKey, { count: signal.count })).join(" · ")}
+                                        </span>
+                                    )}
+                                </span>
+                                {locked ? (
+                                    <Tooltip title={t("nav.locked_plan")}>
+                                        <span className="ohnix-nav__item-lock"><CrownOutlined /></span>
+                                    </Tooltip>
+                                ) : (
+                                    itemSignals.length > 0 && (
+                                        <span className={`ohnix-nav__item-count is-${itemSignals[0].tone}`}>
+                                            {Math.min(itemSignals.reduce((sum, signal) => sum + signal.count, 0), 99)}
+                                        </span>
+                                    )
+                                )}
+                            </Link>
+                        </li>
+                    );
+                })}
+            </ul>
+        </div>
+    );
+};
 
-            // Si es una ruta relativa local, convertirla a URL HTTP
-            if (avatarUrl.startsWith("/") && !avatarUrl.startsWith("//")) {
-                // Es una ruta relativa local, agregar el API base URL
-                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-                avatarUrl = `${apiBaseUrl}${avatarUrl}`;
-            }
-
-            return avatarUrl;
-        }
-        // Fallback: generar usando ui-avatars.com
-        const name = encodeURIComponent(user?.username || "User");
-        return `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${name}&size=128`;
-    };
+// The "what needs me today" card at the foot of the panel - the most urgent
+// signals across every area the user can see, one click from each module.
+const BusinessPulse = ({ items, signals }) => {
+    const { t } = useI18n();
+    // One row per module (its signals joined), most urgent modules first.
+    const entries = items
+        .filter((item) => signals[item.key])
+        .map((item) => ({ item, list: [...signals[item.key]].sort(sortSignals) }))
+        .sort((a, b) => sortSignals(a.list[0], b.list[0]))
+        .slice(0, 3);
 
     return (
-    <div className="shrink-0 border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-bg)]/55 p-3">
-        <div className="sidebar-profile-card relative overflow-hidden rounded-xl border border-[var(--ohnix-line-5)] bg-[var(--ohnix-surface-2)]/90 p-3 shadow-[var(--ohnix-shadow-card)]">
-            <div className="mb-3 flex items-center gap-3">
-                <Avatar
-                    src={getAvatarSrc()}
-                    style={{
-                        background:
-                            "linear-gradient(135deg, #29d8d5 0%, #44f3f0 100%)",
-                        border: "2px solid var(--ohnix-line-7)",
-                        boxShadow: "0 6px 14px rgba(41, 216, 213, 0.3)",
-                    }}
-                    icon={<UserOutlined />}
-                    size={42}
-                />
-                <div className="flex-1 min-w-0">
-                    <p className="m-0 truncate text-sm font-semibold text-[var(--ohnix-text-primary)]">
-                        {user?.username || "User"}
-                    </p>
-                    <p className="m-0 mt-0.5 truncate text-xs text-[var(--ohnix-text-muted)]">
-                        {isTeamMember
-                            ? t("profile.invited_user_account")
-                            : t("profile.inventory_admin_account")}
-                    </p>
-                </div>
+        <div className="ohnix-nav__pulse">
+            <div className="ohnix-nav__pulse-head">
+                <span className="ohnix-nav__pulse-live" />
+                <span>{t("nav.pulse_title")}</span>
             </div>
-            <button
-                type="button"
-                onClick={logout}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-[var(--ohnix-hover-overlay)] px-3 py-2 text-sm font-medium text-[var(--ohnix-text-soft)] transition-all duration-150 hover:border-[#29D8D5]/50 hover:bg-[#29D8D5]/10 hover:text-[var(--ohnix-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/50"
-            >
-                <LogoutOutlined className="text-base" />
-                <span>{t("common.logout")}</span>
-            </button>
+            {entries.length === 0 ? (
+                <p className="ohnix-nav__pulse-clear">
+                    <CheckCircleFilled /> {t("nav.pulse_all_clear")}
+                </p>
+            ) : (
+                <ul>
+                    {entries.map(({ item, list }) => (
+                        <li key={item.key}>
+                            <Link to={item.path} className={`ohnix-nav__pulse-row is-${list[0].tone}`}>
+                                <span className="ohnix-nav__pulse-bar" />
+                                <span className="ohnix-nav__pulse-text">
+                                    <strong>{t(item.textKey)}</strong>
+                                    <span>{list.map((signal) => t(signal.labelKey, { count: signal.count })).join(" · ")}</span>
+                                </span>
+                                <RightOutlined />
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
-    </div>
     );
 };
 
