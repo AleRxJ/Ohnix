@@ -68,3 +68,14 @@
 @media (prefers-reduced-motion: reduce) {
   .sync-queue *, .sync-queue *::after { animation: none !important; transition: none !important; }
 }
+
+/* Phone bottom sheet (SyncStatusIndicator.jsx) - same content as the popover. */
+.offline-sync-sheet .ant-drawer-content-wrapper { max-height: 86dvh; }
+.offline-sync-sheet .ant-drawer-content {
+  border-radius: 20px 20px 0 0; border: 1px solid var(--ohnix-line-5); border-bottom: 0;
+  background: radial-gradient(circle at 90% 0, rgba(41, 216, 213, .09), transparent 30%), var(--ohnix-surface-card) !important;
+  box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.35);
+}
+.offline-sync-sheet .ant-drawer-body { padding: 10px 16px calc(16px + env(safe-area-inset-bottom)); }
+.offline-sync-sheet__grabber { display: block; width: 40px; height: 4px; margin: 0 auto 12px; border-radius: 999px; background: var(--ohnix-line-6); }
+.offline-sync-sheet .offline-capabilities-popover__body { width: auto; max-width: none; font-size: 13px; }

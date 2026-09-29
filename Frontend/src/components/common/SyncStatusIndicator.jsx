@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Popover, Button } from "antd";
+import { Popover, Button, Drawer } from "antd";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
     CheckCircleFilled,
@@ -117,6 +117,16 @@ const SyncStatusIndicator = () => {
 
     const queue = useSyncQueue();
 
+    // Phones get a bottom sheet instead of the popover: a 300px popover
+    // anchored to a badge in a crowded 390px header ran off-screen.
+    const [isPhone, setIsPhone] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+    const [sheetOpen, setSheetOpen] = useState(false);
+    useEffect(() => {
+        const onResize = () => setIsPhone(window.innerWidth < 768);
+        window.addEventListener("resize", onResize);
+        return () => window.removeEventListener("resize", onResize);
+    }, []);
+
     // Brief "Sincronizado" confirmation when the queue drains while online -
     // otherwise the badge just vanished and the user never knew their
     // offline changes actually made it.
@@ -162,26 +172,31 @@ const SyncStatusIndicator = () => {
         showBadge = false; // Connected, nothing pending - stay out of the way.
     }
 
+    const details = (
+        <OfflineCapabilitiesPopover
+            t={t}
+            online={online}
+            queue={queue}
+            conflictCount={conflictCount}
+            onOpenConflicts={() => {
+                setSheetOpen(false);
+                setConflictsOpen(true);
+            }}
+        />
+    );
+
     return (
         <>
             {showBadge && (
                 <Popover
-                    content={
-                        <OfflineCapabilitiesPopover
-                            t={t}
-                            online={online}
-                            queue={queue}
-                            conflictCount={conflictCount}
-                            onOpenConflicts={() => setConflictsOpen(true)}
-                        />
-                    }
-                    trigger="click"
+                    content={details}
+                    trigger={isPhone ? [] : "click"}
                     placement="bottomRight"
                     overlayClassName="offline-capabilities-popover"
                 >
                     <button
                         type="button"
-                        className="hidden md:flex items-center gap-1.5 mr-3 rounded-full px-3 py-1 text-xs font-semibold cursor-pointer"
+                        className="flex items-center gap-1.5 mr-1 md:mr-3 rounded-full px-2.5 md:px-3 py-1 h-9 md:h-auto text-xs font-semibold cursor-pointer"
                         style={{
                             color,
                             background: "var(--ohnix-surface-2)",
@@ -189,11 +204,27 @@ const SyncStatusIndicator = () => {
                         }}
                         role="status"
                         title={label}
+                        onClick={isPhone ? () => setSheetOpen(true) : undefined}
                     >
                         {icon}
-                        <span className="whitespace-nowrap">{label}</span>
+                        {/* Phones: icon + count only - the full label lives in the popover. */}
+                        <span className="whitespace-nowrap hidden md:inline">{label}</span>
+                        {pendingCount > 0 && <span className="md:hidden">{pendingCount}</span>}
                     </button>
                 </Popover>
+            )}
+            {isPhone && (
+                <Drawer
+                    open={sheetOpen && showBadge}
+                    onClose={() => setSheetOpen(false)}
+                    placement="bottom"
+                    height="auto"
+                    closable={false}
+                    rootClassName="offline-sync-sheet"
+                >
+                    <span className="offline-sync-sheet__grabber" aria-hidden="true" />
+                    {details}
+                </Drawer>
             )}
             <ConflictsPanel open={conflictsOpen} onClose={() => setConflictsOpen(false)} />
         </>

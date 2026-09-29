@@ -203,6 +203,65 @@
 .ohnix-nav-flyout .ohnix-nav__group-head h2 { font-size: 16px; }
 .ohnix-nav-flyout .ohnix-nav__group-head p { margin-bottom: 8px; }
 
+/* --- Mobile menu sheet (MobileMenu.jsx) -------------------------------- */
+.ohnix-mobile-nav {
+  position: absolute; top: 76px; right: 12px; bottom: 12px; left: 12px; max-height: calc(100dvh - 88px);
+  display: flex; flex-direction: column; gap: 12px; padding: 12px 12px 12px; overflow: hidden;
+  border-radius: 20px; border: 1px solid var(--ohnix-line-4);
+  background: color-mix(in srgb, var(--ohnix-surface) 90%, transparent); backdrop-filter: blur(18px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(41, 216, 213, 0.08);
+  transform: translateY(-10px) scale(.98); transition: transform .28s cubic-bezier(.2, .8, .2, 1);
+}
+.ohnix-mobile-nav.is-open { transform: none; }
+.ohnix-mobile-nav::before {
+  content: ""; position: absolute; inset: 0 18% auto; height: 2px; pointer-events: none; opacity: .8;
+  background: linear-gradient(90deg, transparent, #29d8d5, transparent);
+}
+.ohnix-mobile-nav__head { display: flex; align-items: center; gap: 10px; }
+.ohnix-mobile-nav__head img { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 999px; object-fit: contain; }
+.ohnix-mobile-nav__head .ohnix-nav__search { flex: 1; min-width: 0; height: 40px; }
+.ohnix-mobile-nav__close {
+  display: grid; place-items: center; flex: 0 0 40px; height: 40px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--ohnix-line-5); background: var(--ohnix-hover-overlay); color: var(--ohnix-text-soft); font-size: 15px;
+}
+.ohnix-mobile-nav__chips {
+  display: flex; flex-shrink: 0; gap: 8px; margin: 0 -12px; padding: 2px 12px 4px;
+  overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.ohnix-mobile-nav__chips::-webkit-scrollbar { display: none; }
+.ohnix-mobile-nav__chip {
+  display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 6px;
+  scroll-snap-align: center; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--ohnix-line-5); background: var(--ohnix-surface-2);
+  color: var(--ohnix-text-soft); font-size: 13px; font-weight: 600; white-space: nowrap;
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
+}
+.ohnix-mobile-nav__chip-icon {
+  position: relative; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px;
+  font-size: 14px; background: var(--ohnix-line-2); color: var(--ohnix-text-muted);
+}
+.ohnix-mobile-nav__chip-icon .ohnix-nav__dot { top: -2px; right: -2px; }
+.ohnix-mobile-nav__chip.is-current .ohnix-mobile-nav__chip-icon { color: var(--nav-info); }
+.ohnix-mobile-nav__chip.is-active { border-color: transparent; background: var(--nav-accent-grad); color: var(--ohnix-accent-contrast); box-shadow: 0 6px 16px rgba(41, 216, 213, 0.3); }
+.ohnix-mobile-nav__chip.is-active .ohnix-mobile-nav__chip-icon { background: rgba(2, 19, 20, 0.14); color: var(--ohnix-accent-contrast); }
+.ohnix-mobile-nav__chip.is-active .ohnix-nav__dot { border-color: #44f3f0; }
+.ohnix-mobile-nav__list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px; touch-action: pan-y; }
+/* Bigger touch targets than the desktop panel. */
+.ohnix-mobile-nav .ohnix-nav__item { min-height: 52px; padding: 9px 10px; }
+.ohnix-mobile-nav .ohnix-nav__item-icon { flex-basis: 36px; height: 36px; font-size: 16px; }
+.ohnix-mobile-nav .ohnix-nav__item-label { font-size: 15px; }
+.ohnix-mobile-nav .ohnix-nav__item-hint { font-size: 12px; }
+.ohnix-mobile-nav .ohnix-nav__group-head h2 { font-size: 18px; }
+.ohnix-mobile-nav__pulse { flex-shrink: 0; }
+.ohnix-mobile-nav__pulse .ohnix-nav__pulse-row { min-height: 44px; }
+@media (max-height: 600px) { .ohnix-mobile-nav__pulse { display: none; } }
+/* The floating help/assistant buttons would sit on top of the sheet. */
+@media (max-width: 767.98px) {
+  body:has(.ohnix-mobile-nav.is-open) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap) {
+    visibility: hidden !important; pointer-events: none !important;
+  }
+}
+
 /* --- Command palette ---------------------------------------------------- */
 .ohnix-palette {
   position: fixed; inset: 0; z-index: 2100; display: flex; align-items: flex-start; justify-content: center;
@@ -265,6 +324,10 @@
   .ohnix-palette { padding-top: 8vh; }
   .ohnix-palette__footer > span:not(.ohnix-palette__footer-brand) { display: none; }
 }
+/* Touch devices: keyboard hints mean nothing there. */
+@media (hover: none) and (pointer: coarse) {
+  .ohnix-palette__footer, .ohnix-palette__input kbd, .ohnix-palette__row-enter { display: none; }
+}
 body:has(.ohnix-palette) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap) { visibility: hidden; }
 
 /* --- Top bar (DashboardHeader.jsx) ------------------------------------- */
@@ -288,6 +351,7 @@ body:has(.ohnix-palette) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventor
 }
 .ohnix-topbar__mobile-logo { align-items: center; gap: 8px; }
 .ohnix-topbar__mobile-logo img { width: 36px; height: 36px; border-radius: 999px; object-fit: contain; }
+@media (max-width: 420px) { .ohnix-topbar__mobile-logo span { display: none; } }
 .ohnix-topbar__mobile-logo span { font-size: 13px; font-weight: 700; letter-spacing: .18em; color: var(--ohnix-text-primary); }
 .ohnix-topbar__icon-btn {
   display: inline-grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; cursor: pointer;

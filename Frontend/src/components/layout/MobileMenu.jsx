@@ -1,31 +1,51 @@
 // components/layout/MobileMenu.jsx
-import React, { useEffect, useRef } from "react";
-import { Menu, Skeleton } from "antd";
-import { CloseOutlined } from "@ant-design/icons";
-import { getMenuItems } from "../../data";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Skeleton } from "antd";
+import { CloseOutlined, SearchOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
-import AuthContext from "../../context/AuthContext";
-import { useTeam } from "../../context/TeamContext";
-import { useDiscoveries } from "../../context/DiscoveryContext";
-import useSubscription from "../../hooks/useSubscription";
+import useNavItems, { NAV_GROUPS } from "../../hooks/useNavItems";
+import useNavSignals, { TONE_RANK } from "../../hooks/useNavSignals";
 import { useTheme } from "../../context/ThemeContext";
-import ThemeToggle from "../common/ThemeToggle";
-import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 import useScrollLock from "../../hooks/useScrollLock";
+import { GroupPanel, BusinessPulse } from "./DashboardSidebar";
+import { NAV_GROUP_ICONS } from "./navGroupIcons";
+import { openCommandPalette } from "./commandPaletteEvents";
+import "./navigation.css";
 
-const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
+const topTone = (signals) => (signals.length ? [...signals].sort((a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone])[0].tone : null);
 
+// Mobile counterpart of the sectioned sidebar (DashboardSidebar.jsx): the
+// same areas, module rows, live signals and business pulse, laid out as a
+// sheet - areas become a swipeable chip row instead of a vertical rail.
 const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
-    const { user } = React.useContext(AuthContext);
-    const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
-    const { openCount: openDiscoveriesCount } = useDiscoveries();
-    const { plan, can, loading: planLoading } = useSubscription();
-    const { t, currentLanguage } = useI18n();
+    const { t } = useI18n();
     const { isLite } = useTheme();
+    const { items, loading, can, needsFiscalSetup, openDiscoveriesCount } = useNavItems();
+    const signals = useNavSignals({ items, can, needsFiscalSetup, openDiscoveriesCount });
     const panelRef = useRef(null);
-    const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
-    const showFiscalSetup = ELECTRONIC_INVOICING_ENABLED && (!user?.company || user?.company?.countryCode === "CO") && !isTeamMember;
-    const needsFiscalSetup = showFiscalSetup && !user?.company?.electronicInvoicingEnabled;
+    const chipsRef = useRef(null);
+
+    const groups = useMemo(
+        () =>
+            NAV_GROUPS.map((key) => {
+                const groupItems = items.filter((item) => item.group === key);
+                return { key, items: groupItems, signals: groupItems.flatMap((item) => signals[item.key] || []) };
+            }).filter((group) => group.items.length > 0),
+        [items, signals]
+    );
+    const currentGroup = items.find((item) => item.key === currentPage)?.group || "home";
+    const [activeGroup, setActiveGroup] = useState(currentGroup);
+    // Reopening the menu starts on the area of the page you're on.
+    useEffect(() => {
+        if (!collapsed) setActiveGroup(currentGroup);
+    }, [collapsed, currentGroup]);
+    const shownGroup = groups.find((group) => group.key === activeGroup) || groups[0];
+
+    // Keep the active chip in view when it changes (and once loading ends -
+    // the chips only exist after permissions/plan resolve).
+    useEffect(() => {
+        chipsRef.current?.querySelector(".is-active")?.scrollIntoView({ block: "nearest", inline: "center" });
+    }, [activeGroup, collapsed, loading]);
 
     useEffect(() => {
         const handlePointerDown = (event) => {
@@ -49,11 +69,9 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
         };
     }, [collapsed, onClose]);
 
-    // Lock body scroll while open - this one didn't lock scroll at all
-    // before, so the page behind it could still scroll while the menu was
-    // open, feeding into the resize-driven auto-close bug in
-    // DashboardLayout.jsx (a background scroll on mobile can trigger the
-    // browser chrome to hide/show and fire a resize event).
+    // Lock body scroll while open - otherwise a background scroll on mobile
+    // can make the browser chrome hide/show and fire the resize event that
+    // DashboardLayout.jsx listens to.
     useScrollLock(isMobile && !collapsed);
 
     useEffect(() => {
@@ -65,6 +83,16 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
         return () => document.removeEventListener("keydown", handleEscape);
     }, [collapsed, onClose]);
 
+    // Any module link (list or pulse card) closes the sheet.
+    const handleLinkClick = (event) => {
+        if (event.target.closest("a")) onClose?.();
+    };
+
+    const handleSearch = () => {
+        onClose?.();
+        openCommandPalette();
+    };
+
     return (
         <div
             className="md:hidden fixed inset-0 transition-all duration-300 ease-in-out no-print"
@@ -74,80 +102,66 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                 zIndex: 999,
             }}
         >
-            <div
-                className="absolute inset-0 bg-black/55 backdrop-blur-[4px]"
-                onClick={onClose}
-            />
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-[4px]" onClick={onClose} />
             <div
                 ref={panelRef}
-                className="ohnix-mobile-menu absolute bottom-3 left-3 right-3 top-20 flex max-h-[calc(100dvh-5.75rem)] flex-col overflow-hidden rounded-2xl border border-[var(--ohnix-line-4)] shadow-2xl"
+                className={`ohnix-nav ohnix-mobile-nav ${collapsed ? "" : "is-open"}`}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t("nav.sections")}
+                onClick={handleLinkClick}
             >
-                <div className="px-4 py-3 h-full flex flex-col gap-3">
-                    <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-2.5">
-                            <div className="flex items-center justify-center rounded-lg p-1">
-                                <img
-                                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
-                                    alt=""
-                                    aria-hidden="true"
-                                    className="h-9 w-9 object-contain"
-                                />
-                            </div>
-                            <span className="text-sm font-semibold tracking-wide text-[var(--ohnix-text-primary)]">
-                                Menú
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <ThemeToggle />
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                aria-label="Cerrar menú"
-                                title="Cerrar menú"
-                                className="ohnix-mobile-menu-close inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--ohnix-line-5)] bg-[var(--ohnix-hover-overlay)] text-base text-[var(--ohnix-text-soft)] transition-colors hover:border-[#29D8D5]/60 hover:bg-[var(--ohnix-hover-overlay-strong)] hover:text-[var(--ohnix-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/60"
-                            >
-                                <CloseOutlined />
-                            </button>
-                        </div>
-                    </div>
-                    <div className="ohnix-scrollbar-thin min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto">
-                        {teamLoading || planLoading ? (
-                            <div className="space-y-3 p-3">
-                                {Array.from({ length: 6 }).map((_, i) => (
-                                    <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
-                                ))}
-                            </div>
-                        ) : (
-                            <Menu
-                                theme={isLite ? "light" : "dark"}
-                                selectedKeys={[currentPage]}
-                                mode="inline"
-                                items={getMenuItems(
-                                    t,
-                                    user?.role,
-                                    // Same gate as DashboardSidebar.jsx - only once
-                                    // the company actually activated invoicing, not
-                                    // just for being Colombian.
-                                    ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && Boolean(user?.company?.electronicInvoicingEnabled),
-                                    showTeam,
-                                    hasPermission,
-                                    ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
-                                    showFiscalSetup,
-                                    needsFiscalSetup,
-                                    openDiscoveriesCount,
-                                    can,
-                                    currentLanguage
-                                )}
-                                onClick={onClose}
-                                className="border-r-0"
-                                style={{
-                                    background: "transparent",
-                                    padding: "0.5rem 0",
-                                }}
-                            />
-                        )}
-                    </div>
+                <div className="ohnix-mobile-nav__head">
+                    <img src={isLite ? "/Ohnix_Icon_Lite.png" : "/ohnix-icon-v2-192.png"} alt="" aria-hidden="true" />
+                    <button type="button" className="ohnix-nav__search" onClick={handleSearch}>
+                        <SearchOutlined />
+                        <span className="ohnix-nav__search-text">{t("nav.search_placeholder")}</span>
+                    </button>
+                    <button type="button" onClick={onClose} aria-label={t("nav.close_menu")} title={t("nav.close_menu")} className="ohnix-mobile-nav__close">
+                        <CloseOutlined />
+                    </button>
                 </div>
+
+                {loading ? (
+                    <div className="space-y-3 p-3">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
+                        ))}
+                    </div>
+                ) : (
+                    <>
+                        <div className="ohnix-mobile-nav__chips" ref={chipsRef} role="tablist">
+                            {groups.map((group) => {
+                                const tone = topTone(group.signals);
+                                const active = group.key === shownGroup?.key;
+                                return (
+                                    <button
+                                        key={group.key}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={active}
+                                        className={`ohnix-mobile-nav__chip ${active ? "is-active" : ""} ${group.key === currentGroup ? "is-current" : ""}`}
+                                        onClick={() => setActiveGroup(group.key)}
+                                    >
+                                        <span className="ohnix-mobile-nav__chip-icon">
+                                            {NAV_GROUP_ICONS[group.key]}
+                                            {tone && <span className={`ohnix-nav__dot is-${tone}`} />}
+                                        </span>
+                                        {t(`nav.group_${group.key}`)}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="ohnix-mobile-nav__list ohnix-scrollbar-thin" role="tabpanel">
+                            {shownGroup && <GroupPanel key={shownGroup.key} group={shownGroup} currentPage={currentPage} signals={signals} can={can} />}
+                        </div>
+
+                        <div className="ohnix-mobile-nav__pulse">
+                            <BusinessPulse items={items} signals={signals} />
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

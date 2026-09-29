@@ -192,7 +192,7 @@ const CompanyHeader = () => {
     );
 };
 
-const GroupPanel = ({ group, currentPage, signals, can, compact = false }) => {
+export const GroupPanel = ({ group, currentPage, signals, can, compact = false }) => {
     const { t } = useI18n();
     const pending = group.signals.reduce((sum, signal) => sum + signal.count, 0);
     return (
@@ -240,7 +240,7 @@ const GroupPanel = ({ group, currentPage, signals, can, compact = false }) => {
 
 // The "what needs me today" card at the foot of the panel - the most urgent
 // signals across every area the user can see, one click from each module.
-const BusinessPulse = ({ items, signals }) => {
+export const BusinessPulse = ({ items, signals }) => {
     const { t } = useI18n();
     // One row per module (its signals joined), most urgent modules first.
     const entries = items

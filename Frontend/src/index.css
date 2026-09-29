@@ -2155,58 +2155,6 @@ textarea.ant-input[disabled] {
 }
 .ohnix-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
 
-.ohnix-mobile-menu .ant-menu {
-  background: transparent !important;
-  color: var(--ohnix-text-soft) !important;
-}
-
-.ohnix-mobile-menu .ant-menu-title-content {
-  color: inherit !important;
-}
-
-.ohnix-mobile-menu .ant-menu-item {
-  color: var(--ohnix-text-soft) !important;
-  border-radius: 10px;
-  margin-inline: 0;
-  width: 100%;
-}
-
-.ohnix-mobile-menu .ant-menu-item:hover {
-  color: var(--ohnix-text-primary) !important;
-  background: var(--ohnix-hover-overlay) !important;
-}
-
-.ohnix-mobile-menu .ant-menu-item-selected {
-  color: var(--ohnix-text-primary) !important;
-  background: rgba(41, 216, 213, 0.18) !important;
-  box-shadow: inset 3px 0 0 #29d8d5;
-}
-
-.ohnix-mobile-menu .ant-menu-item-selected::after {
-  display: none;
-}
-
-.ohnix-mobile-menu {
-  background: color-mix(in srgb, var(--ohnix-surface) 86%, transparent) !important;
-  backdrop-filter: blur(18px);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(41, 216, 213, 0.08);
-}
-
-.ohnix-mobile-menu::before {
-  content: "";
-  position: absolute;
-  inset: 0 18% auto;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #29d8d5, transparent);
-  opacity: 0.8;
-  pointer-events: none;
-}
-
-.ohnix-mobile-menu .ant-menu-item .ant-menu-item-icon,
-.ohnix-mobile-menu .ant-menu-item-selected .ant-menu-item-icon {
-  color: currentColor !important;
-}
-
 .profile-page .ant-card {
   background: color-mix(in srgb, var(--ohnix-surface-card) 94%, transparent) !important;
   border-color: var(--ohnix-line-4) !important;
@@ -3948,8 +3896,7 @@ html[data-ohnix-theme="lite"] .ohnix-logo-adaptive {
    of those overlays is open; their open panels are left alone. */
 @media (max-width: 767.98px) {
   body:has(.ant-modal-wrap:not([style*="display: none"])) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap),
-  body:has(.ant-drawer-open) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap),
-  body:has(.ohnix-mobile-menu) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap) {
+  body:has(.ant-drawer-open) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap) {
     visibility: hidden !important;
     pointer-events: none !important;
   }
