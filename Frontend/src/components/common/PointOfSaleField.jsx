@@ -91,8 +91,22 @@ export const usePointOfSaleFieldVisible = ({ salesOnly = false } = {}) => {
 const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false, salesOnly = false }) => {
     const { t } = useI18n();
     const { visible, options, subscriptionLoading } = usePointOfSaleFieldVisible({ salesOnly });
+    const form = Form.useFormInstance();
 
-    if (!visible) return null;
+    // Hidden because there's only one choice - but "one choice" here can be
+    // one STORE on an account that also has a bodega (salesOnly filters it
+    // out). The server counts every active location, so leaving the field
+    // empty made it reject the order with "pointOfSaleId es obligatorio".
+    // Sending the single option explicitly is always correct.
+    const onlyOptionId = !visible && options?.length === 1 ? options[0].id : null;
+    useEffect(() => {
+        if (onlyOptionId && form && !form.getFieldValue(name)) form.setFieldValue(name, onlyOptionId);
+    }, [onlyOptionId, form, name]);
+
+    if (!visible) {
+        // Registers the field so the auto-picked value is actually submitted.
+        return onlyOptionId ? <Form.Item name={name} hidden noStyle><input type="hidden" /></Form.Item> : null;
+    }
 
     return (
         <Form.Item

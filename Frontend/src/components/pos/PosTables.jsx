@@ -148,7 +148,8 @@ export const TabHeader = ({ tab, onBack, onKitchen, onPreBill, onMove, onCancel,
                     </div>
                 </div>
             </div>
-            <div className="mt-3 grid grid-cols-4 gap-2">
+            {/* 2x2: four labelled actions don't fit one row of the 400px cart. */}
+            <div className="mt-3 grid grid-cols-2 gap-2">
                 <Tooltip title={tab.unsent_count ? t("tables.kitchen_hint", { count: tab.unsent_count }) : t("tables.kitchen_nothing")}>
                     <Button size="small" icon={<FireOutlined />} onClick={onKitchen} loading={sending} disabled={!tab.unsent_count} type={tab.unsent_count ? "primary" : "default"}>
                         {t("tables.kitchen")}

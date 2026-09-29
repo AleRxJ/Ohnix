@@ -720,3 +720,13 @@
 .pos-layout.is-full {
     grid-template-columns: minmax(0, 1fr);
 }
+
+/* While the mobile charge bar is showing, lift the floating helpers
+   (tour + assistant) above it - they're parked bottom-right, exactly where
+   "Cobrar" sits, and covered it. `translate` is independent of the FABs' own
+   transform/drag positioning. */
+body.pos-cart-bar-open .inventory-tour-fab-wrap,
+body.pos-cart-bar-open .assistant-fab-wrap {
+    translate: 0 -84px;
+    transition: translate 0.25s ease;
+}

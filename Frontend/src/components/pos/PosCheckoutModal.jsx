@@ -95,16 +95,20 @@ const SuccessView = ({ result, onNewSale, onDownload, downloading, onPrint, prin
                 </p>
             )}
 
-            <div className="mt-6 flex w-full flex-col-reverse gap-3 sm:flex-row">
-                <Button size="large" icon={<PrinterOutlined />} onClick={onPrint} loading={printing} className="sm:flex-1">
-                    {printing ? t("pos.printing") : t("pos.print_ticket")}
-                </Button>
-                {!result.offline && result.orderId && (
-                    <Button size="large" icon={<DownloadOutlined />} onClick={onDownload} loading={downloading} className="sm:flex-1">
-                        {t("pos.download_receipt")}
+            {/* "Nueva venta" is THE next action - full width on its own row,
+                never squeezed next to the secondary ones. */}
+            <div className="mt-6 w-full space-y-3">
+                <div className={`grid gap-3 ${!result.offline && result.orderId ? "grid-cols-2" : "grid-cols-1"}`}>
+                    <Button size="large" icon={<PrinterOutlined />} onClick={onPrint} loading={printing}>
+                        {printing ? t("pos.printing") : t("pos.print_ticket")}
                     </Button>
-                )}
-                <button type="button" className="pos-charge sm:flex-1" onClick={onNewSale} autoFocus>
+                    {!result.offline && result.orderId && (
+                        <Button size="large" icon={<DownloadOutlined />} onClick={onDownload} loading={downloading}>
+                            {t("pos.download_receipt")}
+                        </Button>
+                    )}
+                </div>
+                <button type="button" className="pos-charge" onClick={onNewSale} autoFocus>
                     {t("pos.new_sale")}
                     <kbd className={KBD_ON_ACCENT}>Enter</kbd>
                 </button>

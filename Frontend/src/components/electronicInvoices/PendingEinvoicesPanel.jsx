@@ -167,7 +167,9 @@ export default function PendingEinvoicesPanel({ onIssued }) {
                         <Tooltip title={!row.can_issue_now ? t("pending_einvoices.not_completed") : row.missing_fiscal_fields.length ? t("pending_einvoices.fix_customer_first") : ""}>
                             <Button
                                 size="small"
-                                type="primary"
+                                // The theme paints a disabled primary as bright as an
+                                // enabled one - only look actionable when it is.
+                                type={row.can_issue_now && row.missing_fiscal_fields.length === 0 ? "primary" : "default"}
                                 icon={<SendOutlined />}
                                 loading={sendingIds.includes(row._id)}
                                 disabled={!row.can_issue_now || row.missing_fiscal_fields.length > 0 || (sendingIds.length > 0 && !sendingIds.includes(row._id))}
@@ -195,11 +197,11 @@ export default function PendingEinvoicesPanel({ onIssued }) {
                     </h2>
                     <p className="m-0 text-sm text-[var(--ohnix-text-muted)]">{t("pending_einvoices.subtitle")}</p>
                 </div>
-                {canIssue && (
+                {canIssue && selected.length > 0 && (
                     <Button
                         type="primary"
                         icon={<SendOutlined />}
-                        disabled={selected.length === 0 || sendingIds.length > 0}
+                        disabled={sendingIds.length > 0}
                         loading={sendingIds.length > 1}
                         onClick={() => issue(selected)}
                     >

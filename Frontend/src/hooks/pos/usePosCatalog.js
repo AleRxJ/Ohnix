@@ -43,7 +43,7 @@ const loadWithMirror = async (entity, fetcher) => {
 
 export const isFinalConsumer = (customer) => customer?.type === "final_consumer";
 
-export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment }) => {
+export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment, ready = true }) => {
     const { user } = useContext(AuthContext);
     const [products, setProducts] = useState([]);
     const [customers, setCustomers] = useState([]);
@@ -127,6 +127,11 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment }) => {
         async (knownCustomers) => {
             const matchesLocation = (c) =>
                 isFinalConsumer(c) && (!pointOfSaleId || String(c.point_of_sale?._id) === String(pointOfSaleId));
+            // Already known (it's in the customer list after the first visit) -
+            // use it right away so "Cobrar" isn't disabled while the
+            // find-or-create round-trip below confirms it.
+            const known = knownCustomers.find(matchesLocation);
+            if (known) setFinalConsumer(known);
             if (getConnectivityState()) {
                 try {
                     const response = await api.post("/customers/final-consumer", pointOfSaleId ? { pointOfSaleId } : {});
@@ -151,6 +156,7 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment }) => {
     }, [fetchProducts, fetchCustomers, fetchFinance, fetchBold, resolveFinalConsumer]);
 
     useEffect(() => {
+        if (!ready) return undefined;
         let cancelled = false;
         setLoading(true);
         reload().finally(() => {
@@ -159,7 +165,7 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment }) => {
         return () => {
             cancelled = true;
         };
-    }, [reload]);
+    }, [reload, ready]);
 
     // Another register (or tab) selling moves stock - keep the grid honest.
     useDataInvalidation(["product", "order"], fetchProducts);

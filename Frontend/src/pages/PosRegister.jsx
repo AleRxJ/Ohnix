@@ -18,7 +18,7 @@ import { usePosCart } from "../hooks/pos/usePosCart";
 import { usePosTables } from "../hooks/pos/usePosTables";
 import { useTabCart } from "../hooks/pos/useTabCart";
 import { isFinalConsumer, usePosCatalog } from "../hooks/pos/usePosCatalog";
-import { usePointOfSaleFieldVisible } from "../components/common/PointOfSaleField";
+import { usePosLocations } from "../hooks/pos/usePosLocations";
 import { getConnectivityState, subscribeConnectivity } from "../offline/connectivity";
 import { queueCreate } from "../offline/entityQueue";
 import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
@@ -58,12 +58,17 @@ const PosRegister = () => {
     const einvoiceAsk = einvoicing && user?.company?.einvoiceIssueMode !== "automatic";
     const canDeferEinvoice = hasCapability("deferEinvoice");
 
-    // --- Location (only a choice when the actor really has more than one) --
-    const { options: locationOptions } = usePointOfSaleFieldVisible({ salesOnly: true });
-    const hasLocationChoice = (locationOptions?.length || 0) > 1;
+    // --- Location --------------------------------------------------------
+    // The Caja ALWAYS names its location explicitly. Leaving it to the server
+    // only works when the account has exactly one active location of ANY
+    // type - an account with a store plus a bodega (or whose plan no longer
+    // includes multi-sede) got "pointOfSaleId es obligatorio" on every sale,
+    // table and final-consumer lookup. The selector only shows with 2+ stores.
+    const { locations: locationOptions, loading: locationsLoading } = usePosLocations();
+    const hasLocationChoice = locationOptions.length > 1;
     const [pointOfSaleId, setPointOfSaleId] = useState(undefined);
     useEffect(() => {
-        if (!hasLocationChoice) {
+        if (!locationOptions.length) {
             setPointOfSaleId(undefined);
             return;
         }
@@ -72,7 +77,11 @@ const PosRegister = () => {
             if (current && locationOptions.some((o) => o.id === current)) return current;
             return locationOptions.find((o) => o.id === stored)?.id || locationOptions[0].id;
         });
-    }, [hasLocationChoice, locationOptions]);
+    }, [locationOptions]);
+    // Nothing that writes (final consumer, sales, tables) runs until the
+    // location is known - an early request without it is exactly the error
+    // this replaced.
+    const locationReady = !locationsLoading && (locationOptions.length === 0 || Boolean(pointOfSaleId));
     const changeLocation = (id) => {
         setPointOfSaleId(id);
         try {
@@ -82,14 +91,14 @@ const PosRegister = () => {
         }
     };
 
-    const catalog = usePosCatalog({ pointOfSaleId, canRegisterPayment });
+    const catalog = usePosCatalog({ pointOfSaleId, canRegisterPayment, ready: locationReady });
     const counterCart = usePosCart();
 
     // --- Mesas (restaurant mode) ------------------------------------------
     // "counter" sells straight from the cart; "tables" works per-table tabs
     // (usePosTables) and the cart then IS the active table's tab.
     const canConfigureTables = hasPermission("orders", "admin");
-    const tables = usePosTables({ pointOfSaleId });
+    const tables = usePosTables({ pointOfSaleId, enabled: locationReady });
     const [mode, setMode] = useState(() => {
         try {
             return localStorage.getItem(MODE_KEY) === "tables" ? "tables" : "counter";
@@ -160,7 +169,7 @@ const PosRegister = () => {
     const idempotencyKey = useRef(null);
     const searchRef = useRef(null);
 
-    const canCharge = canSell && !showTablesBoard && cart.lines.length > 0 && Boolean(customer);
+    const canCharge = canSell && locationReady && !showTablesBoard && cart.lines.length > 0 && Boolean(customer);
     const chargeHint = !canSell
         ? t("common.no_permission_to_edit")
         : !customer && cart.lines.length > 0
@@ -484,6 +493,13 @@ const PosRegister = () => {
 
     const locationName = locationOptions?.find((o) => o.id === pointOfSaleId)?.name || null;
 
+    // Mobile charge bar visible -> lift the floating helpers above it (pos.css).
+    const showMobileBar = !isDesktop && !showTablesBoard && (cart.lines.length > 0 || Boolean(activeTab));
+    useEffect(() => {
+        document.body.classList.toggle("pos-cart-bar-open", showMobileBar);
+        return () => document.body.classList.remove("pos-cart-bar-open");
+    }, [showMobileBar]);
+
     const selectTable = async (table, tab) => {
         if (tab) {
             setActiveTabId(tab._id);
@@ -639,7 +655,7 @@ const PosRegister = () => {
                 </div>
             </div>
 
-            {!isDesktop && !showTablesBoard && (cart.lines.length > 0 || activeTab) && (
+            {showMobileBar && (
                 <div className="pos-mobile-bar">
                     <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setCartSheetOpen(true)}>
                         <span className="block text-xs text-[var(--ohnix-text-dim)]">{t("pos.units_in_cart", { count: cart.totals.units })}</span>
