@@ -122,7 +122,9 @@ export async function queueUpdate({ entity, url, id, fields, optimisticPatch, me
             data: asFormData ? formDataToEntries(fields) : fields,
             isFormData: asFormData,
         },
-        meta,
+        // recordId lets the sync queue name the edited record from the
+        // mirror (an edit's body is often partial - no name field).
+        meta: { recordId: id, ...meta },
     });
     return optimisticRecord;
 }

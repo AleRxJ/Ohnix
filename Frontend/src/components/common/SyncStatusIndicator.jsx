@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Popover, Button } from "antd";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
@@ -14,14 +14,20 @@ import { OUTBOX_STATUS } from "../../offline/outbox.js";
 import { getConnectivityState, subscribeConnectivity } from "../../offline/connectivity.js";
 import useI18n from "../../hooks/useI18n";
 import ConflictsPanel from "./ConflictsPanel.jsx";
+import SyncQueue from "./SyncQueue.jsx";
+import useSyncQueue from "../../hooks/useSyncQueue.js";
 
 // Content of the click-to-open explainer - what still works offline vs. what
 // needs a connection. Real bullet lists (not a comma-joined sentence, which
 // read as a wall of text) so it's scannable at a glance; kept as short
 // static items (not a live-generated list from the module registry) since
 // it's meant to be a human-readable summary, not an exhaustive spec.
-const OfflineCapabilitiesPopover = ({ t, conflictCount, onOpenConflicts }) => (
+// Offline: what still works + the queue of changes saved on this device.
+// Online with pending/just-synced changes: only the queue, so the user sees
+// exactly *what* is being sent (not just a count) and each row land.
+const OfflineCapabilitiesPopover = ({ t, online, queue, conflictCount, onOpenConflicts }) => (
     <div className="offline-capabilities-popover__body">
+        {!online && (
         <div className="offline-capabilities-popover__header">
             <span className="offline-capabilities-popover__icon-badge">
                 <DisconnectOutlined />
@@ -31,6 +37,7 @@ const OfflineCapabilitiesPopover = ({ t, conflictCount, onOpenConflicts }) => (
                 <p className="offline-capabilities-popover__intro">{t("common.offline_capabilities_intro")}</p>
             </div>
         </div>
+        )}
 
         {conflictCount > 0 && (
             <Button
@@ -45,6 +52,10 @@ const OfflineCapabilitiesPopover = ({ t, conflictCount, onOpenConflicts }) => (
             </Button>
         )}
 
+        <SyncQueue queue={queue} online={online} />
+
+        {!online && (
+        <>
         <p className="offline-capabilities-popover__group-title offline-capabilities-popover__group-title--ok">
             {t("common.offline_capabilities_available_title")}
         </p>
@@ -72,6 +83,8 @@ const OfflineCapabilitiesPopover = ({ t, conflictCount, onOpenConflicts }) => (
         <p className="offline-capabilities-popover__footnote">
             <ReloadOutlined /> {t("common.offline_capabilities_reload_note")}
         </p>
+        </>
+        )}
     </div>
 );
 
@@ -102,6 +115,24 @@ const SyncStatusIndicator = () => {
         0
     );
 
+    const queue = useSyncQueue();
+
+    // Brief "Sincronizado" confirmation when the queue drains while online -
+    // otherwise the badge just vanished and the user never knew their
+    // offline changes actually made it.
+    const [justSynced, setJustSynced] = useState(false);
+    const previousPending = useRef(pendingCount);
+    useEffect(() => {
+        const hadPending = previousPending.current > 0;
+        previousPending.current = pendingCount;
+        if (hadPending && pendingCount === 0 && online && conflictCount === 0) {
+            setJustSynced(true);
+            const id = setTimeout(() => setJustSynced(false), 6000);
+            return () => clearTimeout(id);
+        }
+        return undefined;
+    }, [pendingCount, online, conflictCount]);
+
     let icon;
     let label;
     let color;
@@ -109,7 +140,7 @@ const SyncStatusIndicator = () => {
 
     if (!online) {
         icon = <DisconnectOutlined />;
-        label = t("common.offline_offline");
+        label = pendingCount > 0 ? t("common.offline_offline_pending", { count: pendingCount }) : t("common.offline_offline");
         color = "#f59e0b";
     } else if (conflictCount > 0) {
         icon = <WarningFilled />;
@@ -123,6 +154,10 @@ const SyncStatusIndicator = () => {
         icon = <CloudSyncOutlined />;
         label = t("common.offline_pending", { count: pendingCount });
         color = "#f59e0b";
+    } else if (justSynced) {
+        icon = <CheckCircleFilled />;
+        label = t("common.offline_synced");
+        color = "#34d399";
     } else {
         showBadge = false; // Connected, nothing pending - stay out of the way.
     }
@@ -134,6 +169,8 @@ const SyncStatusIndicator = () => {
                     content={
                         <OfflineCapabilitiesPopover
                             t={t}
+                            online={online}
+                            queue={queue}
                             conflictCount={conflictCount}
                             onOpenConflicts={() => setConflictsOpen(true)}
                         />

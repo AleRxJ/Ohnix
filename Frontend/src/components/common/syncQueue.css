@@ -1,0 +1,70 @@
+/* Sync queue inside the offline/sync popover (SyncQueue.jsx). Tokens only,
+   so it follows dark/lite like the rest of .offline-capabilities-popover. */
+.sync-queue {
+  --sq-accent: var(--ohnix-accent);
+  --sq-warn: #f5a524;
+  --sq-ok: #34d399;
+  --sq-danger: #fb7185;
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ohnix-line-4);
+  background: var(--ohnix-surface-2);
+}
+.sync-queue:last-child { margin-bottom: 0; }
+[data-ohnix-theme="lite"] .sync-queue { --sq-accent: #0b8f8c; --sq-warn: #b45309; --sq-ok: #059669; --sq-danger: #e11d48; }
+.sync-queue.is-offline { --sq-tone: var(--sq-warn); }
+.sync-queue.is-info { --sq-tone: var(--sq-accent); }
+.sync-queue.is-warn { --sq-tone: var(--sq-warn); }
+.sync-queue.is-done { --sq-tone: var(--sq-ok); }
+
+.sync-queue__head { display: flex; align-items: flex-start; gap: 10px; }
+.sync-queue__head-icon {
+  display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 8px; font-size: 14px;
+  color: var(--sq-tone); background: color-mix(in srgb, var(--sq-tone) 14%, transparent);
+}
+.sync-queue__title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 700; color: var(--ohnix-text-primary); }
+.sync-queue__count {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 800; color: var(--sq-tone); background: color-mix(in srgb, var(--sq-tone) 16%, transparent);
+}
+.sync-queue__summary { margin: 2px 0 0; font-size: 11.5px; line-height: 1.35; color: var(--ohnix-text-muted); }
+
+.sync-queue__progress { position: relative; height: 4px; margin: 10px 0 2px; overflow: hidden; border-radius: 999px; background: var(--ohnix-line-3); }
+.sync-queue__progress span {
+  position: absolute; inset: 0 auto 0 0; border-radius: inherit;
+  background: linear-gradient(90deg, #29d8d5, #44f3f0); transition: width .4s ease;
+}
+.sync-queue__progress span::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: sync-queue-shimmer 1.3s linear infinite;
+}
+
+.sync-queue__list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.sync-queue__row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-radius: 8px; animation: sync-queue-in .25s ease both; }
+.sync-queue__row.is-synced { opacity: .78; }
+.sync-queue__op {
+  display: grid; place-items: center; flex: 0 0 24px; height: 24px; border-radius: 7px; font-size: 11px;
+  color: var(--ohnix-text-soft); background: var(--ohnix-line-3);
+}
+.sync-queue__op.is-create { color: var(--sq-accent); background: color-mix(in srgb, var(--sq-accent) 14%, transparent); }
+.sync-queue__op.is-delete { color: var(--sq-danger); background: color-mix(in srgb, var(--sq-danger) 14%, transparent); }
+.sync-queue__text { display: flex; flex: 1; min-width: 0; flex-direction: column; line-height: 1.25; }
+.sync-queue__text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--ohnix-text-primary); }
+.sync-queue__text strong em { font-style: normal; font-weight: 500; color: var(--ohnix-text-soft); }
+.sync-queue__text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: var(--ohnix-text-dim); }
+.sync-queue__status {
+  display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; white-space: nowrap; color: var(--ohnix-text-muted); background: var(--ohnix-line-2);
+}
+.sync-queue__status.is-syncing { color: var(--sq-accent); background: color-mix(in srgb, var(--sq-accent) 14%, transparent); }
+.sync-queue__status.is-error { color: var(--sq-warn); background: color-mix(in srgb, var(--sq-warn) 14%, transparent); cursor: help; }
+.sync-queue__status.is-synced { color: var(--sq-ok); background: color-mix(in srgb, var(--sq-ok) 14%, transparent); }
+.sync-queue__more { margin: 4px 4px 0; font-size: 11px; color: var(--ohnix-text-dim); }
+
+@keyframes sync-queue-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes sync-queue-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sync-queue *, .sync-queue *::after { animation: none !important; transition: none !important; }
+}

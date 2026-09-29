@@ -2974,7 +2974,8 @@ html[data-ohnix-theme="lite"] .public-sales-quotation-brand img.ohnix-logo-adapt
   padding: 4px 2px;
 }
 .offline-capabilities-popover__body {
-  width: 260px;
+  width: 300px;
+  max-width: calc(100vw - 48px);
   font-size: 12px;
 }
 .offline-capabilities-popover__header {
