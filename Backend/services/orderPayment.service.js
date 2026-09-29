@@ -102,7 +102,11 @@ export const normalizeOrderPaymentWithholdings = (withholdings = {}, amount) => 
     return { ...values, total };
 };
 
-export const registerOrderPayment = async ({ accountId, actorId, orderId, amount, cashAccountId, method, reference, settleInFull, paymentMethodId, withholdings }) => {
+// `verification` - see OrderPayment.verificationStatus. Omitted it stays
+// not_required, exactly as every caller registered payments before.
+const VERIFICATION_STATUSES = ["not_required", "pending", "verified"];
+export const registerOrderPayment = async ({ accountId, actorId, orderId, amount, cashAccountId, method, reference, settleInFull, paymentMethodId, withholdings, verification }) => {
+    const verificationStatus = VERIFICATION_STATUSES.includes(verification?.status) ? verification.status : "not_required";
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
         throw new ApiError(400, "Payment amount must be greater than zero.", [], "", "order_payment_amount_invalid");
@@ -167,6 +171,10 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
                 method: method?.trim() || null,
                 reference: reference?.trim() || null,
                 createdById: actorId,
+                verificationStatus,
+                ...(verificationStatus === "verified"
+                    ? { verificationSource: verification.source || "manual", verifiedAt: new Date() }
+                    : {}),
             },
         });
 

@@ -604,3 +604,21 @@
         stroke-dashoffset: 0;
     }
 }
+
+/* Bold tiles carry a small "confirmed by the provider" mark - the one
+   visual difference between a verified charge and a typed-in one. */
+.pos-tile.is-bold {
+    position: relative;
+}
+
+.pos-tile.is-bold::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--ohnix-status-success);
+    box-shadow: 0 0 0 3px var(--ohnix-status-success-soft);
+}

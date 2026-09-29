@@ -8,6 +8,7 @@ import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
 import { handleCertificateOrderEpaycoConfirmation, handleCertificateOrderEpaycoResponse } from "./controllers/certificateOrderPayment.controller.js";
 import { receiveConnectorWebhook } from "./controllers/connectorWebhook.controller.js";
+import { receiveProviderWebhook } from "./controllers/paymentProvider.controller.js";
 import { isOriginAllowed } from "./utils/allowedOrigins.js";
 import { getRedisHealth } from "./utils/redisClient.js";
 
@@ -118,6 +119,15 @@ app.post(
     receiveConnectorWebhook
 );
 
+// Payment confirmations FROM a company's own payment provider (Bold) for the
+// Caja - raw body for the HMAC check, same reasoning as above. The
+// connectionId in the path picks that company's secret and intents.
+app.post(
+    "/api/v1/payment-providers/:provider/webhook/:connectionId",
+    express.raw({ type: "*/*", limit: "1mb" }),
+    receiveProviderWebhook
+);
+
 // NOTE: There is no Factus webhook endpoint here (there used to be one).
 // The official Factus V2 Postman collection (source of truth for this
 // integration) has zero webhook/event-push endpoints, and every document
@@ -177,6 +187,7 @@ import accountingRouter from "./routes/accounting.routes.js";
 import contactRouter from "./routes/contact.routes.js";
 import integrationRouter from "./routes/integration.routes.js";
 import webhookEndpointRouter from "./routes/webhookEndpoint.routes.js";
+import paymentProviderRouter from "./routes/paymentProvider.routes.js";
 import apiDocsRouter from "./routes/apiDocs.routes.js";
 import assistantRouter from "./routes/assistant.routes.js";
 import guestCertificateCheckoutRouter from "./routes/guestCertificateCheckout.routes.js";
@@ -222,6 +233,7 @@ app.use("/api/v1/api-keys", apiKeyRouter);
 app.use("/api/v1/public", publicApiRouter);
 app.use("/api/v1/integrations", integrationRouter);
 app.use("/api/v1/webhooks", webhookEndpointRouter);
+app.use("/api/v1/payment-providers", paymentProviderRouter);
 // apiDocsRouter is intentionally unauthenticated (see its own comment) -
 // it MUST stay ahead of teamRouter/pointOfSaleRouter below for the same
 // reason contactRouter does.

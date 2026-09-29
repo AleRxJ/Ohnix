@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ensureGmfAccount } from "./chartOfAccounts.service.js";
+import { verifyPaymentFromReconciliation, unverifyPaymentFromReconciliation } from "./paymentVerification.service.js";
 
 // Conciliación deliberately simple: a BankStatementEntry is a line already
 // structured by the caller (CSV/XLSX/OFX parsing happens client-side, see
@@ -189,6 +190,9 @@ export const matchEntry = async ({ accountId, cashAccountId, entryId, movementId
             if (movementClaim.count !== 1) throw new ApiError(409, "The cash movement was reconciled in another session.", [], "", "reconciliation_concurrent_change");
             const entryClaim = await tx.bankStatementEntry.updateMany({ where: { id: entryId, cashAccountId, matchedMovementId: null }, data: { matchedMovementId: movementId } });
             if (entryClaim.count !== 1) throw new ApiError(409, "The bank statement entry was reconciled in another session.", [], "", "reconciliation_concurrent_change");
+            // The bank line proves the money arrived - a card/transfer payment
+            // waiting in "Pagos por verificar" becomes verified with it.
+            await verifyPaymentFromReconciliation(tx, movement);
             return tx.bankStatementEntry.findUniqueOrThrow({ where: { id: entryId } });
         }, { isolationLevel: "Serializable" });
     } catch (error) {
@@ -214,6 +218,8 @@ export const unmatchEntry = async ({ accountId, cashAccountId, entryId }) => {
             const entryClaim = await tx.bankStatementEntry.updateMany({ where: { id: entryId, cashAccountId, matchedMovementId: entry.matchedMovementId }, data: { matchedMovementId: null } });
             if (entryClaim.count !== 1) throw new ApiError(409, "The bank statement entry changed in another session.", [], "", "reconciliation_concurrent_change");
             await tx.cashMovement.updateMany({ where: { id: entry.matchedMovementId, cashAccountId }, data: { reconciledAt: null } });
+            const movement = await tx.cashMovement.findUnique({ where: { id: entry.matchedMovementId }, select: { sourceType: true, sourceId: true } });
+            await unverifyPaymentFromReconciliation(tx, movement);
             return tx.bankStatementEntry.findUniqueOrThrow({ where: { id: entryId } });
         }, { isolationLevel: "Serializable" });
     } catch (error) {

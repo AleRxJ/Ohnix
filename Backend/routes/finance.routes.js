@@ -1,3 +1,4 @@
+import { getPaymentVerifications, patchPaymentVerification } from "../controllers/paymentVerification.controller.js";
 import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
@@ -97,6 +98,9 @@ router.route("/purchases/:purchaseId/payments")
 router.post("/purchases/:purchaseId/payments/:paymentId/allocate", requireModulePermission("finance", "edit"), allocatePurchasePayment);
 router.get("/purchases/:purchaseId/payments/:paymentId/allocations", requireModulePermission("finance", "view"), listPurchasePaymentAllocations);
 router.get("/payments/unallocated", requireModulePermission("finance", "view"), listUnallocatedPayments);
+// "Pagos por verificar" - see paymentVerification.service.js.
+router.get("/payment-verifications", requireModulePermission("finance", "view"), getPaymentVerifications);
+router.patch("/order-payments/:paymentId/verification", requireModulePermission("finance", "edit"), patchPaymentVerification);
 router.get("/payment-credits", requireModulePermission("finance", "view"), listPaymentCredits);
 router.post("/payment-credits", requireModulePermission("finance", "edit"), idempotent("finance.payment-credit"), registerPaymentAdvance);
 router.post("/payment-credits/:creditId/apply", requireModulePermission("finance", "edit"), applyPaymentCredit);

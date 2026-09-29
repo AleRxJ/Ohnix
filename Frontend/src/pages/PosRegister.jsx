@@ -20,6 +20,9 @@ import { getConnectivityState, subscribeConnectivity } from "../offline/connecti
 import { queueCreate } from "../offline/entityQueue";
 import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
 import { formatCurrency } from "../utils/currency";
+import { paymentProviderService } from "../services/paymentProviderService";
+import { financeService } from "../services/financeService";
+import { pickAccount } from "../components/pos/posPayments";
 
 const LOCATION_KEY = "ohnix.pos.pointOfSaleId";
 
@@ -101,6 +104,11 @@ const PosRegister = () => {
     const [submitting, setSubmitting] = useState(false);
     const [result, setResult] = useState(null);
     const [downloading, setDownloading] = useState(false);
+    // A Bold charge in flight: the sale already exists (orderId), only its
+    // payment is pending on the provider. { orderId, invoiceNo, total, mode,
+    // payment, intent, error }
+    const [charging, setCharging] = useState(null);
+    const [chargeBusy, setChargeBusy] = useState(false);
     // One key per checkout attempt - a double-tap or retry of the SAME
     // "Confirmar" replays instead of charging twice (see utils/idempotency.js).
     const idempotencyKey = useRef(null);
@@ -124,6 +132,7 @@ const PosRegister = () => {
     const startNewSale = useCallback(() => {
         setCheckoutOpen(false);
         setResult(null);
+        setCharging(null);
         setCustomer(catalog.finalConsumer);
         setTimeout(() => searchRef.current?.focus(), 50);
     }, [catalog.finalConsumer]);
@@ -178,6 +187,13 @@ const PosRegister = () => {
             ...(payment ? { payment } : {}),
         };
 
+        // Bold needs the provider live - never queue a charge offline (the
+        // tiles are hidden offline, this covers losing signal mid-checkout).
+        if (payment?.provider && !getConnectivityState()) {
+            toast.error(t("pos.bold_needs_connection"));
+            return;
+        }
+
         setSubmitting(true);
         try {
             if (!getConnectivityState()) {
@@ -191,21 +207,35 @@ const PosRegister = () => {
                         invoice_no: t("orders.pending_sync_invoice_placeholder"),
                     },
                 });
-                setResult({ offline: true, total, change, method });
+                setResult({ offline: true, total, change, method, verification: payment?.requires_verification ? "pending" : null });
             } else {
                 const response = await api.post("/orders", orderData, {
                     headers: { "Idempotency-Key": idempotencyKey.current },
                 });
                 const order = response.data?.data || {};
-                setResult({
-                    orderId: order._id,
-                    invoiceNo: order.invoice_no,
-                    total: order.total ?? total,
-                    change,
-                    method,
-                    einvoicing,
-                    paymentError: payment && order.payment_registered === false ? order.payment_error : null,
-                });
+                if (payment?.provider) {
+                    // Sale made; now wait for Bold to confirm the charge.
+                    setCharging({
+                        orderId: order._id,
+                        invoiceNo: order.invoice_no,
+                        total: order.total ?? total,
+                        mode: payment.mode,
+                        payment,
+                        intent: order.payment_intent || null,
+                        error: order.payment_intent ? null : order.payment_error || t("pos.charge_error"),
+                    });
+                } else {
+                    setResult({
+                        orderId: order._id,
+                        invoiceNo: order.invoice_no,
+                        total: order.total ?? total,
+                        change,
+                        method,
+                        einvoicing,
+                        verification: payment?.requires_verification ? "pending" : null,
+                        paymentError: payment && order.payment_registered === false ? order.payment_error : null,
+                    });
+                }
             }
             catalog.applyLocalSale(soldLines);
             cart.clear();
@@ -214,6 +244,103 @@ const PosRegister = () => {
             toast.error(describeError(error));
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    // --- Bold charge lifecycle ------------------------------------------------
+    const finishCharge = useCallback(
+        (extra) => {
+            setResult({
+                orderId: charging.orderId,
+                invoiceNo: charging.invoiceNo,
+                total: charging.total,
+                change: 0,
+                einvoicing,
+                ...extra,
+            });
+            setCharging(null);
+        },
+        [charging, einvoicing]
+    );
+
+    // The webhook is what resolves the charge server-side; polling only asks
+    // Ohnix (which, for links, also checks Bold directly) how it went.
+    useEffect(() => {
+        if (!charging?.intent || charging.intent.status !== "pending") return undefined;
+        let stopped = false;
+        const tick = async () => {
+            try {
+                const intent = await paymentProviderService.getIntent(charging.intent._id);
+                if (stopped) return;
+                if (intent.status === "approved") {
+                    finishCharge({ method: charging.mode === "terminal" ? "bold_terminal" : "bold_link", verification: "verified" });
+                } else if (intent.status !== "pending") {
+                    setCharging((prev) => (prev ? { ...prev, intent } : prev));
+                }
+            } catch {
+                // Transient - the next tick tries again.
+            }
+        };
+        const id = setInterval(tick, 2500);
+        return () => {
+            stopped = true;
+            clearInterval(id);
+        };
+    }, [charging, finishCharge]);
+
+    const cancelCharge = async () => {
+        if (!charging?.intent) return;
+        setChargeBusy(true);
+        try {
+            const intent = await paymentProviderService.cancelIntent(charging.intent._id);
+            // It may have been approved an instant before the cancel landed.
+            if (intent.status === "approved") finishCharge({ method: "bold", verification: "verified" });
+            else setCharging((prev) => ({ ...prev, intent }));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("pos.charge_error"));
+        } finally {
+            setChargeBusy(false);
+        }
+    };
+
+    const retryCharge = async () => {
+        setChargeBusy(true);
+        try {
+            const { payment } = charging;
+            const intent = await paymentProviderService.createIntent({
+                order_id: charging.orderId,
+                mode: payment.mode,
+                terminal_serial: payment.terminal_serial,
+                terminal_model: payment.terminal_model,
+                cash_account_id: payment.cash_account_id,
+                payment_method_id: payment.payment_method_id,
+            });
+            setCharging((prev) => ({ ...prev, intent, error: null }));
+        } catch (error) {
+            setCharging((prev) => ({ ...prev, error: error.response?.data?.message || t("pos.charge_error") }));
+        } finally {
+            setChargeBusy(false);
+        }
+    };
+
+    const collectCashInstead = async () => {
+        const account = pickAccount(catalog.cashAccounts, "cash", pointOfSaleId);
+        if (!account) {
+            toast.error(t("pos.no_cash_accounts"));
+            return;
+        }
+        setChargeBusy(true);
+        try {
+            await financeService.registerOrderPayment(charging.orderId, {
+                amount: charging.total,
+                cash_account_id: account._id,
+                method: t("pos.method_cash"),
+            });
+            finishCharge({ method: "cash" });
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("pos.charge_error"));
+        } finally {
+            setChargeBusy(false);
         }
     };
 
@@ -331,13 +458,21 @@ const PosRegister = () => {
                 paymentMethods={catalog.paymentMethods}
                 canRegisterPayment={canRegisterPayment}
                 pointOfSaleId={pointOfSaleId}
+                online={online}
+                bold={catalog.bold}
                 submitting={submitting}
                 result={result}
+                charging={charging}
+                chargeBusy={chargeBusy}
                 onConfirm={handleConfirm}
                 onClose={() => setCheckoutOpen(false)}
                 onNewSale={startNewSale}
                 onDownload={downloadReceipt}
                 downloading={downloading}
+                onCancelCharge={cancelCharge}
+                onRetryCharge={retryCharge}
+                onCashInstead={collectCashInstead}
+                onLeaveOnCredit={() => finishCharge({ method: "credit" })}
             />
         </div>
     );

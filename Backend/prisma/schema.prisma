@@ -55,6 +55,9 @@ enum IntegrationProvider {
   shopify
   woocommerce
   custom_api
+  // In-store payments (Caja) - not an e-commerce channel: it never goes
+  // through connectors/registry.js, see paymentProviders/registry.js.
+  bold
 }
 
 enum IntegrationStatus {
@@ -2051,6 +2054,7 @@ model Order {
   orderDetails       OrderDetail[]
   electronicInvoice  ElectronicInvoice?
   payments           OrderPayment[]
+  paymentIntents     PaymentIntent[]
   writeOffs          ReceivableWriteOff[]
   paymentAllocations OrderPaymentAllocation[]
   salesQuotation     SalesQuotation?
@@ -2694,6 +2698,18 @@ model OrderPayment {
   paidAt                 DateTime @default(now()) @map("paid_at")
   createdById            String   @map("created_by")
   createdAt              DateTime @default(now()) @map("created_at")
+  // Whether the money behind this payment is confirmed to have actually
+  // arrived. not_required: cash, or anything registered before this existed.
+  // pending: card/transfer typed in by a cashier. verified: confirmed by the
+  // provider's webhook (source "bold"), by reconciling its CashMovement
+  // against a bank statement line ("bank_reconciliation"), or by hand
+  // ("manual"). rejected: someone checked and the money isn't there, or the
+  // provider voided it - the accounting is NOT auto-reversed, it's flagged.
+  verificationStatus     PaymentVerificationStatus @default(not_required) @map("verification_status")
+  verificationSource     String?  @map("verification_source")
+  verifiedAt             DateTime? @map("verified_at")
+  verifiedById           String?  @map("verified_by")
+  verificationNote       String?  @map("verification_note")
 
   order          Order                    @relation(fields: [orderId], references: [id])
   allocations    OrderPaymentAllocation[]
@@ -2707,6 +2723,7 @@ model OrderPayment {
   @@index([cashAccountId, createdAt])
   @@index([appliedCreditId])
   @@index([paymentMethodId])
+  @@index([verificationStatus])
   @@map("order_payments")
 }
 
@@ -3971,6 +3988,7 @@ model IntegrationConnection {
   externalReferences ExternalReference[]
   syncLogs           SyncLog[]
   orders             Order[]
+  paymentIntents     PaymentIntent[]
 
   @@index([accountId])
   @@map("integration_connections")
@@ -5368,4 +5386,69 @@ model DemoRequest {
   @@index([status, createdAt])
   @@index([email])
   @@map("demo_requests")
+}
+
+enum PaymentVerificationStatus {
+  not_required
+  pending
+  verified
+  rejected
+}
+
+enum PaymentIntentMode {
+  terminal
+  link
+}
+
+enum PaymentIntentStatus {
+  pending
+  approved
+  rejected
+  cancelled
+  expired
+  voided
+  // The provider approved it but Ohnix couldn't book it as-is (amount
+  // differs from what was asked, or the order no longer had that balance) -
+  // the money is real, so it's surfaced for a person instead of dropped.
+  needs_review
+}
+
+// One attempt to charge an order's pending balance through a connected
+// payment provider (Bold datáfono or link/QR) from the Caja. The sale
+// (Order) always exists first, so money is never taken without a sale; the
+// OrderPayment is only created once the provider confirms (webhook, or a
+// status poll for links) - see paymentIntent.service.js. `reference` is what
+// Ohnix sends to the provider and what its webhook echoes back.
+model PaymentIntent {
+  id                String              @id @default(cuid())
+  accountId         String              @map("account_id")
+  connectionId      String              @map("connection_id")
+  orderId           String              @map("order_id")
+  mode              PaymentIntentMode
+  status            PaymentIntentStatus @default(pending)
+  amount            Decimal             @db.Decimal(14, 2)
+  currency          String              @default("COP")
+  reference         String              @unique
+  externalId        String?             @map("external_id")
+  checkoutUrl       String?             @map("checkout_url") @db.Text
+  terminalSerial    String?             @map("terminal_serial")
+  terminalModel     String?             @map("terminal_model")
+  cashAccountId     String              @map("cash_account_id")
+  paymentMethodId   String?             @map("payment_method_id")
+  providerPaymentId String?             @map("provider_payment_id")
+  orderPaymentId    String?             @unique @map("order_payment_id")
+  lastError         String?             @map("last_error") @db.Text
+  lastEvent         Json?               @map("last_event")
+  createdById       String              @map("created_by")
+  resolvedAt        DateTime?           @map("resolved_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  connection IntegrationConnection @relation(fields: [connectionId], references: [id])
+  order      Order                 @relation(fields: [orderId], references: [id])
+
+  @@index([accountId, createdAt])
+  @@index([orderId])
+  @@index([connectionId, status])
+  @@map("payment_intents")
 }

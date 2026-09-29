@@ -8,6 +8,7 @@ import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.
 import { resolveOrAssertPointOfSaleId, hasPosAccess } from "../middleware/pos.permissions.js";
 import { canAccessModule } from "../middleware/team.permissions.js";
 import { getOrderPendingBalance, registerOrderPayment } from "../services/orderPayment.service.js";
+import { createIntent, mapIntent } from "../services/paymentIntent.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -162,22 +163,44 @@ const createOrder = asyncHandler(async (req, res, next) => {
                     where: { OR: [{ id: order._id }, { legacyMongoId: order._id }] },
                     select: { id: true },
                 });
-                const { pending } = await getOrderPendingBalance(created.id);
-                if (pending > 0) {
-                    await registerOrderPayment({
-                        accountId: req.user.prismaId,
-                        actorId: req.user.actorId,
+                if (payment.provider) {
+                    // Bold datáfono / link-QR: the charge is only STARTED here;
+                    // its webhook registers the payment (paymentIntent.service.js).
+                    // Never queued offline - the Caja only offers it online.
+                    const intent = await createIntent({
+                        user: req.user,
+                        provider: payment.provider,
                         orderId: created.id,
-                        amount: pending,
+                        mode: payment.mode,
+                        terminalSerial: payment.terminal_serial,
+                        terminalModel: payment.terminal_model,
                         cashAccountId: payment.cash_account_id,
-                        method: payment.method,
-                        reference: payment.reference,
-                        settleInFull: false,
                         paymentMethodId: payment.payment_method_id || null,
-                        withholdings: {},
                     });
+                    order.payment_intent = mapIntent(intent);
+                    order.payment_registered = false;
+                } else {
+                    const { pending } = await getOrderPendingBalance(created.id);
+                    if (pending > 0) {
+                        await registerOrderPayment({
+                            accountId: req.user.prismaId,
+                            actorId: req.user.actorId,
+                            orderId: created.id,
+                            amount: pending,
+                            cashAccountId: payment.cash_account_id,
+                            method: payment.method,
+                            reference: payment.reference,
+                            settleInFull: false,
+                            paymentMethodId: payment.payment_method_id || null,
+                            withholdings: {},
+                            // Card/transfer typed in by the cashier: booked now,
+                            // but "por verificar" until the bank line (or a
+                            // person) confirms the money arrived.
+                            verification: { status: payment.requires_verification === true ? "pending" : "not_required" },
+                        });
+                    }
+                    order.payment_registered = true;
                 }
-                order.payment_registered = true;
             } catch (paymentError) {
                 console.error("POS checkout payment failed:", paymentError);
                 order.payment_registered = false;

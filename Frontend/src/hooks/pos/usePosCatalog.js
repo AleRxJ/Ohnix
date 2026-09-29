@@ -2,6 +2,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
 import { financeService } from "../../services/financeService";
+import { paymentProviderService } from "../../services/paymentProviderService";
 import { getConnectivityState } from "../../offline/connectivity";
 import { readMirrorAll } from "../../offline/entityQueue";
 import { subscribeSyncCompleted } from "../../offline/syncEngine";
@@ -50,6 +51,9 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment }) => {
     const [paymentMethods, setPaymentMethods] = useState(() => readFinanceCache()?.paymentMethods || []);
     const [finalConsumer, setFinalConsumer] = useState(null);
     const [loading, setLoading] = useState(true);
+    // The company's own Bold account (datáfono / QR). Online-only by nature -
+    // nothing cached: offline the Caja simply doesn't offer it.
+    const [bold, setBold] = useState({ connected: false, hasTerminalKey: false, hasLinkKey: false, terminals: [] });
 
     const fetchProducts = useCallback(async () => {
         try {
@@ -96,6 +100,26 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment }) => {
         }
     }, [canRegisterPayment]);
 
+    const fetchBold = useCallback(async () => {
+        if (!canRegisterPayment || !getConnectivityState()) return;
+        try {
+            const connection = await paymentProviderService.getConnection("bold");
+            const connected = connection?.status === "connected";
+            let terminals = [];
+            if (connected && connection.has_terminal_key) {
+                terminals = await paymentProviderService.listTerminals("bold").catch(() => []);
+            }
+            setBold({
+                connected,
+                hasTerminalKey: Boolean(connected && connection.has_terminal_key),
+                hasLinkKey: Boolean(connected && connection.has_link_key),
+                terminals,
+            });
+        } catch {
+            setBold({ connected: false, hasTerminalKey: false, hasLinkKey: false, terminals: [] });
+        }
+    }, [canRegisterPayment]);
+
     // Online: find-or-create server-side (POST /customers/final-consumer).
     // Offline: whatever final consumer is already cached for this location -
     // if none was ever created, the cashier just picks a real customer.
@@ -122,9 +146,9 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment }) => {
     );
 
     const reload = useCallback(async () => {
-        const [, loadedCustomers] = await Promise.all([fetchProducts(), fetchCustomers(), fetchFinance()]);
+        const [, loadedCustomers] = await Promise.all([fetchProducts(), fetchCustomers(), fetchFinance(), fetchBold()]);
         await resolveFinalConsumer(loadedCustomers);
-    }, [fetchProducts, fetchCustomers, fetchFinance, resolveFinalConsumer]);
+    }, [fetchProducts, fetchCustomers, fetchFinance, fetchBold, resolveFinalConsumer]);
 
     useEffect(() => {
         let cancelled = false;
@@ -157,6 +181,7 @@ export const usePosCatalog = ({ pointOfSaleId, canRegisterPayment }) => {
         cashAccounts,
         paymentMethods,
         finalConsumer,
+        bold,
         loading,
         reload,
         applyLocalSale,

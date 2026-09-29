@@ -1,24 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { Alert, Button, Input, InputNumber, Modal, Select } from "antd";
+import { Alert, Button, Input, InputNumber, Modal, Select, Spin } from "antd";
 import {
     BankOutlined,
     CreditCardOutlined,
     DollarOutlined,
     DownloadOutlined,
     FieldTimeOutlined,
+    QrcodeOutlined,
+    SafetyCertificateOutlined,
     ThunderboltOutlined,
+    WifiOutlined,
 } from "@ant-design/icons";
+import { QRCodeSVG } from "qrcode.react";
 import useI18n from "../../hooks/useI18n";
 import { formatCurrency, getCurrencyInputProps } from "../../utils/currency";
+import { pickAccount } from "./posPayments";
 
 const cop = (value) => formatCurrency(value, "COP");
 
-// `method` is the free-text label the payment keeps (same field the regular
-// "registrar pago" modal fills by hand); `accountType` picks the default
-// cash account for it.
+// `accountType` picks the default cash account for the method. `bold` ones
+// charge through the company's own Bold account and are confirmed by Bold
+// itself (verified); card/transfer typed in by hand stay "por verificar"
+// until the bank statement (or a person) confirms them.
 const METHODS = [
     { key: "cash", icon: <DollarOutlined />, labelKey: "pos.method_cash", accountType: "cash" },
+    { key: "bold_terminal", icon: <CreditCardOutlined />, labelKey: "pos.method_bold_terminal", accountType: "bank", bold: "terminal" },
+    { key: "bold_link", icon: <QrcodeOutlined />, labelKey: "pos.method_bold_link", accountType: "bank", bold: "link" },
     { key: "card", icon: <CreditCardOutlined />, labelKey: "pos.method_card", accountType: "bank" },
     { key: "transfer", icon: <BankOutlined />, labelKey: "pos.method_transfer", accountType: "bank" },
     { key: "credit", icon: <FieldTimeOutlined />, labelKey: "pos.method_credit", accountType: null },
@@ -37,16 +45,7 @@ const quickCashOptions = (total) => {
     return [...options].sort((a, b) => a - b);
 };
 
-const pickAccount = (cashAccounts, accountType, pointOfSaleId) => {
-    const ofType = cashAccounts.filter((a) => a.is_active !== false && (!accountType || a.account_type === accountType));
-    const pool = ofType.length ? ofType : cashAccounts.filter((a) => a.is_active !== false);
-    return (
-        pool.find((a) => pointOfSaleId && String(a.point_of_sale?._id) === String(pointOfSaleId)) ||
-        pool.find((a) => !a.point_of_sale?._id) ||
-        pool[0] ||
-        null
-    );
-};
+const KBD_ON_ACCENT = "pos-kbd border-[rgba(2,19,20,0.25)] text-[rgba(2,19,20,0.6)]";
 
 const SuccessView = ({ result, onNewSale, onDownload, downloading }) => {
     const { t } = useI18n();
@@ -74,6 +73,12 @@ const SuccessView = ({ result, onNewSale, onDownload, downloading }) => {
                         <span className="text-3xl font-bold tabular-nums text-[var(--ohnix-status-success)]">{cop(result.change)}</span>
                     </div>
                 )}
+                {result.verification === "verified" && (
+                    <div className="flex items-center gap-2 text-xs text-[var(--ohnix-status-success)]">
+                        <SafetyCertificateOutlined /> {t("pos.payment_verified_by_bold")}
+                    </div>
+                )}
+                {result.verification === "pending" && <div className="text-xs text-[var(--ohnix-status-amber)]">{t("pos.payment_pending_verification")}</div>}
                 {result.method === "credit" && <div className="text-xs text-[var(--ohnix-status-amber)]">{t("pos.credit_note")}</div>}
             </div>
 
@@ -81,7 +86,7 @@ const SuccessView = ({ result, onNewSale, onDownload, downloading }) => {
                 <Alert className="mt-4 w-full text-left" type="warning" showIcon message={t("pos.payment_failed")} description={result.paymentError} />
             )}
             {result.einvoicing && !result.offline && (
-                <p className="mt-4 mb-0 flex items-center gap-2 text-xs text-[var(--ohnix-text-dim)]">
+                <p className="mb-0 mt-4 flex items-center gap-2 text-xs text-[var(--ohnix-text-dim)]">
                     <ThunderboltOutlined className="text-[var(--ohnix-accent)]" /> {t("pos.einvoice_auto")}
                 </p>
             )}
@@ -94,7 +99,7 @@ const SuccessView = ({ result, onNewSale, onDownload, downloading }) => {
                 )}
                 <button type="button" className="pos-charge sm:flex-1" onClick={onNewSale} autoFocus>
                     {t("pos.new_sale")}
-                    <kbd className="pos-kbd border-[rgba(2,19,20,0.25)] text-[rgba(2,19,20,0.6)]">Enter</kbd>
+                    <kbd className={KBD_ON_ACCENT}>Enter</kbd>
                 </button>
             </div>
         </div>
@@ -108,6 +113,90 @@ SuccessView.propTypes = {
     downloading: PropTypes.bool,
 };
 
+// Waiting on Bold: the sale already exists; only its payment is in flight.
+const ChargingView = ({ charging, terminalName, busy, onCancel, onRetry, onCashInstead, onLeaveOnCredit }) => {
+    const { t } = useI18n();
+    const intent = charging.intent;
+    const status = charging.error ? "error" : intent?.status || "pending";
+    const waiting = status === "pending";
+
+    if (waiting) {
+        return (
+            <div className="flex flex-col items-center py-2 text-center">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--ohnix-text-dim)]">{t("pos.sale_number", { number: charging.invoiceNo || "" })}</div>
+                <div className="mt-1 text-4xl font-bold tabular-nums text-[var(--ohnix-text-primary)]">{cop(intent?.amount ?? charging.total)}</div>
+
+                {charging.mode === "link" && intent?.checkout_url ? (
+                    <>
+                        <div className="mt-5 rounded-3xl bg-white p-4 shadow-[0_18px_50px_rgba(41,216,213,0.25)]">
+                            <QRCodeSVG value={intent.checkout_url} size={216} level="M" />
+                        </div>
+                        <p className="mb-0 mt-4 max-w-xs text-sm text-[var(--ohnix-text-muted)]">{t("pos.scan_qr_hint")}</p>
+                    </>
+                ) : (
+                    <>
+                        <div className="relative mt-6 grid h-32 w-32 place-items-center">
+                            <span className="absolute inset-0 animate-ping rounded-full bg-[var(--ohnix-accent-soft)]" />
+                            <span className="relative grid h-24 w-24 place-items-center rounded-full border border-[var(--ohnix-accent-line-strong)] bg-[var(--ohnix-accent-soft)] text-4xl text-[var(--ohnix-accent)]">
+                                <WifiOutlined className="rotate-90" />
+                            </span>
+                        </div>
+                        <p className="mb-0 mt-4 max-w-xs text-sm text-[var(--ohnix-text-muted)]">{t("pos.terminal_hint", { terminal: terminalName || "Bold" })}</p>
+                    </>
+                )}
+
+                <div className="mt-5 flex items-center gap-2 text-xs text-[var(--ohnix-text-dim)]">
+                    <Spin size="small" /> {t("pos.waiting_bold")}
+                </div>
+                <Button className="mt-5" onClick={onCancel} disabled={busy}>
+                    {t("pos.cancel_charge")}
+                </Button>
+            </div>
+        );
+    }
+
+    const messageKey =
+        status === "error" ? null : status === "needs_review" ? "pos.charge_needs_review" : `pos.charge_${status}`;
+    return (
+        <div className="space-y-4 py-2">
+            <Alert
+                type={status === "needs_review" ? "warning" : "error"}
+                showIcon
+                message={status === "error" ? t("pos.charge_error") : t(messageKey)}
+                description={charging.error || intent?.last_error || undefined}
+            />
+            <p className="m-0 text-sm text-[var(--ohnix-text-muted)]">{t("pos.charge_sale_kept", { number: charging.invoiceNo || "" })}</p>
+            {status === "needs_review" ? (
+                <button type="button" className="pos-charge" onClick={onLeaveOnCredit}>
+                    {t("pos.finish")}
+                </button>
+            ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <Button size="large" type="primary" onClick={onRetry} loading={busy}>
+                        {t("pos.retry_charge")}
+                    </Button>
+                    <Button size="large" onClick={onCashInstead} disabled={busy}>
+                        {t("pos.cash_instead")}
+                    </Button>
+                    <Button size="large" onClick={onLeaveOnCredit} disabled={busy}>
+                        {t("pos.leave_on_credit")}
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+ChargingView.propTypes = {
+    charging: PropTypes.object.isRequired,
+    terminalName: PropTypes.string,
+    busy: PropTypes.bool,
+    onCancel: PropTypes.func.isRequired,
+    onRetry: PropTypes.func.isRequired,
+    onCashInstead: PropTypes.func.isRequired,
+    onLeaveOnCredit: PropTypes.func.isRequired,
+};
+
 const PosCheckoutModal = ({
     open,
     total,
@@ -115,13 +204,21 @@ const PosCheckoutModal = ({
     paymentMethods,
     canRegisterPayment,
     pointOfSaleId,
+    online,
+    bold,
     submitting,
     result,
+    charging,
+    chargeBusy,
     onConfirm,
     onClose,
     onNewSale,
     onDownload,
     downloading,
+    onCancelCharge,
+    onRetryCharge,
+    onCashInstead,
+    onLeaveOnCredit,
 }) => {
     const { t } = useI18n();
     const inputProps = getCurrencyInputProps("COP");
@@ -131,8 +228,18 @@ const PosCheckoutModal = ({
     const [accountId, setAccountId] = useState(null);
     const [paymentMethodId, setPaymentMethodId] = useState(null);
     const [reference, setReference] = useState("");
+    const [terminalSerial, setTerminalSerial] = useState(null);
 
-    const methodDef = METHODS.find((m) => m.key === method);
+    const availableMethods = useMemo(
+        () =>
+            METHODS.filter((m) => {
+                if (m.bold === "terminal") return online && bold?.hasTerminalKey && bold.terminals?.length > 0;
+                if (m.bold === "link") return online && bold?.hasLinkKey;
+                return true;
+            }),
+        [online, bold]
+    );
+    const methodDef = availableMethods.find((m) => m.key === method) || availableMethods[0];
 
     useEffect(() => {
         if (!open) return;
@@ -140,7 +247,8 @@ const PosCheckoutModal = ({
         setReceived(null);
         setPaymentMethodId(null);
         setReference("");
-    }, [open, canPay]);
+        setTerminalSerial(bold?.terminals?.[0]?.serial || null);
+    }, [open, canPay, bold]);
 
     useEffect(() => {
         if (!methodDef?.accountType) return;
@@ -151,11 +259,27 @@ const PosCheckoutModal = ({
     const cashGiven = method === "cash" ? Number(received ?? total) : total;
     const change = method === "cash" ? cashGiven - total : 0;
     const short = method === "cash" && received !== null && change < 0;
+    const terminal = bold?.terminals?.find((x) => x.serial === terminalSerial);
 
     const confirm = () => {
         if (submitting || short) return;
         if (method === "credit") {
             onConfirm({ method: "credit", payment: null, change: 0 });
+            return;
+        }
+        if (methodDef.bold) {
+            onConfirm({
+                method,
+                change: 0,
+                payment: {
+                    provider: "bold",
+                    mode: methodDef.bold,
+                    terminal_serial: methodDef.bold === "terminal" ? terminal?.serial : undefined,
+                    terminal_model: methodDef.bold === "terminal" ? terminal?.model : undefined,
+                    cash_account_id: accountId,
+                    payment_method_id: paymentMethodId || undefined,
+                },
+            });
             return;
         }
         onConfirm({
@@ -166,20 +290,167 @@ const PosCheckoutModal = ({
                 method: t(methodDef.labelKey),
                 reference: reference.trim() || undefined,
                 payment_method_id: paymentMethodId || undefined,
+                requires_verification: method === "card" || method === "transfer",
             },
         });
     };
 
+    let body;
+    if (result) {
+        body = <SuccessView result={result} onNewSale={onNewSale} onDownload={onDownload} downloading={downloading} />;
+    } else if (charging) {
+        body = (
+            <ChargingView
+                charging={charging}
+                terminalName={terminal?.name}
+                busy={chargeBusy}
+                onCancel={onCancelCharge}
+                onRetry={onRetryCharge}
+                onCashInstead={onCashInstead}
+                onLeaveOnCredit={onLeaveOnCredit}
+            />
+        );
+    } else {
+        body = (
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    confirm();
+                }}
+                className="space-y-5"
+            >
+                <div className="pt-2 text-center">
+                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--ohnix-text-dim)]">{t("pos.to_charge")}</div>
+                    <div className="mt-1 text-5xl font-bold tabular-nums tracking-tight text-[var(--ohnix-text-primary)]">{cop(total)}</div>
+                </div>
+
+                {!canRegisterPayment && <Alert type="info" showIcon message={t("pos.no_finance_permission")} />}
+                {canRegisterPayment && cashAccounts.length === 0 && <Alert type="warning" showIcon message={t("pos.no_cash_accounts")} />}
+
+                <div className="pos-tiles" role="radiogroup">
+                    {availableMethods.map((m) => (
+                        <button
+                            key={m.key}
+                            type="button"
+                            role="radio"
+                            aria-checked={method === m.key}
+                            className={`pos-tile ${method === m.key ? "is-active" : ""} ${m.bold ? "is-bold" : ""}`}
+                            onClick={() => setMethod(m.key)}
+                            disabled={m.key !== "credit" && !canPay}
+                        >
+                            {m.icon}
+                            {t(m.labelKey)}
+                        </button>
+                    ))}
+                </div>
+
+                {method === "cash" && (
+                    <div className="space-y-3">
+                        <InputNumber
+                            autoFocus
+                            size="large"
+                            className="w-full"
+                            min={0}
+                            value={received}
+                            placeholder={t("pos.received_placeholder")}
+                            onChange={setReceived}
+                            prefix="$"
+                            formatter={inputProps.formatter}
+                            parser={inputProps.parser}
+                        />
+                        <div className="pos-quick-cash">
+                            <Button onClick={() => setReceived(total)}>{t("pos.exact")}</Button>
+                            {quickCash.map((amount) => (
+                                <Button key={amount} onClick={() => setReceived(amount)}>
+                                    {cop(amount)}
+                                </Button>
+                            ))}
+                        </div>
+                        <div className={`pos-change ${short ? "is-short" : ""}`}>
+                            <span className="text-sm text-[var(--ohnix-text-muted)]">{short ? t("pos.missing") : t("pos.change_to_give")}</span>
+                            <span className={`text-2xl font-bold tabular-nums ${short ? "text-[var(--ohnix-status-danger)]" : "text-[var(--ohnix-status-success)]"}`}>
+                                {cop(Math.abs(change))}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {method === "bold_terminal" && (
+                    <div className="space-y-3">
+                        {bold.terminals.length > 1 && (
+                            <Select
+                                size="large"
+                                className="w-full"
+                                value={terminalSerial}
+                                onChange={setTerminalSerial}
+                                options={bold.terminals.map((x) => ({ value: x.serial, label: `${x.name} · ${x.model}` }))}
+                            />
+                        )}
+                        <Alert type="success" showIcon icon={<SafetyCertificateOutlined />} message={t("pos.bold_terminal_hint", { terminal: terminal?.name || "Bold" })} />
+                    </div>
+                )}
+
+                {method === "bold_link" && <Alert type="success" showIcon icon={<SafetyCertificateOutlined />} message={t("pos.bold_link_hint")} />}
+
+                {(method === "card" || method === "transfer") && (
+                    <div className="space-y-3">
+                        {paymentMethods.length > 0 && (
+                            <Select
+                                size="large"
+                                className="w-full"
+                                allowClear
+                                value={paymentMethodId}
+                                onChange={setPaymentMethodId}
+                                placeholder={t("finance.payment_method_configured_placeholder")}
+                                options={paymentMethods.map((pm) => ({ value: pm.id, label: pm.name }))}
+                            />
+                        )}
+                        <Input size="large" value={reference} onChange={(e) => setReference(e.target.value)} placeholder={t("pos.reference_placeholder")} maxLength={60} />
+                        <p className="m-0 text-xs text-[var(--ohnix-status-amber)]">{t("pos.manual_verification_hint")}</p>
+                    </div>
+                )}
+
+                {method === "credit" && <Alert type="warning" showIcon message={t("pos.credit_hint")} />}
+
+                {methodDef?.accountType && canPay && (
+                    <div className="flex items-center gap-2 text-xs text-[var(--ohnix-text-dim)]">
+                        <span className="shrink-0">{t("pos.deposit_to")}</span>
+                        <Select
+                            size="small"
+                            variant="borderless"
+                            className="min-w-0 flex-1"
+                            value={accountId}
+                            onChange={setAccountId}
+                            options={cashAccounts.map((a) => ({ value: a._id, label: a.name }))}
+                        />
+                    </div>
+                )}
+
+                <button type="submit" className="pos-charge" disabled={submitting || short || (method !== "credit" && !accountId)}>
+                    {submitting
+                        ? t("pos.processing")
+                        : method === "credit"
+                          ? t("pos.confirm_credit")
+                          : methodDef?.bold
+                            ? t("pos.send_to_bold")
+                            : t("pos.confirm_charge")}
+                    {!submitting && <kbd className={KBD_ON_ACCENT}>Enter</kbd>}
+                </button>
+            </form>
+        );
+    }
+
     return (
         <Modal
             open={open}
-            onCancel={result ? onNewSale : onClose}
+            onCancel={result ? onNewSale : charging ? undefined : onClose}
             footer={null}
             width={Math.min(560, window.innerWidth * 0.96)}
             centered
             destroyOnClose
-            maskClosable={!submitting}
-            closable={!submitting}
+            maskClosable={!submitting && !charging}
+            closable={!submitting && !charging}
+            keyboard={!charging}
             styles={{
                 content: {
                     background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
@@ -189,113 +460,7 @@ const PosCheckoutModal = ({
                 },
             }}
         >
-            {result ? (
-                <SuccessView result={result} onNewSale={onNewSale} onDownload={onDownload} downloading={downloading} />
-            ) : (
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        confirm();
-                    }}
-                    className="space-y-5"
-                >
-                    <div className="pt-2 text-center">
-                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--ohnix-text-dim)]">{t("pos.to_charge")}</div>
-                        <div className="mt-1 text-5xl font-bold tabular-nums tracking-tight text-[var(--ohnix-text-primary)]">{cop(total)}</div>
-                    </div>
-
-                    {!canRegisterPayment && <Alert type="info" showIcon message={t("pos.no_finance_permission")} />}
-                    {canRegisterPayment && cashAccounts.length === 0 && <Alert type="warning" showIcon message={t("pos.no_cash_accounts")} />}
-
-                    <div className="pos-tiles" role="radiogroup">
-                        {METHODS.map((m) => (
-                            <button
-                                key={m.key}
-                                type="button"
-                                role="radio"
-                                aria-checked={method === m.key}
-                                className={`pos-tile ${method === m.key ? "is-active" : ""}`}
-                                onClick={() => setMethod(m.key)}
-                                disabled={m.key !== "credit" && !canPay}
-                            >
-                                {m.icon}
-                                {t(m.labelKey)}
-                            </button>
-                        ))}
-                    </div>
-
-                    {method === "cash" && (
-                        <div className="space-y-3">
-                            <InputNumber
-                                autoFocus
-                                size="large"
-                                className="w-full"
-                                min={0}
-                                value={received}
-                                placeholder={t("pos.received_placeholder")}
-                                onChange={setReceived}
-                                prefix="$"
-                                formatter={inputProps.formatter}
-                                parser={inputProps.parser}
-                            />
-                            <div className="pos-quick-cash">
-                                <Button onClick={() => setReceived(total)}>{t("pos.exact")}</Button>
-                                {quickCash.map((amount) => (
-                                    <Button key={amount} onClick={() => setReceived(amount)}>
-                                        {cop(amount)}
-                                    </Button>
-                                ))}
-                            </div>
-                            <div className={`pos-change ${short ? "is-short" : ""}`}>
-                                <span className="text-sm text-[var(--ohnix-text-muted)]">{short ? t("pos.missing") : t("pos.change_to_give")}</span>
-                                <span
-                                    className={`text-2xl font-bold tabular-nums ${short ? "text-[var(--ohnix-status-danger)]" : "text-[var(--ohnix-status-success)]"}`}
-                                >
-                                    {cop(Math.abs(change))}
-                                </span>
-                            </div>
-                        </div>
-                    )}
-
-                    {(method === "card" || method === "transfer") && (
-                        <div className="space-y-3">
-                            {paymentMethods.length > 0 && (
-                                <Select
-                                    size="large"
-                                    className="w-full"
-                                    allowClear
-                                    value={paymentMethodId}
-                                    onChange={setPaymentMethodId}
-                                    placeholder={t("finance.payment_method_configured_placeholder")}
-                                    options={paymentMethods.map((pm) => ({ value: pm.id, label: pm.name }))}
-                                />
-                            )}
-                            <Input size="large" value={reference} onChange={(e) => setReference(e.target.value)} placeholder={t("pos.reference_placeholder")} maxLength={60} />
-                        </div>
-                    )}
-
-                    {method === "credit" && <Alert type="warning" showIcon message={t("pos.credit_hint")} />}
-
-                    {methodDef?.accountType && canPay && (
-                        <div className="flex items-center gap-2 text-xs text-[var(--ohnix-text-dim)]">
-                            <span className="shrink-0">{t("pos.deposit_to")}</span>
-                            <Select
-                                size="small"
-                                variant="borderless"
-                                className="min-w-0 flex-1"
-                                value={accountId}
-                                onChange={setAccountId}
-                                options={cashAccounts.map((a) => ({ value: a._id, label: a.name }))}
-                            />
-                        </div>
-                    )}
-
-                    <button type="submit" className="pos-charge" disabled={submitting || short || (method !== "credit" && !accountId)}>
-                        {submitting ? t("pos.processing") : method === "credit" ? t("pos.confirm_credit") : t("pos.confirm_charge")}
-                        {!submitting && <kbd className="pos-kbd border-[rgba(2,19,20,0.25)] text-[rgba(2,19,20,0.6)]">Enter</kbd>}
-                    </button>
-                </form>
-            )}
+            {body}
         </Modal>
     );
 };
@@ -307,13 +472,21 @@ PosCheckoutModal.propTypes = {
     paymentMethods: PropTypes.array.isRequired,
     canRegisterPayment: PropTypes.bool,
     pointOfSaleId: PropTypes.string,
+    online: PropTypes.bool,
+    bold: PropTypes.object,
     submitting: PropTypes.bool,
     result: PropTypes.object,
+    charging: PropTypes.object,
+    chargeBusy: PropTypes.bool,
     onConfirm: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     onNewSale: PropTypes.func.isRequired,
     onDownload: PropTypes.func.isRequired,
     downloading: PropTypes.bool,
+    onCancelCharge: PropTypes.func.isRequired,
+    onRetryCharge: PropTypes.func.isRequired,
+    onCashInstead: PropTypes.func.isRequired,
+    onLeaveOnCredit: PropTypes.func.isRequired,
 };
 
 export default PosCheckoutModal;

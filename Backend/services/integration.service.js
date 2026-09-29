@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { encryptSecret, decryptSecret } from "../utils/secretEncryption.js";
 import { getConnector } from "../connectors/registry.js";
+import { PAYMENT_PROVIDER_KEYS } from "../paymentProviders/registry.js";
 import { resolveDefaultPointOfSaleId } from "../middleware/pos.permissions.js";
 import orderService from "./order.service.js";
 import { findProductByAnyId, mapProduct } from "../controllers/product.controller.js";
@@ -46,11 +47,16 @@ export const createConnection = async (accountId, { provider, name, credentials,
     return connection;
 };
 
+// Payment-provider connections (Bold, for the Caja) share this table but are
+// managed from Finanzas (paymentProvider.controller.js) - the e-commerce
+// Integrations screen and its endpoints never see or delete them.
+const ECOMMERCE_ONLY = { provider: { notIn: PAYMENT_PROVIDER_KEYS } };
+
 export const listConnections = (accountId) =>
-    prisma.integrationConnection.findMany({ where: { accountId }, orderBy: { createdAt: "desc" } });
+    prisma.integrationConnection.findMany({ where: { accountId, ...ECOMMERCE_ONLY }, orderBy: { createdAt: "desc" } });
 
 export const findConnectionForAccount = async (id, accountId) => {
-    const connection = await prisma.integrationConnection.findFirst({ where: { id, accountId } });
+    const connection = await prisma.integrationConnection.findFirst({ where: { id, accountId, ...ECOMMERCE_ONLY } });
     if (!connection) throw new ApiError(404, "Integration connection not found");
     return connection;
 };
