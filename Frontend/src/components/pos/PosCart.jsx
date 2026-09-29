@@ -46,7 +46,7 @@ const PriceEditor = ({ line, onSetPrice }) => {
 
     const apply = () => {
         if (tooLow) return;
-        onSetPrice(line.product._id, draft);
+        onSetPrice(line.key, draft);
         setOpen(false);
     };
 
@@ -156,7 +156,7 @@ CustomerPicker.propTypes = {
     disabled: PropTypes.bool,
 };
 
-const PosCart = ({ cart, customer, customers, onCustomerChange, onCharge, canCharge, chargeHint, sheet = false }) => {
+const PosCart = ({ cart, customer, customers, onCustomerChange, onCharge, canCharge, chargeHint, sheet = false, header = null }) => {
     const { t } = useI18n();
     const { lines, totals, lastAddedId, bump } = cart;
 
@@ -169,12 +169,14 @@ const PosCart = ({ cart, customer, customers, onCustomerChange, onCharge, canCha
                         {totals.units > 0 ? t("pos.units_in_cart", { count: totals.units }) : t("pos.empty_cart_short")}
                     </span>
                 </div>
-                {lines.length > 0 && (
+                {lines.length > 0 && cart.clear && (
                     <Tooltip title={t("pos.clear_cart")}>
                         <Button type="text" danger icon={<DeleteOutlined />} onClick={cart.clear} aria-label={t("pos.clear_cart")} />
                     </Tooltip>
                 )}
             </div>
+
+            {header}
 
             <CustomerPicker customer={customer} customers={customers} onChange={onCustomerChange} />
 
@@ -191,19 +193,22 @@ const PosCart = ({ cart, customer, customers, onCustomerChange, onCharge, canCha
                     lines.map((line) => {
                         const max = availableStock(line.product);
                         return (
-                            <div key={line.product._id} className={`pos-line ${lastAddedId === line.product._id ? "is-bumped" : ""}`} data-bump={lastAddedId === line.product._id ? bump : undefined}>
+                            <div key={line.key} className={`pos-line ${lastAddedId === line.product._id ? "is-bumped" : ""}`} data-bump={lastAddedId === line.product._id ? bump : undefined}>
                                 <div className="min-w-0 flex-1">
-                                    <div className="truncate text-sm font-semibold text-[var(--ohnix-text-primary)]">{line.product.product_name}</div>
+                                    <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                        <span className="truncate">{line.product.product_name}</span>
+                                        {line.sent && <span className="shrink-0 rounded-md bg-[var(--ohnix-status-success-soft)] px-1.5 text-[10px] font-medium text-[var(--ohnix-status-success)]">{t("pos.sent_to_kitchen")}</span>}
+                                    </div>
                                     <PriceEditor line={line} onSetPrice={cart.setPrice} />
                                 </div>
                                 <div className="pos-stepper">
-                                    <button type="button" onClick={() => cart.setQuantity(line.product._id, line.quantity - 1)} aria-label={t("pos.decrease")}>
+                                    <button type="button" onClick={() => cart.setQuantity(line.key, line.quantity - 1)} aria-label={t("pos.decrease")}>
                                         <MinusOutlined />
                                     </button>
                                     <span>{line.quantity}</span>
                                     <button
                                         type="button"
-                                        onClick={() => cart.setQuantity(line.product._id, line.quantity + 1)}
+                                        onClick={() => cart.setQuantity(line.key, line.quantity + 1)}
                                         disabled={line.quantity >= max}
                                         aria-label={t("pos.increase")}
                                     >
@@ -255,6 +260,7 @@ PosCart.propTypes = {
     canCharge: PropTypes.bool,
     chargeHint: PropTypes.string,
     sheet: PropTypes.bool,
+    header: PropTypes.node,
 };
 
 export default PosCart;

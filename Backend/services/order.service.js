@@ -163,6 +163,26 @@ const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trig
     });
 };
 
+// Deferring is only offered when the company chose "preguntar en cada venta",
+// only to a person (never a channel/API order), and only to an actor whose
+// role grants deferEinvoice (the owner always does).
+const assertCanDeferEinvoice = async (accountId, actingUser) => {
+    if (!actingUser) {
+        throw new ApiError(400, "Solo una venta hecha por una persona puede dejar la factura para después.", [], "", "einvoice_defer_not_allowed");
+    }
+    const owner = await prisma.user.findUnique({
+        where: { id: accountId },
+        select: { company: { select: { einvoiceIssueMode: true } } },
+    });
+    if (owner?.company?.einvoiceIssueMode !== "ask") {
+        throw new ApiError(400, "Tu empresa emite la factura electrónica automáticamente en cada venta.", [], "", "einvoice_defer_disabled");
+    }
+    const capabilities = await getCapabilities(actingUser);
+    if (!capabilities.deferEinvoice) {
+        throw new ApiError(403, "Tu rol no tiene permiso para dejar la factura electrónica para después.", [], "", "einvoice_defer_forbidden");
+    }
+};
+
 class OrderService {
     // actingUser: the human placing the order (POS / web). Only then is the
     // sale-price floor enforced - channel orders (integration.service.js)
@@ -185,10 +205,18 @@ class OrderService {
             external_connection_id,
             currency_code,
             exchange_rate,
+            // "Emitir después" (Caja / order form) - see Order.einvoiceDeferredAt.
+            einvoice_deferred,
+            einvoice_defer_reason,
         } = orderData;
 
         if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
             throw new ApiError(400, "Invalid order data");
+        }
+
+        const deferEinvoice = einvoice_deferred === true;
+        if (deferEinvoice) {
+            await assertCanDeferEinvoice(userId, actingUser);
         }
 
         const currencyCode = currency_code || "COP";
@@ -395,6 +423,13 @@ class OrderService {
                     foreignTotal: currencyCode !== "COP" ? Number((total / exchangeRate).toFixed(2)) : null,
                     invoiceNo,
                     isTutorialData: is_tutorial_data === true,
+                    ...(deferEinvoice
+                        ? {
+                              einvoiceDeferredAt: new Date(),
+                              einvoiceDeferredById: actingUser?.actorId || userId,
+                              einvoiceDeferReason: String(einvoice_defer_reason || "").trim().slice(0, 300) || null,
+                          }
+                        : {}),
                     channel: channel || "ohnix",
                     externalOrderId: external_order_id ?? null,
                     externalConnectionId: external_connection_id ?? null,
@@ -659,8 +694,9 @@ class OrderService {
 
             // Practice orders created by the "how does Ohnix work" tour must
             // never reach DIAN - it's a real government-facing document, not
-            // something a synthetic tutorial sale should ever generate.
-            if (!order.isTutorialData) {
+            // something a synthetic tutorial sale should ever generate. A
+            // deferred sale waits in "Ventas sin documento" instead.
+            if (!order.isTutorialData && !order.einvoiceDeferredAt) {
                 triggerElectronicInvoicingIfCompleted({
                     orderId: order.id,
                     userId,
@@ -1190,7 +1226,7 @@ class OrderService {
                 return updatedOrder;
             });
 
-            if (!updated.isTutorialData) {
+            if (!updated.isTutorialData && !updated.einvoiceDeferredAt) {
                 triggerElectronicInvoicingIfCompleted({
                     orderId: updated.id,
                     userId,

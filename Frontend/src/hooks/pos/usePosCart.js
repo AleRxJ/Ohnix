@@ -81,8 +81,12 @@ export const usePosCart = () => {
         [state.lines]
     );
 
+    // `key` identifies a line for PosCart (a table tab can have two lines of
+    // the same product - see useTabCart); here one line per product.
+    const lines = useMemo(() => state.lines.map((line) => ({ ...line, key: line.product._id })), [state.lines]);
+
     return {
-        lines: state.lines,
+        lines,
         lastAddedId: state.lastAddedId,
         bump: state.bump,
         totals,

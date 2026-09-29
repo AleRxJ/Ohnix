@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Drawer, Tag, Spin, Button, Table, Divider, Space, Card, Select } from "antd";
 import {
     FilePdfOutlined,
+    PrinterOutlined,
     CloseOutlined,
     ShoppingCartOutlined,
     UserOutlined,
@@ -15,6 +16,7 @@ import {
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import { getStatusColor } from "../../utils/orderHelpers";
+import { fetchReceipt, printReceipt, readPrintSettings } from "../../utils/posReceipt";
 import { getStatusIcon } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -41,6 +43,20 @@ const OrderDetailsDrawer = ({
     canRegisterPayment = false,
 }) => {
     const { t } = useI18n();
+    const [printingTicket, setPrintingTicket] = useState(false);
+    // Reprint the Caja ticket - same receipt the POS prints, with the DIAN
+    // document's number/CUFE/QR once it's accepted.
+    const reprintTicket = async () => {
+        setPrintingTicket(true);
+        try {
+            const receipt = await fetchReceipt(selectedOrder._id);
+            await printReceipt(receipt, { width: readPrintSettings().width, t });
+        } catch {
+            toast.error(t("pos.print_failed"));
+        } finally {
+            setPrintingTicket(false);
+        }
+    };
     const { formatCurrency } = useCurrency();
     const { user } = useContext(AuthContext);
     const { team, isOwner, hasPermission } = useTeam();
@@ -525,6 +541,15 @@ const OrderDetailsDrawer = ({
                             size="large"
                         >
                             {t("orders.download_invoice_pdf")}
+                        </Button>
+                        <Button
+                            icon={<PrinterOutlined />}
+                            onClick={reprintTicket}
+                            loading={printingTicket}
+                            className="mt-2 w-full"
+                            size="large"
+                        >
+                            {t("pos.print_ticket")}
                         </Button>
                         {isOwner && (
                             <Link

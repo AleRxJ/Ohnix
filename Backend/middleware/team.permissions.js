@@ -212,6 +212,10 @@ export const CAPABILITIES = {
     processReturns: { type: "boolean", module: "orders" },
     // Export reports to PDF / Excel / CSV - "reports: view" alone only shows them.
     reportsExport: { type: "boolean", module: "reports" },
+    // "Emitir después" at checkout - leave a sale without its DIAN document
+    // for now (Company.einvoiceIssueMode = ask). Issuing later needs only
+    // "einvoicing: edit"; deferring is the sensitive part.
+    deferEinvoice: { type: "boolean", module: "einvoicing" },
 };
 
 export const FULL_CAPABILITIES = {
@@ -221,6 +225,7 @@ export const FULL_CAPABILITIES = {
     deleteRecords: true,
     processReturns: true,
     reportsExport: true,
+    deferEinvoice: true,
 };
 
 export const normalizeCapabilities = (raw) => {

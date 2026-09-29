@@ -30,6 +30,7 @@ import { isValidNit, isValidPrefix, isValidSoftwareId, isValidTechnicalKey } fro
 import FirmaPassSelfService from "./FirmaPassSelfService";
 import ViafirmaSelfService from "./ViafirmaSelfService";
 import DianHabilitacionPanel from "./DianHabilitacionPanel";
+import EinvoiceIssueModeCard from "./EinvoiceIssueModeCard";
 import PlanGate from "../common/PlanGate";
 
 const validatorRule = (isValid, message) => ({
@@ -1016,6 +1017,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged, canActivateInv
                         />
                     )}
                     <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} canEditResolutions={canActivateInvoicing} />
+                    {company?.electronicInvoicingEnabled && <EinvoiceIssueModeCard company={company} onCompanyChanged={onCompanyChanged} />}
                     {showCertificateProviderSelector && (
                         // Two visual weights, same control: unresolved (override still
                         // null, silently defaulting to Viafirma) genuinely needs

@@ -114,6 +114,7 @@ const SELF_SELECT = {
     // isWithholdingAgent above.
     taxRegime: true,
     simpleRegimeGroup: true,
+    einvoiceIssueMode: true,
 };
 
 const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
@@ -723,6 +724,7 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         icaRatePerThousand,
         taxRegime,
         simpleRegimeGroup,
+        einvoiceIssueMode,
     } = req.body || {};
 
     const subscription = await ensureUserSubscription(req.user.prismaId);
@@ -775,6 +777,10 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         : icaRatePerThousand;
     if (icaRatePerThousand !== undefined && icaRatePerThousand !== null && icaRatePerThousand !== "" && (!Number.isFinite(parsedIcaRate) || parsedIcaRate < 0 || parsedIcaRate > 50)) {
         return next(new ApiError(400, "icaRatePerThousand debe ser un número entre 0 y 50 (tarifa por mil)."));
+    }
+
+    if (einvoiceIssueMode !== undefined && !["automatic", "ask"].includes(einvoiceIssueMode)) {
+        return next(new ApiError(400, "einvoiceIssueMode debe ser automatic o ask."));
     }
 
     if (taxRegime !== undefined && taxRegime !== null && !TAX_REGIMES.includes(taxRegime)) {
@@ -850,6 +856,7 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         ...(icaActivityCode !== undefined ? { icaActivityCode: trimmedIcaActivityCode || null } : {}),
         ...(icaRatePerThousand !== undefined ? { icaRatePerThousand: parsedIcaRate === "" || parsedIcaRate === null ? null : parsedIcaRate } : {}),
         ...(taxRegime !== undefined ? { taxRegime: taxRegime || null } : {}),
+        ...(einvoiceIssueMode !== undefined ? { einvoiceIssueMode } : {}),
         // Only meaningful under RST - switching taxRegime away from `simple`
         // (or clearing it) drops any previously-selected group so a stale
         // selection never lingers once it stops applying.

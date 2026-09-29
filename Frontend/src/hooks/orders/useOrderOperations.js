@@ -156,6 +156,9 @@ export const useOrderOperations = (refreshOrders) => {
                     ? { currency_code: values.currency_code, exchange_rate: values.exchange_rate }
                     : {}),
                 ...(isTutorialActive && { is_tutorial_data: true }),
+                ...(values.einvoice_deferred === true
+                    ? { einvoice_deferred: true, einvoice_defer_reason: values.einvoice_defer_reason }
+                    : {}),
             };
 
             if (!getConnectivityState()) {

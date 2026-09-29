@@ -162,9 +162,18 @@ db.version(13).stores({
     demoRequests: "_id",
 });
 
+// Caja restaurant mode: the location's tables and their OPEN tabs (with
+// items embedded). Full mirrors (entitySync.js) so a waiter who loses signal
+// still sees every table and can keep adding to a tab - tab/item ids are
+// client-generated, so queued writes reference them safely.
+db.version(14).stores({
+    diningTables: "_id",
+    tableTabs: "_id",
+});
+
 // Mirror tables added as each module is wired for offline support - keep in
 // sync with the list above so account/logout resets actually clear them.
-export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods", "warranties", "demoRequests"];
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods", "warranties", "demoRequests", "diningTables", "tableTabs"];
 
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 

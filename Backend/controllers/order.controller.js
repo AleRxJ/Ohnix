@@ -9,6 +9,7 @@ import { resolveOrAssertPointOfSaleId, hasPosAccess } from "../middleware/pos.pe
 import { canAccessModule } from "../middleware/team.permissions.js";
 import { getOrderPendingBalance, registerOrderPayment } from "../services/orderPayment.service.js";
 import { createIntent, mapIntent } from "../services/paymentIntent.service.js";
+import { closeTabWithOrder } from "../services/tableTab.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -153,6 +154,21 @@ const createOrder = asyncHandler(async (req, res, next) => {
             pointOfSaleId,
             req.user
         );
+        // Charged from a table (restaurant mode): the tab closes with this
+        // sale. Same request on purpose - an offline checkout is one queued
+        // POST that both sells and frees the table on replay.
+        if (req.body?.table_tab_id) {
+            try {
+                const created = await prisma.order.findFirst({
+                    where: { OR: [{ id: order._id }, { legacyMongoId: order._id }] },
+                    select: { id: true },
+                });
+                order.table_tab_closed = await closeTabWithOrder({ user: req.user, tabId: String(req.body.table_tab_id), orderId: created.id });
+            } catch (tabError) {
+                console.error("Closing table tab after sale failed:", tabError);
+                order.table_tab_closed = false;
+            }
+        }
         if (payment) {
             // The sale itself already committed (stock, ledger, DIAN trigger) -
             // a failed payment must not turn that into a 4xx the client would

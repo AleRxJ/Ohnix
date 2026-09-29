@@ -90,6 +90,7 @@ const userPublicSelect = {
             legalName: true,
             countryCode: true,
             electronicInvoicingEnabled: true,
+            einvoiceIssueMode: true,
         },
     },
     createdAt: true,

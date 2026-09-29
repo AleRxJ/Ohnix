@@ -1,12 +1,13 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Button, Drawer, Grid, Select } from "antd";
-import { ShopOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Button, Drawer, Grid, Popover, Radio, Segmented, Select, Switch } from "antd";
+import { AppstoreOutlined, PrinterOutlined, ShopOutlined, ShoppingOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 
 import PosProductGrid from "../components/pos/PosProductGrid";
 import PosCart from "../components/pos/PosCart";
 import PosCheckoutModal from "../components/pos/PosCheckoutModal";
+import { MoveTabModal, TabHeader, TablesBoard, TablesConfigDrawer } from "../components/pos/PosTables";
 import "../components/pos/pos.css";
 
 import { api } from "../api/api";
@@ -14,6 +15,8 @@ import AuthContext from "../context/AuthContext";
 import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
 import { usePosCart } from "../hooks/pos/usePosCart";
+import { usePosTables } from "../hooks/pos/usePosTables";
+import { useTabCart } from "../hooks/pos/useTabCart";
 import { isFinalConsumer, usePosCatalog } from "../hooks/pos/usePosCatalog";
 import { usePointOfSaleFieldVisible } from "../components/common/PointOfSaleField";
 import { getConnectivityState, subscribeConnectivity } from "../offline/connectivity";
@@ -23,8 +26,10 @@ import { formatCurrency } from "../utils/currency";
 import { paymentProviderService } from "../services/paymentProviderService";
 import { financeService } from "../services/financeService";
 import { pickAccount } from "../components/pos/posPayments";
+import { buildLocalReceipt, buildPreBill, fetchReceipt, printKitchenTicket, printReceipt, readPrintSettings, writePrintSettings } from "../utils/posReceipt";
 
 const LOCATION_KEY = "ohnix.pos.pointOfSaleId";
+const MODE_KEY = "ohnix.pos.mode";
 
 const readStoredLocation = () => {
     try {
@@ -42,13 +47,16 @@ const readStoredLocation = () => {
 const PosRegister = () => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
-    const { hasPermission } = useTeam();
+    const { hasPermission, hasCapability } = useTeam();
     const canSell = hasPermission("orders", "edit");
     const canRegisterPayment = hasPermission("finance", "edit");
     const screens = Grid.useBreakpoint();
     const isDesktop = screens.lg !== false;
     const einvoicing =
         ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && Boolean(user?.company?.electronicInvoicingEnabled);
+    // "Preguntar en cada venta" (the default) - see Company.einvoiceIssueMode.
+    const einvoiceAsk = einvoicing && user?.company?.einvoiceIssueMode !== "automatic";
+    const canDeferEinvoice = hasCapability("deferEinvoice");
 
     // --- Location (only a choice when the actor really has more than one) --
     const { options: locationOptions } = usePointOfSaleFieldVisible({ salesOnly: true });
@@ -75,7 +83,37 @@ const PosRegister = () => {
     };
 
     const catalog = usePosCatalog({ pointOfSaleId, canRegisterPayment });
-    const cart = usePosCart();
+    const counterCart = usePosCart();
+
+    // --- Mesas (restaurant mode) ------------------------------------------
+    // "counter" sells straight from the cart; "tables" works per-table tabs
+    // (usePosTables) and the cart then IS the active table's tab.
+    const canConfigureTables = hasPermission("orders", "admin");
+    const tables = usePosTables({ pointOfSaleId });
+    const [mode, setMode] = useState(() => {
+        try {
+            return localStorage.getItem(MODE_KEY) === "tables" ? "tables" : "counter";
+        } catch {
+            return "counter";
+        }
+    });
+    const changeMode = (next) => {
+        setMode(next);
+        try {
+            localStorage.setItem(MODE_KEY, next);
+        } catch {
+            // Per-device convenience.
+        }
+    };
+    const [activeTabId, setActiveTabId] = useState(null);
+    const activeTab = mode === "tables" ? tables.tabs.find((tab) => tab._id === activeTabId) || null : null;
+    const tabCart = useTabCart(activeTab, tables, catalog.products);
+    const cart = activeTab ? tabCart : counterCart;
+    const showTablesBoard = mode === "tables" && !activeTab;
+    const tablesAvailable = tables.tables.length > 0 || canConfigureTables;
+    const [tablesConfigOpen, setTablesConfigOpen] = useState(false);
+    const [moveOpen, setMoveOpen] = useState(false);
+    const [sendingKitchen, setSendingKitchen] = useState(false);
 
     // --- Customer (walk-in "Consumidor final" unless the cashier picks one) -
     const [customer, setCustomer] = useState(null);
@@ -109,12 +147,20 @@ const PosRegister = () => {
     // payment, intent, error }
     const [charging, setCharging] = useState(null);
     const [chargeBusy, setChargeBusy] = useState(false);
+    // Ticket printing (per device: roll width, print automatically).
+    const [printSettings, setPrintSettings] = useState(readPrintSettings);
+    const [printing, setPrinting] = useState(false);
+    // What was just sold - the cart is cleared on success, but an offline
+    // ticket (or a fallback when the receipt endpoint is unreachable) is
+    // printed from exactly this.
+    const lastSaleRef = useRef(null);
+    const autoPrintedRef = useRef(null);
     // One key per checkout attempt - a double-tap or retry of the SAME
     // "Confirmar" replays instead of charging twice (see utils/idempotency.js).
     const idempotencyKey = useRef(null);
     const searchRef = useRef(null);
 
-    const canCharge = canSell && cart.lines.length > 0 && Boolean(customer);
+    const canCharge = canSell && !showTablesBoard && cart.lines.length > 0 && Boolean(customer);
     const chargeHint = !canSell
         ? t("common.no_permission_to_edit")
         : !customer && cart.lines.length > 0
@@ -167,24 +213,38 @@ const PosRegister = () => {
         return error.response?.data?.message || t("orders.failed_create_order");
     };
 
-    const handleConfirm = async ({ method, payment, change }) => {
+    const handleConfirm = async ({ method, payment, change, einvoiceDeferred = false, deferReason }) => {
         const soldLines = cart.lines;
+        const saleTab = cart.isTab ? activeTab : null;
         const { subTotal, gst, total } = cart.totals;
+        // A tab can hold the same product on two lines (before/after a
+        // comanda) - the sale gets one line per product and price.
+        const orderItems = [];
+        soldLines.forEach((line) => {
+            const same = orderItems.find((item) => item.product_id === line.product._id && item.unitcost === line.unitPrice);
+            if (same) same.quantity += line.quantity;
+            else orderItems.push({ product_id: line.product._id, quantity: line.quantity, unitcost: line.unitPrice });
+        });
+        lastSaleRef.current = {
+            lines: soldLines,
+            totals: cart.totals,
+            customer,
+            received: method === "cash" ? total + (change || 0) : null,
+            payments: payment && !payment.provider ? [{ method: payment.method, amount: total, reference: payment.reference }] : [],
+        };
         const orderData = {
             customer_id: customer._id,
             ...(pointOfSaleId ? { pointOfSaleId } : {}),
             order_status: "completed",
             due_date: null,
-            orderItems: soldLines.map((line) => ({
-                product_id: line.product._id,
-                quantity: line.quantity,
-                unitcost: line.unitPrice,
-            })),
+            orderItems,
             sub_total: subTotal,
             gst,
             total,
-            total_products: soldLines.length,
+            total_products: orderItems.length,
+            ...(saleTab ? { table_tab_id: saleTab._id } : {}),
             ...(payment ? { payment } : {}),
+            ...(einvoiceDeferred ? { einvoice_deferred: true, einvoice_defer_reason: deferReason } : {}),
         };
 
         // Bold needs the provider live - never queue a charge offline (the
@@ -207,7 +267,7 @@ const PosRegister = () => {
                         invoice_no: t("orders.pending_sync_invoice_placeholder"),
                     },
                 });
-                setResult({ offline: true, total, change, method, verification: payment?.requires_verification ? "pending" : null });
+                setResult({ offline: true, total, change, method, einvoiceDeferred, verification: payment?.requires_verification ? "pending" : null });
             } else {
                 const response = await api.post("/orders", orderData, {
                     headers: { "Idempotency-Key": idempotencyKey.current },
@@ -221,6 +281,7 @@ const PosRegister = () => {
                         total: order.total ?? total,
                         mode: payment.mode,
                         payment,
+                        einvoiceDeferred,
                         intent: order.payment_intent || null,
                         error: order.payment_intent ? null : order.payment_error || t("pos.charge_error"),
                     });
@@ -232,13 +293,19 @@ const PosRegister = () => {
                         change,
                         method,
                         einvoicing,
+                        einvoiceDeferred,
                         verification: payment?.requires_verification ? "pending" : null,
                         paymentError: payment && order.payment_registered === false ? order.payment_error : null,
                     });
                 }
             }
             catalog.applyLocalSale(soldLines);
-            cart.clear();
+            if (saleTab) {
+                await tables.closeTabLocally(saleTab._id);
+                setActiveTabId(null);
+            } else {
+                counterCart.clear();
+            }
         } catch (error) {
             console.error("POS checkout failed:", error);
             toast.error(describeError(error));
@@ -256,6 +323,7 @@ const PosRegister = () => {
                 total: charging.total,
                 change: 0,
                 einvoicing,
+                einvoiceDeferred: charging.einvoiceDeferred,
                 ...extra,
             });
             setCharging(null);
@@ -344,6 +412,56 @@ const PosRegister = () => {
         }
     };
 
+    const updatePrintSettings = (patch) => {
+        const next = { ...printSettings, ...patch };
+        setPrintSettings(next);
+        writePrintSettings(next);
+    };
+
+    const printTicket = useCallback(
+        async (sale) => {
+            if (!sale) return;
+            const snapshot = lastSaleRef.current;
+            const locationName = locationOptions?.find((o) => o.id === pointOfSaleId)?.name || null;
+            const local = () =>
+                buildLocalReceipt({
+                    lines: snapshot?.lines || [],
+                    totals: snapshot?.totals || { subTotal: 0, gst: 0, total: sale.total },
+                    customer: snapshot?.customer,
+                    payments: snapshot?.payments,
+                    pointOfSale: locationName,
+                    cashier: user?.username,
+                    number: sale.invoiceNo,
+                });
+            setPrinting(true);
+            try {
+                let receipt;
+                if (sale.orderId && getConnectivityState()) {
+                    try {
+                        receipt = await fetchReceipt(sale.orderId, { waitForInvoiceMs: sale.einvoicing && !sale.einvoiceDeferred ? 8000 : 0 });
+                    } catch {
+                        receipt = local();
+                    }
+                } else {
+                    receipt = local();
+                }
+                await printReceipt(receipt, { width: printSettings.width, t, received: snapshot?.received, change: sale.change });
+            } catch (error) {
+                console.error("Ticket print failed:", error);
+                toast.error(t("pos.print_failed"));
+            } finally {
+                setPrinting(false);
+            }
+        },
+        [locationOptions, pointOfSaleId, user?.username, printSettings.width, t]
+    );
+
+    useEffect(() => {
+        if (!result || !printSettings.autoPrint || autoPrintedRef.current === result) return;
+        autoPrintedRef.current = result;
+        printTicket(result);
+    }, [result, printSettings.autoPrint, printTicket]);
+
     const downloadReceipt = async () => {
         if (!result?.orderId) return;
         setDownloading(true);
@@ -364,8 +482,58 @@ const PosRegister = () => {
         }
     };
 
+    const locationName = locationOptions?.find((o) => o.id === pointOfSaleId)?.name || null;
+
+    const selectTable = async (table, tab) => {
+        if (tab) {
+            setActiveTabId(tab._id);
+            return;
+        }
+        const opened = await tables.openTab(table);
+        if (opened) setActiveTabId(opened._id);
+    };
+
+    // Comanda: prints only what the kitchen has not seen yet, then marks it sent.
+    const sendKitchen = async () => {
+        if (!activeTab) return;
+        setSendingKitchen(true);
+        try {
+            const items = await tables.sendToKitchen(activeTab._id);
+            if (items.length) {
+                await printKitchenTicket({ tableName: activeTab.table_name, guests: activeTab.guests, waiter: user?.username, items, width: printSettings.width, t });
+            }
+        } catch (error) {
+            console.error("Kitchen ticket failed:", error);
+            toast.error(t("pos.print_failed"));
+        } finally {
+            setSendingKitchen(false);
+        }
+    };
+
+    const printPreBill = () =>
+        printReceipt(buildPreBill({ tab: activeTab, lines: tabCart.lines, totals: tabCart.totals, pointOfSale: locationName, cashier: user?.username }), {
+            width: printSettings.width,
+            t,
+        }).catch(() => toast.error(t("pos.print_failed")));
+
     const cartPanel = (sheet) => (
         <PosCart
+            header={
+                activeTab ? (
+                    <TabHeader
+                        tab={activeTab}
+                        onBack={() => setActiveTabId(null)}
+                        onKitchen={sendKitchen}
+                        onPreBill={printPreBill}
+                        onMove={() => setMoveOpen(true)}
+                        onCancel={async () => {
+                            await tables.cancelTab(activeTab._id);
+                            setActiveTabId(null);
+                        }}
+                        sending={sendingKitchen}
+                    />
+                ) : null
+            }
             cart={cart}
             customer={customer}
             customers={locationCustomers}
@@ -393,6 +561,17 @@ const PosRegister = () => {
                             </div>
                         </div>
                     </div>
+                    {tablesAvailable && (
+                        <Segmented
+                            size="large"
+                            value={mode}
+                            onChange={changeMode}
+                            options={[
+                                { value: "counter", icon: <ShoppingOutlined />, label: <span className="hidden sm:inline">{t("tables.mode_counter")}</span> },
+                                { value: "tables", icon: <AppstoreOutlined />, label: <span className="hidden sm:inline">{t("tables.mode_tables")}</span> },
+                            ]}
+                        />
+                    )}
                     {hasLocationChoice && (
                         <Select
                             size="large"
@@ -404,6 +583,29 @@ const PosRegister = () => {
                             options={locationOptions.map((o) => ({ value: o.id, label: o.name }))}
                         />
                     )}
+                    <Popover
+                        trigger="click"
+                        placement="bottomRight"
+                        title={t("pos.print_settings")}
+                        content={
+                            <div className="w-60 space-y-3">
+                                <div>
+                                    <div className="mb-1 text-xs text-[var(--ohnix-text-dim)]">{t("pos.paper_width")}</div>
+                                    <Radio.Group value={printSettings.width} onChange={(e) => updatePrintSettings({ width: e.target.value })}>
+                                        <Radio.Button value={58}>58 mm</Radio.Button>
+                                        <Radio.Button value={80}>80 mm</Radio.Button>
+                                    </Radio.Group>
+                                </div>
+                                <label className="flex items-center justify-between gap-3 text-sm">
+                                    {t("pos.auto_print")}
+                                    <Switch size="small" checked={printSettings.autoPrint} onChange={(checked) => updatePrintSettings({ autoPrint: checked })} />
+                                </label>
+                                <p className="m-0 text-xs text-[var(--ohnix-text-dim)]">{t("pos.print_help")}</p>
+                            </div>
+                        }
+                    >
+                        <Button size="large" icon={<PrinterOutlined />} aria-label={t("pos.print_settings")} />
+                    </Popover>
                     <Link to="/orders">
                         <Button size="large" icon={<UnorderedListOutlined />}>
                             <span className="hidden sm:inline">{t("pos.view_sales")}</span>
@@ -411,22 +613,33 @@ const PosRegister = () => {
                     </Link>
                 </header>
 
-                <div className="pos-layout">
-                    <PosProductGrid
-                        ref={searchRef}
-                        products={catalog.products}
-                        loading={catalog.loading}
-                        quantityOf={cart.quantityOf}
-                        lastAddedId={cart.lastAddedId}
-                        bump={cart.bump}
-                        onAdd={cart.add}
-                        onScanMiss={(code) => toast.error(t("pos.code_not_found", { code }))}
-                    />
-                    {isDesktop && cartPanel(false)}
+                <div className={`pos-layout ${showTablesBoard ? "is-full" : ""}`}>
+                    {showTablesBoard ? (
+                        <TablesBoard
+                            tables={tables.tables}
+                            tabs={tables.tabs}
+                            loading={tables.loading}
+                            canConfigure={canConfigureTables && online}
+                            onSelect={selectTable}
+                            onConfigure={() => setTablesConfigOpen(true)}
+                        />
+                    ) : (
+                        <PosProductGrid
+                            ref={searchRef}
+                            products={catalog.products}
+                            loading={catalog.loading}
+                            quantityOf={cart.quantityOf}
+                            lastAddedId={cart.lastAddedId}
+                            bump={cart.bump}
+                            onAdd={cart.add}
+                            onScanMiss={(code) => toast.error(t("pos.code_not_found", { code }))}
+                        />
+                    )}
+                    {isDesktop && !showTablesBoard && cartPanel(false)}
                 </div>
             </div>
 
-            {!isDesktop && cart.lines.length > 0 && (
+            {!isDesktop && !showTablesBoard && (cart.lines.length > 0 || activeTab) && (
                 <div className="pos-mobile-bar">
                     <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setCartSheetOpen(true)}>
                         <span className="block text-xs text-[var(--ohnix-text-dim)]">{t("pos.units_in_cart", { count: cart.totals.units })}</span>
@@ -451,6 +664,27 @@ const PosRegister = () => {
                 </Drawer>
             )}
 
+            <TablesConfigDrawer
+                open={tablesConfigOpen}
+                onClose={() => setTablesConfigOpen(false)}
+                tables={tables.tables}
+                tabs={tables.tabs}
+                onCreate={tables.createTables}
+                onUpdate={tables.updateTable}
+            />
+            <MoveTabModal
+                open={moveOpen}
+                tab={activeTab}
+                tables={tables.tables}
+                tabs={tables.tabs}
+                onClose={() => setMoveOpen(false)}
+                onMove={async (tableId) => {
+                    const target = tables.tables.find((x) => x._id === tableId);
+                    if (target && activeTab) await tables.moveTab(activeTab._id, target);
+                    setMoveOpen(false);
+                }}
+            />
+
             <PosCheckoutModal
                 open={checkoutOpen}
                 total={result ? result.total : cart.totals.total}
@@ -460,6 +694,8 @@ const PosRegister = () => {
                 pointOfSaleId={pointOfSaleId}
                 online={online}
                 bold={catalog.bold}
+                einvoiceAsk={einvoiceAsk}
+                canDeferEinvoice={canDeferEinvoice}
                 submitting={submitting}
                 result={result}
                 charging={charging}
@@ -469,6 +705,8 @@ const PosRegister = () => {
                 onNewSale={startNewSale}
                 onDownload={downloadReceipt}
                 downloading={downloading}
+                onPrint={() => printTicket(result)}
+                printing={printing}
                 onCancelCharge={cancelCharge}
                 onRetryCharge={retryCharge}
                 onCashInstead={collectCashInstead}

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import { getElectronicInvoices } from "../controllers/electronicInvoice.controller.js";
+import { getPendingEinvoices, getPendingEinvoicesCount } from "../controllers/einvoicePending.controller.js";
 
 const router = Router();
 router.use(verifyJWT);
@@ -10,5 +11,8 @@ router.use(verifyJWT);
 // whole team account. Electronic invoicing is scoped under "orders"
 // everywhere else (order.routes.js), so this matches that.
 router.get("/", requireModulePermission("einvoicing", "view"), getElectronicInvoices);
+// "Ventas sin documento" - sales deferred with "Emitir después".
+router.get("/pending", requireModulePermission("einvoicing", "view"), getPendingEinvoices);
+router.get("/pending/count", requireModulePermission("einvoicing", "view"), getPendingEinvoicesCount);
 
 export default router;

@@ -16,6 +16,7 @@ import {
     SwapOutlined,
     ShoppingOutlined,
     ShopOutlined,
+    FieldTimeOutlined,
     WalletOutlined,
     BookOutlined,
     IdcardOutlined,
@@ -63,6 +64,7 @@ const EMPTY_CAPABILITIES = {
     deleteRecords: false,
     processReturns: false,
     reportsExport: false,
+    deferEinvoice: false,
 };
 
 // On/off capabilities, each an icon card (the discount cap has its own
@@ -73,6 +75,7 @@ const SWITCH_CAPABILITIES = [
     { key: "deleteRecords", icon: <DeleteOutlined /> },
     { key: "processReturns", icon: <RollbackOutlined /> },
     { key: "reportsExport", icon: <ExportOutlined /> },
+    { key: "deferEinvoice", icon: <FieldTimeOutlined /> },
 ];
 
 const MODULE_ICONS = {
@@ -224,6 +227,7 @@ const RoleFormModal = ({
         ...(watchedCapabilities.deleteRecords ? [t("team.sensitive_delete_records")] : []),
         ...(watchedCapabilities.processReturns ? [t("team.sensitive_process_returns")] : []),
         ...(watchedCapabilities.reportsExport ? [t("team.sensitive_reports_export")] : []),
+        ...(watchedCapabilities.deferEinvoice ? [t("team.sensitive_defer_einvoice")] : []),
         // "team: admin" is already listed above; edit alone manages members.
         ...(watchedPermissions.team === "edit" ? [t("team.sensitive_team_edit")] : []),
         // Subscription routes top out at "edit" - admin grants nothing more.

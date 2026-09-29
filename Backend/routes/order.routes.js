@@ -1,3 +1,4 @@
+import { patchDeferredOrderCustomer, getOrderReceiptData } from "../controllers/einvoicePending.controller.js";
 import express from "express";
 import {
     createOrder,
@@ -37,6 +38,8 @@ router.use(verifyJWT); // Apply auth middleware to all routes
 router.post("/", requireModulePermission("orders", "edit"), enforceEntityLimit("orders"), enforceMonthlyLimit("orders"), idempotent("order.create"), createOrder);
 router.get("/", requireModulePermission("orders", "view"), getAllOrders);
 router.get("/:id/details", requireModulePermission("orders", "view"), getOrderDetails);
+// Printable ticket for the Caja (and reprints) - see orderReceipt.service.js.
+router.get("/:id/receipt", requireModulePermission("orders", "view"), getOrderReceiptData);
 router.patch("/:id/status", requireModulePermission("orders", "edit"), idempotent("order.status"), updateOrderStatus);
 router.route("/:id/return-preview").get(requireModulePermission("orders", "view"), getOrderReturnPreview);
 // Process a granular, repeatable return - same reasoning as
@@ -56,6 +59,9 @@ router.route("/:id/invoice").get(requireModulePermission("orders", "view"), gene
 // "orders" 2026-09-28 - see team.permissions.js).
 router.route("/:id/electronic-invoice").get(requireModulePermission("einvoicing", "view"), getOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/pdf").get(requireModulePermission("einvoicing", "view"), downloadOrderElectronicInvoicePdf);
+// Before issuing a deferred sale: swap "Consumidor final" for the buyer who
+// asked for the invoice (see einvoicePending.service.js).
+router.patch("/:id/einvoice-customer", requireModulePermission("orders", "edit"), requireModulePermission("einvoicing", "edit"), patchDeferredOrderCustomer);
 router.route("/:id/electronic-invoice/issue").post(requireModulePermission("einvoicing", "edit"), requireActiveSubscription, issueOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/sync").post(requireModulePermission("einvoicing", "edit"), requireActiveSubscription, syncOrderElectronicInvoice);
 // Issuing a credit note is a DIAN-facing, irreversible fiscal document -

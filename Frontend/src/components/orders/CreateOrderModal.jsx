@@ -1,9 +1,12 @@
-import React from "react";
-import { Modal, Form, Row, Col, Select, Button, Divider, Card, DatePicker, InputNumber } from "antd";
+import React, { useContext } from "react";
+import { Modal, Form, Row, Col, Select, Button, Divider, Card, DatePicker, InputNumber, Radio, Input } from "antd";
 import { PlusOutlined, ShoppingCartOutlined, FileTextOutlined } from "@ant-design/icons";
 import OrderFormItems from "./OrderFormItems";
 import PointOfSaleField, { usePointOfSaleFieldVisible } from "../common/PointOfSaleField";
 import useI18n from "../../hooks/useI18n";
+import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const { Option } = Select;
 
@@ -27,6 +30,17 @@ const CreateOrderModal = ({
     submitting,
 }) => {
     const { t } = useI18n();
+    const { user } = useContext(AuthContext);
+    const { hasCapability } = useTeam();
+    // "Preguntar en cada venta" (Company.einvoiceIssueMode) - "Emitir ahora"
+    // preselected; "Emitir después" needs the deferEinvoice capability.
+    const einvoiceAsk =
+        ELECTRONIC_INVOICING_ENABLED &&
+        user?.company?.countryCode === "CO" &&
+        Boolean(user?.company?.electronicInvoicingEnabled) &&
+        user?.company?.einvoiceIssueMode !== "automatic";
+    const canDeferEinvoice = hasCapability("deferEinvoice");
+    const einvoiceDeferred = Form.useWatch("einvoice_deferred", form);
     const { visible: showPointOfSale } = usePointOfSaleFieldVisible({ salesOnly: true });
     const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
     // Fase 4 (multi-moneda) - the order's OWN transaction currency, frozen at
@@ -192,6 +206,28 @@ const CreateOrderModal = ({
                                 </Select>
                             </Form.Item>
                         </Col>
+                        {einvoiceAsk && !isTourCreateStep && (
+                            <Col xs={24}>
+                                <Form.Item
+                                    name="einvoice_deferred"
+                                    initialValue={false}
+                                    label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("pos.dian_document")}</span>}
+                                    extra={einvoiceDeferred ? t("pos.issue_later_hint") : undefined}
+                                >
+                                    <Radio.Group>
+                                        <Radio value={false}>{t("pos.issue_now")}</Radio>
+                                        <Radio value={true} disabled={!canDeferEinvoice}>
+                                            {t("pos.issue_later")}
+                                        </Radio>
+                                    </Radio.Group>
+                                </Form.Item>
+                                {einvoiceDeferred && (
+                                    <Form.Item name="einvoice_defer_reason">
+                                        <Input maxLength={300} placeholder={t("pos.defer_reason_placeholder")} />
+                                    </Form.Item>
+                                )}
+                            </Col>
+                        )}
                         {selectedCurrencyCode !== "COP" && (
                             <Col xs={24} sm={6}>
                                 <Form.Item

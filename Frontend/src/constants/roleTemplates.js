@@ -4,7 +4,7 @@
 // Keys match Backend MODULE_KEYS; labels are team.template_<key>.
 // Backend/test/teamPermissionCatalog.test.js checks every template against
 // the real module list, MODULE_DEPENDENCIES and the locale files.
-const NONE = { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false, deleteRecords: false, processReturns: false, reportsExport: false };
+const NONE = { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false, deleteRecords: false, processReturns: false, reportsExport: false, deferEinvoice: false };
 
 export const ROLE_TEMPLATES = [
     {

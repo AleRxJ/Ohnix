@@ -34,6 +34,7 @@ import {
 import { electronicInvoiceService } from "../services/electronicInvoiceService";
 import { api } from "../api/api";
 import PageHeader from "../components/common/PageHeader";
+import PendingEinvoicesPanel from "../components/electronicInvoices/PendingEinvoicesPanel";
 import StatCard from "../components/dashboard/StatCard";
 import { StatusPill, ELECTRONIC_INVOICE_STATUS_COLORS as STATUS_COLORS } from "../components/common/StatusPill";
 import { useCurrency } from "../context/CurrencyContext";
@@ -1019,6 +1020,8 @@ const ElectronicInvoices = () => {
                 actionText={loading ? t("electronic_invoices.syncing") : t("electronic_invoices.sync_action")}
                 onActionClick={load}
             />
+
+            <PendingEinvoicesPanel onIssued={load} />
 
             <section className="mb-6 grid gap-3 sm:grid-cols-3">
                 {metricCards.map((m) => (

@@ -188,6 +188,7 @@ import contactRouter from "./routes/contact.routes.js";
 import integrationRouter from "./routes/integration.routes.js";
 import webhookEndpointRouter from "./routes/webhookEndpoint.routes.js";
 import paymentProviderRouter from "./routes/paymentProvider.routes.js";
+import tableTabRouter from "./routes/tableTab.routes.js";
 import apiDocsRouter from "./routes/apiDocs.routes.js";
 import assistantRouter from "./routes/assistant.routes.js";
 import guestCertificateCheckoutRouter from "./routes/guestCertificateCheckout.routes.js";
@@ -234,6 +235,7 @@ app.use("/api/v1/public", publicApiRouter);
 app.use("/api/v1/integrations", integrationRouter);
 app.use("/api/v1/webhooks", webhookEndpointRouter);
 app.use("/api/v1/payment-providers", paymentProviderRouter);
+app.use("/api/v1/restaurant", tableTabRouter);
 // apiDocsRouter is intentionally unauthenticated (see its own comment) -
 // it MUST stay ahead of teamRouter/pointOfSaleRouter below for the same
 // reason contactRouter does.

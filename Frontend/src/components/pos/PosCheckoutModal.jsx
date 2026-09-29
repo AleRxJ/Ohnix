@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { Alert, Button, Input, InputNumber, Modal, Select, Spin } from "antd";
+import { Alert, Button, Input, InputNumber, Modal, Segmented, Select, Spin, Tooltip } from "antd";
 import {
     BankOutlined,
     CreditCardOutlined,
     DollarOutlined,
     DownloadOutlined,
     FieldTimeOutlined,
+    PrinterOutlined,
     QrcodeOutlined,
     SafetyCertificateOutlined,
     ThunderboltOutlined,
@@ -47,7 +48,7 @@ const quickCashOptions = (total) => {
 
 const KBD_ON_ACCENT = "pos-kbd border-[rgba(2,19,20,0.25)] text-[rgba(2,19,20,0.6)]";
 
-const SuccessView = ({ result, onNewSale, onDownload, downloading }) => {
+const SuccessView = ({ result, onNewSale, onDownload, downloading, onPrint, printing }) => {
     const { t } = useI18n();
     return (
         <div className="pos-success">
@@ -85,13 +86,19 @@ const SuccessView = ({ result, onNewSale, onDownload, downloading }) => {
             {result.paymentError && (
                 <Alert className="mt-4 w-full text-left" type="warning" showIcon message={t("pos.payment_failed")} description={result.paymentError} />
             )}
-            {result.einvoicing && !result.offline && (
+            {result.einvoiceDeferred && (
+                <p className="mb-0 mt-4 text-xs text-[var(--ohnix-status-amber)]">{t("pos.einvoice_deferred_note")}</p>
+            )}
+            {result.einvoicing && !result.einvoiceDeferred && !result.offline && (
                 <p className="mb-0 mt-4 flex items-center gap-2 text-xs text-[var(--ohnix-text-dim)]">
                     <ThunderboltOutlined className="text-[var(--ohnix-accent)]" /> {t("pos.einvoice_auto")}
                 </p>
             )}
 
             <div className="mt-6 flex w-full flex-col-reverse gap-3 sm:flex-row">
+                <Button size="large" icon={<PrinterOutlined />} onClick={onPrint} loading={printing} className="sm:flex-1">
+                    {printing ? t("pos.printing") : t("pos.print_ticket")}
+                </Button>
                 {!result.offline && result.orderId && (
                     <Button size="large" icon={<DownloadOutlined />} onClick={onDownload} loading={downloading} className="sm:flex-1">
                         {t("pos.download_receipt")}
@@ -111,6 +118,8 @@ SuccessView.propTypes = {
     onNewSale: PropTypes.func.isRequired,
     onDownload: PropTypes.func.isRequired,
     downloading: PropTypes.bool,
+    onPrint: PropTypes.func.isRequired,
+    printing: PropTypes.bool,
 };
 
 // Waiting on Bold: the sale already exists; only its payment is in flight.
@@ -206,6 +215,8 @@ const PosCheckoutModal = ({
     pointOfSaleId,
     online,
     bold,
+    einvoiceAsk,
+    canDeferEinvoice,
     submitting,
     result,
     charging,
@@ -215,6 +226,8 @@ const PosCheckoutModal = ({
     onNewSale,
     onDownload,
     downloading,
+    onPrint,
+    printing,
     onCancelCharge,
     onRetryCharge,
     onCashInstead,
@@ -229,6 +242,9 @@ const PosCheckoutModal = ({
     const [paymentMethodId, setPaymentMethodId] = useState(null);
     const [reference, setReference] = useState("");
     const [terminalSerial, setTerminalSerial] = useState(null);
+    // "Preguntar en cada venta": "Emitir ahora" always preselected.
+    const [deferEinvoice, setDeferEinvoice] = useState(false);
+    const [deferReason, setDeferReason] = useState("");
 
     const availableMethods = useMemo(
         () =>
@@ -248,6 +264,8 @@ const PosCheckoutModal = ({
         setPaymentMethodId(null);
         setReference("");
         setTerminalSerial(bold?.terminals?.[0]?.serial || null);
+        setDeferEinvoice(false);
+        setDeferReason("");
     }, [open, canPay, bold]);
 
     useEffect(() => {
@@ -261,14 +279,16 @@ const PosCheckoutModal = ({
     const short = method === "cash" && received !== null && change < 0;
     const terminal = bold?.terminals?.find((x) => x.serial === terminalSerial);
 
+    const deferral = { einvoiceDeferred: Boolean(einvoiceAsk && deferEinvoice), deferReason: deferReason.trim() || undefined };
     const confirm = () => {
         if (submitting || short) return;
         if (method === "credit") {
-            onConfirm({ method: "credit", payment: null, change: 0 });
+            onConfirm({ method: "credit", payment: null, change: 0, ...deferral });
             return;
         }
         if (methodDef.bold) {
             onConfirm({
+                ...deferral,
                 method,
                 change: 0,
                 payment: {
@@ -283,6 +303,7 @@ const PosCheckoutModal = ({
             return;
         }
         onConfirm({
+            ...deferral,
             method,
             change: Math.max(0, change),
             payment: {
@@ -297,7 +318,7 @@ const PosCheckoutModal = ({
 
     let body;
     if (result) {
-        body = <SuccessView result={result} onNewSale={onNewSale} onDownload={onDownload} downloading={downloading} />;
+        body = <SuccessView result={result} onNewSale={onNewSale} onDownload={onDownload} downloading={downloading} onPrint={onPrint} printing={printing} />;
     } else if (charging) {
         body = (
             <ChargingView
@@ -426,6 +447,33 @@ const PosCheckoutModal = ({
                     </div>
                 )}
 
+                {einvoiceAsk && (
+                    <div className="space-y-2 rounded-2xl border border-[var(--ohnix-line-4)] p-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ohnix-text-dim)]">{t("pos.dian_document")}</span>
+                            <Segmented
+                                size="small"
+                                value={deferEinvoice ? "later" : "now"}
+                                onChange={(value) => setDeferEinvoice(value === "later")}
+                                options={[
+                                    { value: "now", label: t("pos.issue_now") },
+                                    {
+                                        value: "later",
+                                        disabled: !canDeferEinvoice,
+                                        label: canDeferEinvoice ? t("pos.issue_later") : <Tooltip title={t("pos.issue_later_forbidden")}>{t("pos.issue_later")}</Tooltip>,
+                                    },
+                                ]}
+                            />
+                        </div>
+                        {deferEinvoice && (
+                            <>
+                                <Input size="small" value={deferReason} onChange={(e) => setDeferReason(e.target.value)} maxLength={300} placeholder={t("pos.defer_reason_placeholder")} />
+                                <p className="m-0 text-xs text-[var(--ohnix-status-amber)]">{t("pos.issue_later_hint")}</p>
+                            </>
+                        )}
+                    </div>
+                )}
+
                 <button type="submit" className="pos-charge" disabled={submitting || short || (method !== "credit" && !accountId)}>
                     {submitting
                         ? t("pos.processing")
@@ -474,6 +522,8 @@ PosCheckoutModal.propTypes = {
     pointOfSaleId: PropTypes.string,
     online: PropTypes.bool,
     bold: PropTypes.object,
+    einvoiceAsk: PropTypes.bool,
+    canDeferEinvoice: PropTypes.bool,
     submitting: PropTypes.bool,
     result: PropTypes.object,
     charging: PropTypes.object,
@@ -483,6 +533,8 @@ PosCheckoutModal.propTypes = {
     onNewSale: PropTypes.func.isRequired,
     onDownload: PropTypes.func.isRequired,
     downloading: PropTypes.bool,
+    onPrint: PropTypes.func.isRequired,
+    printing: PropTypes.bool,
     onCancelCharge: PropTypes.func.isRequired,
     onRetryCharge: PropTypes.func.isRequired,
     onCashInstead: PropTypes.func.isRequired,

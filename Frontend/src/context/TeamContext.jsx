@@ -14,7 +14,17 @@ const LEVEL_ORDER = { none: 0, view: 1, edit: 2, admin: 3 };
 const NO_TEAM_STATE = { team: null, isOwner: false, myRole: null };
 
 // Mirror of Backend FULL_CAPABILITIES - what the owner/solo users always get.
-const FULL_CAPABILITIES = { salesPriceOverride: true, salesMaxDiscountPct: 100, catalogViewCosts: true };
+// Must list every capability (Backend team.permissions.js#FULL_CAPABILITIES) -
+// a key missing here read as "denied" for the owner.
+const FULL_CAPABILITIES = {
+    salesPriceOverride: true,
+    salesMaxDiscountPct: 100,
+    catalogViewCosts: true,
+    deleteRecords: true,
+    processReturns: true,
+    reportsExport: true,
+    deferEinvoice: true,
+};
 
 // Last confirmed team/role per user, so a reload while offline renders the
 // member's real permissions instead of the full UI - the team half of the

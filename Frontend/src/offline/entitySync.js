@@ -44,3 +44,5 @@ registerFullResync("salesQuotations", "/sales-quotations");
 registerFullResync("productionOrders", "/production-orders");
 registerFullResync("employees", "/employees");
 registerFullResync("payrollPeriods", "/payroll/periods");
+registerFullResync("diningTables", "/restaurant/tables");
+registerFullResync("tableTabs", "/restaurant/table-tabs/open");
