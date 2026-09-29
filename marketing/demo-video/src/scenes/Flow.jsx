@@ -2,7 +2,7 @@ import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { AppstoreOutlined, BarChartOutlined, BookOutlined, ThunderboltFilled } from "@ant-design/icons";
 import { getLength, getPointAtLength } from "@remotion/paths";
-import { Backdrop, Card, Chip, Headline, Vignette, useAppear, useIsVertical } from "../ui.jsx";
+import { Backdrop, Card, Chip, Headline, Vignette, useAppear, useIsVertical, Sfx, SfxTrain } from "../ui.jsx";
 import { C, GRAD, clamp, cop, fontFamily, pop, ramp } from "../theme.js";
 
 const ARRIVE = [58, 66, 74];
@@ -168,6 +168,9 @@ export const Flow = () => {
     return (
         <AbsoluteFill style={{ fontFamily }}>
             <Backdrop hue={6} />
+            <Sfx at={10} name="pop" volume={0.45} />
+            <Sfx at={30} name="whoosh" volume={0.35} />
+            <SfxTrain frames={[58, 66, 74]} name="blip" volume={0.45} />
             <AbsoluteFill style={{ alignItems: "center", paddingTop: L.headline.paddingTop }}>
                 <Headline align="center" width={L.headline.width} size={L.headline.size} delay={2} text="Una venta. *Todo* *se* *actualiza* *solo.*" />
             </AbsoluteFill>

@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { CheckCircleFilled, ClockCircleOutlined, CloudSyncOutlined, DisconnectOutlined } from "@ant-design/icons";
-import { AppFrame, Backdrop, Camera, Card, Chip, Headline, Sub, V_CAMERA, V_HEADLINE_BOX, Vignette, useIsVertical } from "../ui.jsx";
+import { AppFrame, Backdrop, Camera, Card, Chip, Headline, Sub, V_CAMERA, V_FRAME, V_HEADLINE_BOX, Vignette, useIsVertical, Sfx, SfxTrain } from "../ui.jsx";
 import { C, clamp, cop, pop, ramp } from "../theme.js";
 
 const CUT = 30;
@@ -10,9 +10,12 @@ const SALES = [
     { n: "Venta #1044", v: 54000, at: 48 },
     { n: "Venta #1045", v: 187000, at: 70 },
     { n: "Venta #1046", v: 36000, at: 92 },
+    { n: "Venta #1047", v: 92000, at: 104 },
+    { n: "Venta #1048", v: 25000, at: 114 },
 ];
 
-const OfflineContent = () => {
+// vertical: taller rows so the queue fills the phone-shaped frame.
+const OfflineContent = ({ vertical = false }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
     const offline = frame >= CUT && frame < BACK;
@@ -64,14 +67,14 @@ const OfflineContent = () => {
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 16,
-                                padding: "18px 20px",
+                                padding: vertical ? "30px 22px" : "18px 20px",
                                 marginBottom: 12,
                                 borderRadius: 14,
                                 border: `1px solid ${done ? "rgba(52,211,153,0.35)" : C.line}`,
                                 background: done ? "rgba(52,211,153,0.07)" : "rgba(255,255,255,0.02)",
                                 opacity: Math.min(1, p),
                                 transform: `translateY(${(1 - p) * -50}px) scale(${0.9 + 0.1 * Math.min(1, p)})`,
-                                fontSize: 19,
+                                fontSize: vertical ? 22 : 19,
                             }}
                         >
                             {done ? (
@@ -102,10 +105,16 @@ export const Offline = () => {
     return (
         <AbsoluteFill>
             <Backdrop hue={8} intensity={1 - dim * 0.7} />
+            <Sfx at={30} name="powerdown" volume={0.55} />
+            <Sfx at={30} name="glitch" volume={0.18} />
+            <SfxTrain frames={[48, 70, 92, 104, 114]} name="pop" volume={0.35} />
+            <Sfx at={122} name="glitch" volume={0.12} />
+            <Sfx at={124} name="chime" volume={0.45} />
+            <SfxTrain frames={[130, 136, 142, 148, 154]} name="blip" volume={0.3} />
             <Camera {...cam} start={0} end={60}>
                 <div style={{ filter: `saturate(${1 - dim * 0.5})`, transform: glitch ? `translateX(${frame % 2 ? 14 : -14}px)` : "none" }}>
-                    <AppFrame group="sell" activeItem="Punto de venta" title="Punto de venta" online={!offline}>
-                        <OfflineContent />
+                    <AppFrame group="sell" activeItem="Punto de venta" title="Punto de venta" online={!offline} {...(vertical && V_FRAME)}>
+                        <OfflineContent vertical={vertical} />
                     </AppFrame>
                 </div>
             </Camera>

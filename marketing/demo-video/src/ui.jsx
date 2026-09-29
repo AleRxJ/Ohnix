@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Html5Audio, Img, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import {
     AppstoreOutlined,
     HomeOutlined,
@@ -208,7 +208,9 @@ const GROUPS = [
     { key: "money", label: "Dinero", Icon: WalletOutlined, desc: "Caja, nómina, contabilidad y DIAN", items: ["Finanzas", "Contabilidad", "Nómina"] },
 ];
 
-export const AppFrame = ({ group = "home", activeItem, title, children, width = 1560, height = 900, online = true, style, badges = {} }) => {
+// `compact` (9:16 cut): no contextual panel and a narrower search, so the
+// whole shell fits a phone-shaped frame instead of being cropped.
+export const AppFrame = ({ group = "home", activeItem, title, children, width = 1560, height = 900, online = true, style, badges = {}, compact = false }) => {
     const current = GROUPS.find((g) => g.key === group);
     return (
         <div
@@ -286,31 +288,33 @@ export const AppFrame = ({ group = "home", activeItem, title, children, width = 
                 })}
             </div>
             {/* contextual panel */}
-            <div style={{ width: 250, borderRight: `1px solid ${C.line}`, padding: "26px 18px" }}>
-                <div style={{ fontSize: 22, fontWeight: 700 }}>{current.label}</div>
-                <div style={{ fontSize: 14, color: C.muted, marginTop: 6, lineHeight: 1.35 }}>{current.desc}</div>
-                <div style={{ marginTop: 26, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {current.items.map((it) => {
-                        const on = it === (activeItem || current.items[0]);
-                        return (
-                            <div
-                                key={it}
-                                style={{
-                                    padding: "12px 14px",
-                                    borderRadius: 12,
-                                    fontSize: 16,
-                                    fontWeight: on ? 700 : 500,
-                                    color: on ? C.text : C.muted,
-                                    background: on ? C.accentSoft : "transparent",
-                                    border: `1px solid ${on ? C.accentLine : "transparent"}`,
-                                }}
-                            >
-                                {it}
-                            </div>
-                        );
-                    })}
+            {!compact && (
+                <div style={{ width: 250, borderRight: `1px solid ${C.line}`, padding: "26px 18px" }}>
+                    <div style={{ fontSize: 22, fontWeight: 700 }}>{current.label}</div>
+                    <div style={{ fontSize: 14, color: C.muted, marginTop: 6, lineHeight: 1.35 }}>{current.desc}</div>
+                    <div style={{ marginTop: 26, display: "flex", flexDirection: "column", gap: 6 }}>
+                        {current.items.map((it) => {
+                            const on = it === (activeItem || current.items[0]);
+                            return (
+                                <div
+                                    key={it}
+                                    style={{
+                                        padding: "12px 14px",
+                                        borderRadius: 12,
+                                        fontSize: 16,
+                                        fontWeight: on ? 700 : 500,
+                                        color: on ? C.text : C.muted,
+                                        background: on ? C.accentSoft : "transparent",
+                                        border: `1px solid ${on ? C.accentLine : "transparent"}`,
+                                    }}
+                                >
+                                    {it}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
             {/* main */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
                 <div
@@ -329,7 +333,7 @@ export const AppFrame = ({ group = "home", activeItem, title, children, width = 
                             display: "flex",
                             alignItems: "center",
                             gap: 10,
-                            width: 300,
+                            width: compact ? 220 : 300,
                             padding: "10px 14px",
                             borderRadius: 12,
                             border: `1px solid ${C.line}`,
@@ -337,7 +341,7 @@ export const AppFrame = ({ group = "home", activeItem, title, children, width = 
                             fontSize: 15,
                         }}
                     >
-                        <SearchOutlined /> <span style={{ flex: 1 }}>Ir a un módulo…</span>
+                        <SearchOutlined /> <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Ir a un módulo…</span>
                         <span style={{ fontSize: 12, border: `1px solid ${C.line2}`, borderRadius: 6, padding: "2px 6px" }}>Ctrl K</span>
                     </div>
                     <Chip tone={online ? "ok" : "warn"}>
@@ -447,9 +451,22 @@ export const Sub = ({ text, delay = 0, width, style }) => {
 /* ---------- 9:16 presets for the app-shell scenes ----------
    Camera starts wide (rail visible), then pushes into the main content so the UI
    stays legible on a phone; the headline sits above it, clear of the top UI band. */
+// The compact AppFrame at V_FRAME size fits the phone width with a margin,
+// sitting under the headline and above the Reels/TikTok caption band.
+export const V_FRAME = { width: 980, height: 1180, compact: true };
 export const V_CAMERA = {
-    from: { x: 0, y: 560, rx: 26, ry: -12, s: 0.58 },
-    to: { x: -138, y: 80, rx: 4, ry: -6, s: 0.85 },
+    from: { x: 0, y: 700, rx: 24, ry: -8, s: 0.82 },
+    to: { x: 0, y: 120, rx: 3, ry: -3, s: 1 },
 };
 
-export const V_HEADLINE_BOX = { justifyContent: "flex-start", alignItems: "flex-start", padding: "230px 80px 0" };
+export const V_HEADLINE_BOX = { justifyContent: "flex-start", alignItems: "flex-start", padding: "200px 80px 0" };
+
+/* ---------- Sound effect at a scene-local frame (files from scripts/generate-sfx.mjs) ---------- */
+export const Sfx = ({ at = 0, name, volume = 1 }) => (
+    <Sequence from={at} layout="none">
+        <Html5Audio src={staticFile(`sfx/${name}.wav`)} volume={volume} />
+    </Sequence>
+);
+
+// Several hits of the same effect, e.g. typing or a cascade of tiles.
+export const SfxTrain = ({ frames, name, volume = 1 }) => frames.map((f) => <Sfx key={`${name}-${f}`} at={f} name={name} volume={volume} />);

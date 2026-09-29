@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { CheckOutlined, LoadingOutlined, SafetyCertificateFilled } from "@ant-design/icons";
-import { Backdrop, Camera, Card, Headline, Sub, Vignette, useIsVertical } from "../ui.jsx";
+import { Backdrop, Camera, Card, Headline, Sub, Vignette, useIsVertical, Sfx, SfxTrain } from "../ui.jsx";
 import { C, GRAD, clamp, cop, fontFamily, pop, rand, ramp } from "../theme.js";
 
 const CUFE = Array.from({ length: 96 }, (_, i) => "0123456789abcdef"[Math.floor(rand(i + 311) * 16)]).join("");
@@ -157,6 +157,11 @@ export const Dian = () => {
     return (
         <AbsoluteFill>
             <Backdrop hue={4} />
+            <Sfx at={0} name="whoosh" volume={0.5} />
+            <SfxTrain frames={[30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75]} name="tick" volume={0.18} />
+            <SfxTrain frames={[40, 70]} name="pop" volume={0.35} />
+            <Sfx at={104} name="chime" volume={0.35} />
+            <Sfx at={108} name="stamp" volume={0.9} />
             <Camera {...cam} start={0} end={50}>
                 <Invoice />
             </Camera>

@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { Backdrop, Headline, Vignette, useIsVertical } from "../ui.jsx";
+import { Backdrop, Headline, Vignette, useIsVertical, Sfx, SfxTrain } from "../ui.jsx";
 import { C, clamp, fontFamily, pop, rand, ramp } from "../theme.js";
 
 const TOOLS = [
@@ -36,6 +36,10 @@ export const Intro = () => {
     return (
         <AbsoluteFill>
             <Backdrop intensity={0.5} />
+            <SfxTrain frames={[4, 9, 14, 19, 24, 29, 34, 39]} name="pop" volume={0.35} />
+            <Sfx at={96} name="riser" volume={0.7} />
+            <Sfx at={116} name="whoosh" volume={0.6} />
+            <Sfx at={130} name="impact" volume={0.5} />
             {TOOLS.map((tool, i) => {
                 const p = pop(frame, fps, 4 + i * 5, { damping: 12, stiffness: 160 });
                 const jitterX = Math.sin(frame / 7 + i) * 6 + (rand(i + frame * 0.01) - 0.5) * 2;
@@ -107,6 +111,8 @@ export const LogoReveal = () => {
     return (
         <AbsoluteFill>
             <Backdrop intensity={1} />
+            <Sfx at={0} name="impact" volume={0.9} />
+            <Sfx at={30} name="chime" volume={0.35} />
             <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
                 {[0, 8].map((d) => {
                     const r = interpolate(frame - d, [0, 40], [0, 1], clamp);

@@ -18,7 +18,7 @@ import {
     StarFilled,
     TeamOutlined,
 } from "@ant-design/icons";
-import { Backdrop, Headline, Vignette, useIsVertical } from "../ui.jsx";
+import { Backdrop, Headline, Vignette, useIsVertical, Sfx, SfxTrain } from "../ui.jsx";
 import { C, GRAD, clamp, fontFamily, pop } from "../theme.js";
 
 const MODULES = [
@@ -48,6 +48,7 @@ export const Modules = () => {
     return (
         <AbsoluteFill style={{ fontFamily }}>
             <Backdrop hue={12} />
+            <SfxTrain frames={[10, 14, 18, 22, 26, 30, 34]} name="pop" volume={0.22} />
             <AbsoluteFill style={{ alignItems: "center", paddingTop: vertical ? 230 : 110 }}>
                 <Headline align="center" width={vertical ? 920 : 1500} size={vertical ? 80 : 70} delay={0} text="Y todo lo que tu pyme *necesita.*" />
             </AbsoluteFill>
@@ -115,6 +116,8 @@ export const EndCard = () => {
     return (
         <AbsoluteFill style={{ fontFamily }}>
             <Backdrop hue={14} />
+            <Sfx at={0} name="impact" volume={0.8} />
+            <Sfx at={44} name="pop" volume={0.5} />
             <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", paddingBottom: vertical ? 260 : 0 }}>
                 <div style={{ mixBlendMode: "screen", transform: `scale(${0.7 + logo * 0.3})`, opacity: Math.min(1, logo), marginTop: -60 }}>
                     <Img src={staticFile("ohnix-logo-full.png")} style={{ width: vertical ? 540 : 420, height: vertical ? 540 : 420, display: "block" }} />

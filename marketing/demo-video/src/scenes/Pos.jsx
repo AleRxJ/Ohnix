@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { CheckCircleFilled, SearchOutlined, UserOutlined } from "@ant-design/icons";
-import { AppFrame, Backdrop, Camera, Card, Chip, Cursor, Headline, Sub, V_CAMERA, V_HEADLINE_BOX, Vignette, useAppear, useIsVertical } from "../ui.jsx";
+import { AppFrame, Backdrop, Camera, Card, Chip, Cursor, Headline, Sub, V_CAMERA, V_FRAME, V_HEADLINE_BOX, Vignette, useAppear, useIsVertical, Sfx, SfxTrain } from "../ui.jsx";
 import { C, GRAD, cop, pop, ramp } from "../theme.js";
 
 export const PRODUCTS = [
@@ -15,11 +15,15 @@ export const PRODUCTS = [
 
 // Clicks: café ×2, filtros ×2, then Cobrar. Subtotal 100.000 + IVA 19% = 119.000 (reused by the next scenes).
 const CLICKS = { cafe: [46, 60], filtros: [88, 101], pay: [134] };
-const CARD_W = 222;
 const CARD_H = 232;
-const cardCenter = (i) => ({ x: (i % 3) * (CARD_W + 18) + CARD_W / 2, y: 70 + Math.floor(i / 3) * (CARD_H + 18) + CARD_H / 2 });
+// 16:9: cart to the right of the grid. 9:16 (V_FRAME, 832px of content):
+// wider cards, cart stacked underneath - payAt is the "Cobrar" button's
+// center in each layout, for the cursor.
+const LAYOUT_H = { cardW: 222, cartHeight: null, payAt: { x: 952, y: 712 } };
+const LAYOUT_V = { cardW: 265, cartHeight: 440, payAt: { x: 416, y: 958 } };
+const cardCenter = (i, cardW) => ({ x: (i % 3) * (cardW + 18) + cardW / 2, y: 70 + Math.floor(i / 3) * (CARD_H + 18) + CARD_H / 2 });
 
-const ProductCard = ({ p, i, pressedAt }) => {
+const ProductCard = ({ p, i, pressedAt, width }) => {
     const frame = useCurrentFrame();
     const appear = useAppear(14 + i * 4, 24);
     const press = pressedAt.some((c) => frame >= c && frame < c + 7);
@@ -28,7 +32,7 @@ const ProductCard = ({ p, i, pressedAt }) => {
         <Card
             glow={flash}
             style={{
-                width: CARD_W,
+                width,
                 height: CARD_H,
                 padding: 16,
                 display: "flex",
@@ -96,7 +100,8 @@ const CartLine = ({ name, qty, price, since }) => {
     );
 };
 
-const PosContent = () => {
+const PosContent = ({ vertical = false }) => {
+    const L = vertical ? LAYOUT_V : LAYOUT_H;
     const frame = useCurrentFrame();
     const count = (arr) => arr.filter((c) => frame >= c).length;
     const cafe = count(CLICKS.cafe);
@@ -105,12 +110,12 @@ const PosContent = () => {
     const iva = subtotal * 0.19;
     const paid = frame >= CLICKS.pay[0] + 8;
     const cart = useAppear(20, 20);
-    const c0 = cardCenter(0);
-    const c3 = cardCenter(3);
-    const payAt = { x: 952, y: 712 };
+    const c0 = cardCenter(0, L.cardW);
+    const c3 = cardCenter(3, L.cardW);
+    const payAt = L.payAt;
     return (
-        <div style={{ position: "relative", height: "100%", display: "flex", gap: 22 }}>
-            <div style={{ width: 3 * CARD_W + 36 }}>
+        <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: vertical ? "column" : "row", gap: 22 }}>
+            <div style={{ width: 3 * L.cardW + 36 }}>
                 <div
                     style={{
                         height: 50,
@@ -129,11 +134,11 @@ const PosContent = () => {
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 18 }}>
                     {PRODUCTS.map((p, i) => (
-                        <ProductCard key={p.name} p={p} i={i} pressedAt={i === 0 ? CLICKS.cafe : i === 3 ? CLICKS.filtros : []} />
+                        <ProductCard key={p.name} p={p} i={i} width={L.cardW} pressedAt={i === 0 ? CLICKS.cafe : i === 3 ? CLICKS.filtros : []} />
                     ))}
                 </div>
             </div>
-            <Card style={{ flex: 1, padding: 24, display: "flex", flexDirection: "column", ...cart }}>
+            <Card style={{ flex: L.cartHeight ? "none" : 1, height: L.cartHeight ?? undefined, padding: 24, display: "flex", flexDirection: "column", ...cart }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontSize: 22, fontWeight: 700 }}>Venta actual</div>
                     <Chip tone="info">Factura electrónica</Chip>
@@ -205,9 +210,12 @@ export const Pos = () => {
     return (
         <AbsoluteFill>
             <Backdrop hue={2} />
+            <Sfx at={0} name="whoosh" volume={0.5} />
+            <SfxTrain frames={[46, 60, 88, 101, 134]} name="click" volume={0.7} />
+            <Sfx at={142} name="ding" volume={0.6} />
             <Camera {...cam} start={0} end={60}>
-                <AppFrame group="sell" activeItem="Punto de venta" title="Punto de venta">
-                    <PosContent />
+                <AppFrame group="sell" activeItem="Punto de venta" title="Punto de venta" {...(vertical && V_FRAME)}>
+                    <PosContent vertical={vertical} />
                 </AppFrame>
             </Camera>
             <AbsoluteFill style={vertical ? V_HEADLINE_BOX : { justifyContent: "center", alignItems: "flex-end", paddingRight: 110 }}>

@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { AppFrame, Backdrop, Camera, Card, Chip, Headline, Sheen, V_CAMERA, V_HEADLINE_BOX, Vignette, useAppear, useIsVertical } from "../ui.jsx";
+import { AppFrame, Backdrop, Camera, Card, Chip, Headline, Sheen, V_CAMERA, V_FRAME, V_HEADLINE_BOX, Vignette, useAppear, useIsVertical, Sfx, SfxTrain } from "../ui.jsx";
 import { C, GRAD, cop, pop, rand, ramp } from "../theme.js";
 
 const KPIS = [
@@ -20,12 +20,12 @@ const ATTENTION = [
 // 30 days of sales with a believable upward drift.
 const SERIES = Array.from({ length: 30 }, (_, i) => 0.35 + i * 0.016 + (rand(i + 4) - 0.5) * 0.22);
 
-const Kpi = ({ k, i }) => {
+const Kpi = ({ k, i, basis = 1 }) => {
     const frame = useCurrentFrame();
     const style = useAppear(28 + i * 5);
     const t = ramp(frame, 32 + i * 5, 80 + i * 5);
     return (
-        <Card style={{ flex: 1, padding: "22px 24px", position: "relative", overflow: "hidden", ...style }}>
+        <Card style={{ flex: basis, padding: "22px 24px", position: "relative", overflow: "hidden", ...style }}>
             <div style={{ fontSize: 16, color: C.muted, fontWeight: 500 }}>{k.label}</div>
             <div style={{ fontSize: 36, fontWeight: 700, marginTop: 12, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
                 {cop(k.value * t)}
@@ -38,10 +38,8 @@ const Kpi = ({ k, i }) => {
     );
 };
 
-const Chart = () => {
+const Chart = ({ W = 700, H = 330 }) => {
     const frame = useCurrentFrame();
-    const W = 700;
-    const H = 330;
     const pts = SERIES.map((v, i) => [(i / (SERIES.length - 1)) * W, H - v * H * 0.9]);
     const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
     const draw = ramp(frame, 50, 110);
@@ -77,7 +75,8 @@ const Chart = () => {
     );
 };
 
-const DashboardContent = () => {
+// vertical: KPIs in a 2x2 grid and the cards stacked, sized to V_FRAME.
+const DashboardContent = ({ vertical = false }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
     const head = useAppear(18);
@@ -89,22 +88,22 @@ const DashboardContent = () => {
                 <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: "-0.02em" }}>Buenos días, Laura</div>
                 <div style={{ fontSize: 17, color: C.muted, marginTop: 4 }}>Así va tu negocio hoy · lunes, 28 de septiembre</div>
             </div>
-            <div style={{ display: "flex", gap: 18 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 18 }}>
                 {KPIS.map((k, i) => (
-                    <Kpi key={k.label} k={k} i={i} />
+                    <Kpi key={k.label} k={k} i={i} basis={vertical ? "1 1 calc(50% - 9px)" : 1} />
                 ))}
             </div>
-            <div style={{ display: "flex", gap: 18, flex: 1 }}>
-                <Card style={{ flex: 1.7, padding: 26, ...chartCard }}>
+            <div style={{ display: "flex", flexDirection: vertical ? "column" : "row", gap: 18, flex: 1 }}>
+                <Card style={{ flex: vertical ? "none" : 1.7, padding: 26, ...chartCard }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                         <div style={{ fontSize: 20, fontWeight: 700 }}>Ventas · últimos 30 días</div>
                         <Chip tone="ok">▲ 12%</Chip>
                     </div>
-                    <Chart />
+                    {vertical ? <Chart W={780} H={150} /> : <Chart />}
                 </Card>
                 <Card style={{ flex: 1, padding: 26, ...attn }}>
                     <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 18 }}>Necesita tu atención</div>
-                    {ATTENTION.map((a, i) => {
+                    {(vertical ? ATTENTION.slice(0, 3) : ATTENTION).map((a, i, list) => {
                         const p = pop(frame, fps, 64 + i * 7, { damping: 14, stiffness: 150 });
                         return (
                             <div
@@ -114,7 +113,7 @@ const DashboardContent = () => {
                                     alignItems: "center",
                                     justifyContent: "space-between",
                                     padding: "14px 0",
-                                    borderBottom: i < ATTENTION.length - 1 ? `1px solid ${C.line}` : "none",
+                                    borderBottom: i < list.length - 1 ? `1px solid ${C.line}` : "none",
                                     opacity: Math.min(1, p),
                                     transform: `translateX(${(1 - p) * 40}px)`,
                                 }}
@@ -124,21 +123,23 @@ const DashboardContent = () => {
                             </div>
                         );
                     })}
-                    <div
-                        style={{
-                            marginTop: 22,
-                            padding: "12px 16px",
-                            borderRadius: 14,
-                            background: GRAD,
-                            color: "#021314",
-                            fontWeight: 700,
-                            fontSize: 16,
-                            textAlign: "center",
-                            opacity: ramp(frame, 96, 110),
-                        }}
-                    >
-                        Ver todo lo pendiente
-                    </div>
+                    {!vertical && (
+                        <div
+                            style={{
+                                marginTop: 22,
+                                padding: "12px 16px",
+                                borderRadius: 14,
+                                background: GRAD,
+                                color: "#021314",
+                                fontWeight: 700,
+                                fontSize: 16,
+                                textAlign: "center",
+                                opacity: ramp(frame, 96, 110),
+                            }}
+                        >
+                            Ver todo lo pendiente
+                        </div>
+                    )}
                 </Card>
             </div>
         </div>
@@ -151,9 +152,12 @@ export const Dashboard = () => {
     return (
         <AbsoluteFill>
             <Backdrop />
+            <Sfx at={2} name="whoosh" volume={0.5} />
+            <SfxTrain frames={[30, 35, 40, 45]} name="pop" volume={0.25} />
+            <SfxTrain frames={vertical ? [64, 71, 78] : [64, 71, 78, 85]} name="blip" volume={0.2} />
             <Camera {...cam} start={0} end={70}>
-                <AppFrame group="home" title="Panel de Control" badges={{ inventory: 2 }}>
-                    <DashboardContent />
+                <AppFrame group="home" title="Panel de Control" badges={{ inventory: 2 }} {...(vertical && V_FRAME)}>
+                    <DashboardContent vertical={vertical} />
                 </AppFrame>
             </Camera>
             <AbsoluteFill style={vertical ? V_HEADLINE_BOX : { justifyContent: "center", paddingLeft: 110 }}>

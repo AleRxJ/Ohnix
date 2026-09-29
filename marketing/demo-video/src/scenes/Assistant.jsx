@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { ArrowRightOutlined, BellFilled, SendOutlined, StarFilled } from "@ant-design/icons";
-import { AppFrame, Backdrop, Camera, Headline, Sub, Vignette, useAppear, useIsVertical } from "../ui.jsx";
+import { AppFrame, Backdrop, Camera, Headline, Sub, Vignette, useAppear, useIsVertical, Sfx, SfxTrain } from "../ui.jsx";
 import { C, GRAD, fontFamily, pop, ramp } from "../theme.js";
 
 const QUESTION = "¿Cómo registro una compra a crédito?";
@@ -163,6 +163,10 @@ export const Assistant = () => {
     return (
     <AbsoluteFill>
         <Backdrop hue={10} />
+        <Sfx at={14} name="pop" volume={0.45} />
+        <SfxTrain frames={[52, 55, 58, 61, 64, 67, 70, 73, 76, 79, 82]} name="tick" volume={0.15} />
+        <Sfx at={88} name="pop" volume={0.45} />
+        <Sfx at={108} name="pop" volume={0.45} />
         <Camera from={{ x: 280, y: 40, rx: 8, ry: -10, s: 0.66 }} to={{ x: 180, y: 0, rx: 4, ry: -8, s: 0.7 }} start={0} end={160}>
             <div style={{ filter: "blur(3px) brightness(0.45)" }}>
                 <AppFrame group="money" activeItem="Nómina" title="Nómina" badges={{ money: 1 }}>
@@ -186,6 +190,10 @@ export const Assistant = () => {
 const AssistantVertical = () => (
     <AbsoluteFill>
         <Backdrop hue={10} />
+        <Sfx at={14} name="pop" volume={0.45} />
+        <SfxTrain frames={[52, 55, 58, 61, 64, 67, 70, 73, 76, 79, 82]} name="tick" volume={0.15} />
+        <Sfx at={88} name="pop" volume={0.45} />
+        <Sfx at={108} name="pop" volume={0.45} />
         <AbsoluteFill style={{ alignItems: "center", paddingTop: 590 }}>
             <div style={{ transform: "scale(1.35)", transformOrigin: "top center" }}>
                 <Panel width={680} height={700} />
