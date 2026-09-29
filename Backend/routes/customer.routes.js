@@ -6,6 +6,7 @@ import {
     updateCustomer,
     deleteCustomer,
     reassignCustomerPointOfSale,
+    getOrCreateFinalConsumer,
 } from "../controllers/customer.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
@@ -26,6 +27,10 @@ router
 
 // Admin routes - can access all customers
 router.route("/all").get(isAdmin, getAllCustomers);
+
+// POS checkout ("Caja") - gated on selling, not on managing customers: a
+// cashier needs the walk-in buyer without "customers: edit".
+router.post("/final-consumer", requireModulePermission("orders", "edit"), getOrCreateFinalConsumer);
 
 router
     .route("/:id")

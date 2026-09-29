@@ -141,6 +141,7 @@ const Products = lazy(() => import("./pages/Products"));
 const ProductionOrders = lazy(() => import("./pages/ProductionOrders"));
 const Payroll = lazy(() => import("./pages/Payroll"));
 const Orders = lazy(() => import("./pages/Orders"));
+const PosRegister = lazy(() => import("./pages/PosRegister"));
 const Purchase = lazy(() => import("./pages/Purchase"));
 const Warranties = lazy(() => import("./pages/Warranties"));
 const Quotations = lazy(() => import("./pages/Quotations"));
@@ -424,6 +425,7 @@ function App() {
                                 <Route path="production-orders" element={<RequireInventoryAccess><ProductionOrders /></RequireInventoryAccess>} />
                                 <Route path="payroll" element={<RequirePayrollAccess><Payroll /></RequirePayrollAccess>} />
                                 <Route path="orders" element={<RequireOrdersAccess><Orders /></RequireOrdersAccess>} />
+                                <Route path="pos" element={<RequireOrdersAccess><PosRegister /></RequireOrdersAccess>} />
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
                                 <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />

@@ -197,6 +197,65 @@ const createCustomer = asyncHandler(async (req, res, next) => {
     }
 });
 
+// DIAN's generic buyer for walk-in retail sales: identification 222222222222,
+// "no responsable de IVA" (ZZ), persona natural. One per point of sale because every customer is
+// pinned to one (see order.service.js's "pertenece a otro punto de venta"
+// check). Find-or-create so the POS can call it on every open. Deliberately
+// skips enforceEntityLimit: it's system-provided, not a customer the user
+// chose to add. Municipality falls back to the company's ICA municipality -
+// null leaves DIAN issuance to report it as missing, never a guessed city.
+const FINAL_CONSUMER_IDENTIFICATION = "222222222222";
+
+const getOrCreateFinalConsumer = asyncHandler(async (req, res, next) => {
+    try {
+        const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
+        const include = {
+            createdBy: { select: { id: true, legacyMongoId: true, username: true } },
+            pointOfSale: { select: { id: true, name: true } },
+        };
+        const where = {
+            createdById: req.user.prismaId,
+            pointOfSaleId,
+            type: "final_consumer",
+        };
+
+        let customer = await prisma.customer.findFirst({ where, include, orderBy: { createdAt: "asc" } });
+        if (!customer) {
+            const owner = await prisma.user.findUnique({
+                where: { id: req.user.prismaId },
+                select: { company: { select: { icaMunicipalityCode: true } } },
+            });
+            customer = await prisma.customer.create({
+                data: {
+                    name: "Consumidor final",
+                    email: "",
+                    phone: "",
+                    type: "final_consumer",
+                    photo: "default-customer.png",
+                    identificationDocumentCode: "13",
+                    identification: FINAL_CONSUMER_IDENTIFICATION,
+                    legalOrganizationCode: "2",
+                    tributeCode: "ZZ",
+                    municipalityCode: owner?.company?.icaMunicipalityCode || null,
+                    countryCode: "CO",
+                    createdById: req.user.prismaId,
+                    pointOfSaleId,
+                },
+                include,
+            });
+            emitPosEvent(req.user.prismaId, pointOfSaleId, "customer", "created");
+        }
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, mapCustomer(customer), "Final consumer fetched successfully"));
+    } catch (error) {
+        if (error instanceof ApiError) return next(error);
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
 const getAllCustomers = asyncHandler(async (_req, res, next) => {
     try {
         const customers = await prisma.customer.findMany({
@@ -482,4 +541,5 @@ export {
     updateCustomer,
     deleteCustomer,
     reassignCustomerPointOfSale,
+    getOrCreateFinalConsumer,
 };

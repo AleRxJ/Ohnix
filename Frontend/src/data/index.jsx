@@ -6,6 +6,7 @@ import {
     AppstoreOutlined,
     ShoppingCartOutlined,
     ShoppingOutlined,
+    ShopOutlined,
     UserSwitchOutlined,
     CreditCardOutlined,
     ApartmentOutlined,
@@ -96,6 +97,15 @@ export const getNavItems = (t, role, showElectronicInvoicing = false, showTeam =
                     {!can("salesQuotations") && <LockedPlanBadge featureKey="salesQuotations" lang={lang} />}
                 </Link>
             ),
+        },
+        {
+            key: "pos",
+            group: "sell",
+            path: "/pos",
+            textKey: "common.pos_nav",
+            moduleKey: "orders",
+            icon: <ShopOutlined />,
+            label: <Link to="/pos">{t("common.pos_nav")}</Link>,
         },
         {
             key: "orders",

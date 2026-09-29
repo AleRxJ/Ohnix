@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Form, Button, Tooltip } from "antd";
-import { PlusOutlined, ShoppingCartOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, PlusOutlined, ShopOutlined, ShoppingCartOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../components/common/PageHeader";
 import OrderStats from "../components/orders/OrderStats";
@@ -21,6 +22,7 @@ import { useDataInvalidation } from "../hooks/useDataInvalidation";
 
 const Orders = () => {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("orders", "edit");
     const canRegisterPayment = hasPermission("finance", "edit");
@@ -195,9 +197,8 @@ const Orders = () => {
                         icon={<ShoppingCartOutlined />}
                         actionButton={
                             <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
-                                <span className="w-full sm:w-auto inline-block">
+                                <span className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                                     <Button
-                                        type="primary"
                                         icon={<PlusOutlined />}
                                         onClick={() => setCreateModalVisible(true)}
                                         size="large"
@@ -207,10 +208,37 @@ const Orders = () => {
                                     >
                                         {t("orders.create_order")}
                                     </Button>
+                                    <Button
+                                        type="primary"
+                                        icon={<ShopOutlined />}
+                                        onClick={() => navigate("/pos")}
+                                        size="large"
+                                        className="w-full min-w-[120px] sm:w-auto"
+                                        disabled={!canEdit}
+                                    >
+                                        {t("pos.open_register")}
+                                    </Button>
                                 </span>
                             </Tooltip>
                         }
                     />
+
+                    {canEdit && (
+                        <button
+                            type="button"
+                            onClick={() => navigate("/pos")}
+                            className="group flex w-full items-center gap-4 rounded-2xl border border-[var(--ohnix-accent-line)] bg-[linear-gradient(120deg,var(--ohnix-accent-soft),transparent_65%)] p-4 text-left transition-all duration-200 hover:border-[var(--ohnix-accent-line-strong)] hover:shadow-[var(--ohnix-accent-glow-hover)] sm:p-5"
+                        >
+                            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#29D8D5] to-[#44F3F0] text-xl text-[var(--ohnix-accent-contrast)] shadow-[0_10px_28px_rgba(41,216,213,0.35)]">
+                                <ThunderboltOutlined />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                                <span className="block text-base font-semibold text-[var(--ohnix-text-primary)]">{t("pos.promo_title")}</span>
+                                <span className="block text-sm text-[var(--ohnix-text-muted)]">{t("pos.promo_text")}</span>
+                            </span>
+                            <ArrowRightOutlined className="hidden text-lg text-[var(--ohnix-accent)] transition-transform duration-200 group-hover:translate-x-1 sm:block" />
+                        </button>
+                    )}
 
                     <OrderStats stats={stats} />
 

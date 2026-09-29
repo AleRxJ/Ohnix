@@ -6,6 +6,8 @@ import PDFDocument from "pdfkit";
 import { prisma } from "../db/prisma.js";
 import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.middleware.js";
 import { resolveOrAssertPointOfSaleId, hasPosAccess } from "../middleware/pos.permissions.js";
+import { canAccessModule } from "../middleware/team.permissions.js";
+import { getOrderPendingBalance, registerOrderPayment } from "../services/orderPayment.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -125,8 +127,23 @@ const findOrderByAnyId = async (id) =>
         },
     });
 
+// Optional `payment` on create is the POS checkout ("Caja"): sale + payment
+// in ONE request, so an offline checkout is a single outbox entry. As two
+// separate requests, the payment would be queued against the order's
+// `offline-…` temp id, which the sync engine never remaps - it would 404 on
+// replay. Amount is always the order's server-computed pending balance, never
+// the client's preview total.
 const createOrder = asyncHandler(async (req, res, next) => {
     try {
+        const payment = req.body?.payment;
+        if (payment) {
+            if (!(await canAccessModule(req.user, "finance", "edit"))) {
+                throw new ApiError(403, 'Tu rol no tiene permiso para "editar" en finanzas.');
+            }
+            if (!payment.cash_account_id) {
+                throw new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required");
+            }
+        }
         const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
         const order = await orderService.createOrder(
             req.body,
@@ -135,6 +152,38 @@ const createOrder = asyncHandler(async (req, res, next) => {
             pointOfSaleId,
             req.user
         );
+        if (payment) {
+            // The sale itself already committed (stock, ledger, DIAN trigger) -
+            // a failed payment must not turn that into a 4xx the client would
+            // treat as "sale not made". It's reported alongside instead, and
+            // the payment can still be registered from the order's detail.
+            try {
+                const created = await prisma.order.findFirst({
+                    where: { OR: [{ id: order._id }, { legacyMongoId: order._id }] },
+                    select: { id: true },
+                });
+                const { pending } = await getOrderPendingBalance(created.id);
+                if (pending > 0) {
+                    await registerOrderPayment({
+                        accountId: req.user.prismaId,
+                        actorId: req.user.actorId,
+                        orderId: created.id,
+                        amount: pending,
+                        cashAccountId: payment.cash_account_id,
+                        method: payment.method,
+                        reference: payment.reference,
+                        settleInFull: false,
+                        paymentMethodId: payment.payment_method_id || null,
+                        withholdings: {},
+                    });
+                }
+                order.payment_registered = true;
+            } catch (paymentError) {
+                console.error("POS checkout payment failed:", paymentError);
+                order.payment_registered = false;
+                order.payment_error = paymentError?.message || "Payment could not be registered.";
+            }
+        }
         return res
             .status(201)
             .json(new ApiResponse(201, order, "Order created successfully"));
