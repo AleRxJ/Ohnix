@@ -110,8 +110,9 @@ const renderHtml = (receipt, { width, t, received, change }) => {
 
     return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sale.number || "ticket")}</title>
 <style>
-@page { size: ${width}mm auto; margin: 0; }
+@page { margin: 0; }
 * { box-sizing: border-box; }
+html, body { background: #fff; }
 body { margin: 0; padding: 3mm ${width === 58 ? "2mm" : "4mm"}; width: ${width}mm; font-family: "Courier New", ui-monospace, monospace; font-size: ${width === 58 ? "10px" : "11.5px"}; color: #000; }
 .c { text-align: center; } .b { font-weight: 700; } .s { font-size: 0.85em; }
 .hr { border-top: 1px dashed #000; margin: 6px 0; }
@@ -166,30 +167,73 @@ export const buildPreBill = ({ tab, lines, totals, pointOfSale, cashier }) => ({
     document: { kind: "pre_bill" },
 });
 
-const renderKitchenHtml = ({ tableName, guests, waiter, items, width, t }) => {
+// Kitchen ticket ("comanda"): what a line cook needs at a glance - big
+// table name, which round this is (an ADICIONAL for a table already served
+// must stand out), quantities and notes impossible to misread, and who/when.
+const renderKitchenHtml = ({ companyName, tableName, zone, guests, waiter, items, round = 1, tabCode, openedAt, width, t }) => {
     const now = new Date();
+    const narrow = width === 58;
+    const time = (d) => d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+    const units = items.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
+    const minutesOpen = openedAt ? Math.max(0, Math.round((now - new Date(openedAt)) / 60000)) : null;
     return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda</title>
 <style>
-@page { size: ${width}mm auto; margin: 0; }
-body { margin: 0; padding: 3mm ${width === 58 ? "2mm" : "4mm"}; width: ${width}mm; font-family: "Courier New", ui-monospace, monospace; font-size: ${width === 58 ? "12px" : "14px"}; color: #000; }
-.c { text-align: center; } .b { font-weight: 700; } .hr { border-top: 1px dashed #000; margin: 6px 0; }
-.item { display: flex; gap: 8px; margin: 5px 0; font-size: 1.15em; } .qty { font-weight: 700; min-width: 2.5em; }
-.note { font-size: 0.85em; padding-left: 2.8em; }
+@page { margin: 0; }
+* { box-sizing: border-box; }
+html, body { background: #fff; }
+body { margin: 0; padding: 3mm ${narrow ? "2mm" : "3.5mm"} 4mm; width: ${width}mm; font-family: "Courier New", ui-monospace, monospace; font-size: ${narrow ? "11px" : "12.5px"}; color: #000; line-height: 1.25; }
+.c { text-align: center; } .b { font-weight: 700; } .up { text-transform: uppercase; }
+.biz { font-size: 0.9em; letter-spacing: 0.04em; }
+.tag { background: #000; color: #fff; font-weight: 700; letter-spacing: 0.25em; padding: 3px 0; margin: 4px 0 6px; font-size: 1.15em; }
+.table { font-size: ${narrow ? "2.1em" : "2.6em"}; font-weight: 700; line-height: 1.05; }
+.zone { font-size: 1em; margin-top: 2px; }
+.round { border: 2px solid #000; font-weight: 700; padding: 3px 0; margin: 6px 0; font-size: 1.1em; letter-spacing: 0.08em; }
+.meta { display: flex; justify-content: space-between; gap: 6px; margin: 1px 0; }
+.hr { border-top: 1px dashed #000; margin: 6px 0; }
+.hr2 { border-top: 2px solid #000; margin: 6px 0; }
+.head { display: flex; gap: 6px; font-weight: 700; font-size: 0.85em; }
+.head .qty { min-width: 2.9em; }
+.item { display: flex; gap: 6px; margin: 6px 0 2px; font-size: ${narrow ? "1.2em" : "1.35em"}; font-weight: 700; }
+.qty { min-width: 2.4em; }
+.name { flex: 1; text-transform: uppercase; word-break: break-word; }
+.note { margin: 0 0 4px 2.6em; font-size: ${narrow ? "1em" : "1.1em"}; font-style: italic; border-left: 3px solid #000; padding-left: 5px; }
+.foot { font-size: 0.9em; }
+.cut { text-align: center; letter-spacing: 0.3em; margin-top: 8px; font-size: 0.9em; }
 </style></head><body>
-<div class="c b" style="font-size:1.3em">${t("receipt.kitchen_ticket")}</div>
-<div class="c b" style="font-size:1.6em">${esc(tableName)}</div>
-<div class="c">${now.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}${guests ? ` · ${guests} ${t("receipt.guests")}` : ""}${waiter ? ` · ${esc(waiter)}` : ""}</div>
+${companyName ? `<div class="c biz up">${esc(companyName)}</div>` : ""}
+<div class="c tag">${t("receipt.kitchen_ticket")}</div>
+<div class="c table">${esc(tableName)}</div>
+${zone ? `<div class="c zone up">${esc(zone)}</div>` : ""}
+${round > 1 ? `<div class="c round up">${t("receipt.kitchen_additional")} · ${t("receipt.kitchen_round", { round })}</div>` : ""}
 <div class="hr"></div>
-${items.map((i) => `<div class="item"><span class="qty">${i.quantity}x</span><span>${esc(i.product_name)}</span></div>${i.note ? `<div class="note">→ ${esc(i.note)}</div>` : ""}`).join("")}
-<div class="hr"></div>
+${tabCode ? `<div class="meta"><span>${t("receipt.kitchen_order_no")}</span><span class="b">#${esc(tabCode)}${round > 1 ? `-${round}` : ""}</span></div>` : ""}
+<div class="meta"><span>${t("receipt.date")}</span><span>${now.toLocaleDateString("es-CO")}</span></div>
+<div class="meta"><span>${t("receipt.kitchen_time")}</span><span class="b">${time(now)}</span></div>
+${waiter ? `<div class="meta"><span>${t("receipt.kitchen_waiter")}</span><span>${esc(waiter)}</span></div>` : ""}
+${guests ? `<div class="meta"><span>${t("receipt.kitchen_guests")}</span><span>${guests}</span></div>` : ""}
+${minutesOpen !== null && round > 1 ? `<div class="meta"><span>${t("receipt.kitchen_opened")}</span><span>${minutesOpen} min</span></div>` : ""}
+<div class="hr2"></div>
+<div class="head"><span class="qty">${t("receipt.kitchen_qty")}</span><span>${t("receipt.kitchen_item")}</span></div>
+${items
+    .map(
+        (i) =>
+            `<div class="item"><span class="qty">${i.quantity}</span><span class="name">${esc(i.product_name)}</span></div>${i.note ? `<div class="note">» ${esc(i.note)}</div>` : ""}`
+    )
+    .join("")}
+<div class="hr2"></div>
+<div class="meta foot b"><span>${t("receipt.kitchen_total")}</span><span>${units} ${t("receipt.kitchen_units")}</span></div>
+<div class="c foot">${t("receipt.kitchen_sent_at", { time: time(now) })}</div>
+<div class="cut">- - - - - - - - - - - -</div>
 </body></html>`;
 };
 
-const printHtml = (html) =>
+const printHtml = (html, widthMm = 80) =>
     new Promise((resolve) => {
         const frame = document.createElement("iframe");
         frame.setAttribute("aria-hidden", "true");
-        Object.assign(frame.style, { position: "fixed", right: "0", bottom: "0", width: "0", height: "0", border: "0" });
+        // Off-screen but at the real roll width, so the content lays out (and
+        // measures) exactly as it will print.
+        Object.assign(frame.style, { position: "fixed", left: "-10000px", top: "0", width: `${widthMm}mm`, height: "200px", border: "0", visibility: "hidden" });
         document.body.appendChild(frame);
         const doc = frame.contentWindow.document;
         doc.open();
@@ -204,6 +248,11 @@ const printHtml = (html) =>
         };
         setTimeout(() => {
             try {
+                const heightPx = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight || 0);
+                const heightMm = Math.ceil((heightPx * 25.4) / 96) + 4;
+                const pageStyle = doc.createElement("style");
+                pageStyle.textContent = `@page { size: ${widthMm}mm ${heightMm}mm; margin: 0; }`;
+                doc.head.appendChild(pageStyle);
                 frame.contentWindow.focus();
                 frame.contentWindow.onafterprint = cleanup;
                 frame.contentWindow.print();
@@ -213,7 +262,11 @@ const printHtml = (html) =>
         }, 350);
     });
 
-export const printKitchenTicket = ({ tableName, guests, waiter, items, width = 80, t }) =>
-    printHtml(renderKitchenHtml({ tableName, guests, waiter, items, width, t }));
+export const printKitchenTicket = ({ companyName, tableName, zone, guests, waiter, items, round, tabCode, openedAt, width = 80, t }) =>
+    printHtml(renderKitchenHtml({ companyName: companyName || cachedHeader()?.name, tableName, zone, guests, waiter, items, round, tabCode, openedAt, width, t }), width);
 
-export const printReceipt = (receipt, { width = 80, t, received, change } = {}) => printHtml(renderHtml(receipt, { width, t, received, change }));
+export const printReceipt = (receipt, { width = 80, t, received, change } = {}) => printHtml(renderHtml(receipt, { width, t, received, change }), width);
+
+// Test/preview hook: the exact HTML that gets printed (used to render a PNG
+// preview without a printer).
+export const renderKitchenTicketHtml = (args) => renderKitchenHtml({ width: 80, ...args });

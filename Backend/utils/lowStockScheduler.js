@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { prisma } from "../db/prisma.js";
 import transporter, { isMailConfigured } from "./nodemailer.js";
+import { buildEmail, emailLinks } from "./emailTemplate.js";
 import { getLowStockDefaultThreshold, setLowStockDefaultThreshold } from "./systemSettings.js";
 
 const resolveTimezone = () => {
@@ -21,117 +22,68 @@ class LowStockScheduler {
         this.isRunning = false;
     }
 
-    // Shared HTML builder for both the real weekly report and the
-    // self-test send below - `isSample` swaps in a banner + different
-    // subject so a test email is never mistaken for a real report.
-    // `locale` picks ES/EN copy and follows the same dark Ohnix-branded look
-    // as sendRealtimeLowStockAlert below, instead of the old generic
-    // light-theme template that never matched the app or the user's language.
-    buildLowStockEmailHtml(username, lowStockProducts, { isSample = false, locale = "es" } = {}) {
-        const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
-        const tr = {
-            title: isEN ? (isSample ? "Test low stock alert" : "Weekly low stock report") : isSample ? "Alerta de stock bajo (prueba)" : "Reporte semanal de stock bajo",
-            subtitle: isEN
-                ? isSample
-                    ? "Sent on demand to verify alert delivery"
-                    : "Your automated weekly inventory alert"
-                : isSample
-                    ? "Enviado manualmente para verificar la entrega de alertas"
-                    : "Tu alerta automática semanal de inventario",
-            sampleBanner: isEN
-                ? "This is a TEST email. Your account currently has no products below their stock alert threshold - the rows below are sample data used only to confirm delivery and formatting."
-                : "Este es un correo de PRUEBA. Tu cuenta actualmente no tiene productos por debajo de su umbral de stock - las filas siguientes son datos de ejemplo, solo para confirmar la entrega y el formato.",
-            intro: (count) =>
-                isEN
-                    ? `Hello <strong>${username}</strong>, here's your ${isSample ? "" : "weekly "}low stock report. The following <strong>${count}</strong> product${count === 1 ? "" : "s"} fell below the stock alert threshold:`
-                    : `Hola <strong>${username}</strong>, este es tu reporte${isSample ? "" : " semanal"} de stock bajo. Los siguientes <strong>${count}</strong> producto${count === 1 ? "" : "s"} cayeron por debajo del umbral de alerta:`,
-            colProduct: isEN ? "Product" : "Producto",
-            colCode: isEN ? "Code" : "Código",
-            colStock: isEN ? "Stock left" : "Stock restante",
-            colCategory: isEN ? "Category" : "Categoría",
-            tip: isEN
-                ? "Take action now to prevent potential sales disruptions and ensure customer satisfaction."
-                : "Actúa ahora para evitar interrupciones en tus ventas y mantener satisfechos a tus clientes.",
-            cta: isEN ? "Restock now" : "Reabastecer ahora",
-            footer: isEN
-                ? isSample
-                    ? "This test email does not affect the automated report sent every Monday at 9:00 AM."
-                    : "This is an automated weekly report sent every Monday at 9:00 AM."
-                : isSample
-                    ? "Este correo de prueba no afecta el reporte automático que se envía cada lunes a las 9:00 AM."
-                    : "Este es un reporte automático enviado cada lunes a las 9:00 AM.",
-            na: isEN ? "N/A" : "N/D",
-        };
-
-        const rows = lowStockProducts
-            .map(
-                (product) => `
-                <tr>
-                    <td style="padding:12px 16px;color:#e5e7eb;font-weight:600;border-bottom:1px solid #1d2733;">${product.productName}</td>
-                    <td style="padding:12px 16px;color:#9ca3af;font-family:monospace;border-bottom:1px solid #1d2733;">${product.productCode}</td>
-                    <td style="padding:12px 16px;text-align:center;border-bottom:1px solid #1d2733;">
-                        <span style="background:#450a0a;color:#fca5a5;font-weight:700;padding:3px 10px;border-radius:99px;font-size:13px;">${product.stock}</span>
-                    </td>
-                    <td style="padding:12px 16px;color:#9ca3af;border-bottom:1px solid #1d2733;">${product.category?.categoryName || tr.na}</td>
-                </tr>`
-            )
-            .join("");
-
-        const sampleBanner = isSample
-            ? `<div style="background:linear-gradient(120deg,rgba(41,216,213,0.14),rgba(41,216,213,0.04));border:1px solid rgba(41,216,213,0.3);border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-                    <p style="color:#7ce7e4;font-size:13px;margin:0;font-weight:600;">${tr.sampleBanner}</p>
-                </div>`
-            : "";
-
-        return `
-            <!DOCTYPE html>
-            <html lang="${isEN ? "en" : "es"}">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>${tr.title}</title>
-            </head>
-            <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#050505;">
-                <div style="max-width:640px;margin:20px auto;padding:24px;background:#0b0b0b;border:1px solid #1d2733;border-radius:12px;">
-                    <div style="background:linear-gradient(120deg,rgba(41,216,213,0.16),rgba(41,216,213,0.04));border-bottom:1px solid #1d2733;padding:16px 0 14px;margin-bottom:20px;border-radius:8px 8px 0 0;">
-                        <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:6px;padding-left:2px;">OHNIX</div>
-                        <h1 style="color:#e5eef1;margin:0;padding-left:2px;font-size:22px;">${tr.title}</h1>
-                        <p style="color:#8b98a0;margin:6px 0 0;padding-left:2px;font-size:13px;">${tr.subtitle}</p>
-                    </div>
-
-                    ${sampleBanner}
-
-                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;margin:0 0 18px;">${tr.intro(lowStockProducts.length)}</p>
-
-                    <table style="width:100%;border-collapse:collapse;border:1px solid #1d2733;border-radius:8px;overflow:hidden;">
-                        <thead>
-                            <tr style="background:#111827;">
-                                <th style="padding:10px 16px;text-align:left;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${tr.colProduct}</th>
-                                <th style="padding:10px 16px;text-align:left;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${tr.colCode}</th>
-                                <th style="padding:10px 16px;text-align:center;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${tr.colStock}</th>
-                                <th style="padding:10px 16px;text-align:left;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${tr.colCategory}</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-
-                    <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:14px 16px;margin:20px 0;">
-                        <p style="color:#fbbf24;font-size:13px;margin:0;font-weight:500;"><strong>${isEN ? "Tip" : "Consejo"}:</strong> ${tr.tip}</p>
-                    </div>
-
-                    <p style="text-align:center;margin:24px 0 8px;">
-                        <a href="${process.env.FRONTEND_URL || ""}/products" target="_blank" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px;display:inline-block;">${tr.cta}</a>
-                    </p>
-
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 4px;">${tr.footer}</p>
-                    <p style="text-align:center;font-size:12px;color:#6b7280;margin:0;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
-                </div>
-            </body>
-            </html>
-        `;
+    // Weekly report and self-test share one builder (shared Ohnix layout,
+    // utils/emailTemplate.js). `isSample` adds a banner + test subject so a
+    // test is never mistaken for a real report. Returns { html, text }.
+    buildLowStockEmail(username, lowStockProducts, { isSample = false, locale = "es" } = {}) {
+        const en = `${locale || ""}`.toLowerCase().startsWith("en");
+        const count = lowStockProducts.length;
+        const outOfStock = lowStockProducts.filter((p) => Number(p.stock) <= 0).length;
+        return buildEmail({
+            lang: en ? "en" : "es",
+            category: en ? "Inventory" : "Inventario",
+            tone: "warning",
+            badge: isSample ? (en ? "Test" : "Prueba") : en ? "Low stock" : "Stock bajo",
+            preheader: en
+                ? `${count} product${count === 1 ? "" : "s"} below the alert threshold${outOfStock ? ` (${outOfStock} out of stock)` : ""}.`
+                : `${count} producto${count === 1 ? "" : "s"} por debajo del umbral de alerta${outOfStock ? ` (${outOfStock} agotado${outOfStock === 1 ? "" : "s"})` : ""}.`,
+            title: en ? (isSample ? "Test low stock alert" : "Your weekly low stock report") : isSample ? "Alerta de stock bajo de prueba" : "Tu reporte semanal de stock bajo",
+            greeting: en ? `Hi ${username},` : `Hola ${username},`,
+            intro: en
+                ? `${count} product${count === 1 ? " is" : "s are"} below the alert threshold. Restock before they run out to avoid missing sales.`
+                : `${count === 1 ? "Hay 1 producto" : `Hay ${count} productos`} por debajo del umbral de alerta. Reabastece antes de que se agoten para no perder ventas.`,
+            blocks: [
+                ...(isSample
+                    ? [{
+                          type: "alert",
+                          tone: "info",
+                          title: en ? "This is a test email" : "Este es un correo de prueba",
+                          text: en
+                              ? "Your account has no products below their threshold right now. The rows below are sample data, only to confirm delivery and formatting."
+                              : "Tu cuenta no tiene productos por debajo de su umbral en este momento. Las filas son datos de ejemplo, solo para confirmar la entrega y el formato.",
+                      }]
+                    : []),
+                {
+                    type: "table",
+                    columns: [
+                        { label: en ? "Product" : "Producto" },
+                        { label: en ? "Code" : "Código" },
+                        { label: en ? "Category" : "Categoría" },
+                        { label: en ? "Stock" : "Stock", align: "right" },
+                    ],
+                    rows: lowStockProducts.map((p) => [
+                        { text: p.productName, bold: true },
+                        { text: p.productCode || "—", color: "#8b98a0" },
+                        { text: p.category?.categoryName || "—", color: "#8b98a0" },
+                        Number(p.stock) <= 0
+                            ? { text: en ? "Out" : "Agotado", color: "#fb7185", bold: true }
+                            : { text: String(p.stock), color: "#f5a524", bold: true },
+                    ]),
+                },
+            ],
+            cta: { label: en ? "Review inventory" : "Revisar inventario", url: emailLinks.app("/products") },
+            footnote: isSample
+                ? en
+                    ? "This test doesn't affect the automatic report sent every Monday at 9:00 a.m."
+                    : "Esta prueba no afecta el reporte automático que se envía cada lunes a las 9:00 a. m."
+                : en
+                  ? "Sent automatically every Monday at 9:00 a.m."
+                  : "Se envía automáticamente cada lunes a las 9:00 a. m.",
+            reason: en
+                ? "You get this because stock alerts are on for your Ohnix account."
+                : "Recibes este correo porque las alertas de inventario están activas en tu cuenta de Ohnix.",
+        });
     }
-
     async getLowStockProductsForUser(userId) {
         const platformDefaultThreshold = await getLowStockDefaultThreshold();
 
@@ -190,8 +142,8 @@ class LowStockScheduler {
             await transporter.sendMail({
                 from: `Ohnix by iTCycle <${process.env.SENDER_EMAIL}>`,
                 to: userEmail,
-                subject: isEN ? "Weekly Low Stock Alert - Action Required" : "Reporte semanal de stock bajo - Acción requerida",
-                html: this.buildLowStockEmailHtml(username, lowStockProducts, { locale }),
+                subject: isEN ? "Your weekly low stock report" : "Tu reporte semanal de stock bajo",
+                ...this.buildLowStockEmail(username, lowStockProducts, { locale }),
             });
             console.log(
                 `Low stock alert sent to ${username} (${userEmail}) - ${lowStockProducts.length} products`
@@ -240,9 +192,9 @@ class LowStockScheduler {
                 from: `Ohnix by iTCycle <${process.env.SENDER_EMAIL}>`,
                 to: userEmail,
                 subject: isSample
-                    ? (isEN ? "[TEST] Ohnix Low Stock Alert" : "[PRUEBA] Alerta de stock bajo Ohnix")
-                    : (isEN ? "Weekly Low Stock Alert - Action Required" : "Reporte semanal de stock bajo - Acción requerida"),
-                html: this.buildLowStockEmailHtml(username, products, { isSample, locale }),
+                    ? (isEN ? "[Test] Low stock alert" : "[Prueba] Alerta de stock bajo")
+                    : (isEN ? "Your weekly low stock report" : "Tu reporte semanal de stock bajo"),
+                ...this.buildLowStockEmail(username, products, { isSample, locale }),
             });
             console.log(`Self-test low stock alert sent to ${username} (${userEmail})${isSample ? " [sample data]" : ""}`);
 
@@ -489,55 +441,52 @@ export const sendRealtimeLowStockAlert = async (items) => {
 
     for (const { userEmail, username, locale, products } of Object.values(byUser)) {
         try {
-            const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
+            const en = `${locale || ""}`.toLowerCase().startsWith("en");
             const count = products.length;
-            const subject = isEN
-                ? `⚠️ Ohnix — Low stock detected (${count} product${count > 1 ? "s" : ""})`
-                : `⚠️ Ohnix — Stock bajo detectado (${count} producto${count > 1 ? "s" : ""})`;
-            const title = isEN ? "⚠️ Low stock alert" : "⚠️ Alerta de stock bajo";
-            const intro = isEN
-                ? `Hello <strong>${username}</strong>, the following products fell below the threshold after the last order:`
-                : `Hola <strong>${username}</strong>, los siguientes productos quedaron por debajo del umbral tras el último pedido:`;
-            const colProduct = isEN ? "Product" : "Producto";
-            const colCode = isEN ? "Code" : "Código";
-            const colStock = isEN ? "Current stock" : "Stock actual";
-            const ctaLabel = isEN ? "Restock now" : "Reabastecer ahora";
-
-            const rows = products.map((p) => `
-                <tr>
-                    <td style="padding:10px 14px;color:#e5e7eb;font-weight:600;border-bottom:1px solid #1d2733;">${p.productName}</td>
-                    <td style="padding:10px 14px;color:#9ca3af;font-family:monospace;border-bottom:1px solid #1d2733;">${p.productCode}</td>
-                    <td style="padding:10px 14px;text-align:center;border-bottom:1px solid #1d2733;">
-                        <span style="background:#450a0a;color:#fca5a5;font-weight:700;padding:3px 10px;border-radius:99px;font-size:13px;">${p.stock}</span>
-                    </td>
-                </tr>`).join("");
-
+            const outOfStock = products.filter((p) => Number(p.stock) <= 0).length;
+            const subject = en
+                ? `Low stock: ${count === 1 ? products[0].productName : `${count} products`} after your last sale`
+                : `Stock bajo: ${count === 1 ? products[0].productName : `${count} productos`} tras tu última venta`;
             await transporter.sendMail({
                 from: `Ohnix <${process.env.SENDER_EMAIL}>`,
                 to: userEmail,
                 subject,
-                html: `
-                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #b91c1c;border-radius:12px;">
-                        <div style="background:linear-gradient(120deg,rgba(185,28,28,0.2),rgba(41,216,213,0.06));border-bottom:1px solid #1d2733;padding:16px 0 14px;margin-bottom:18px;border-radius:8px 8px 0 0;">
-                            <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:6px;">OHNIX</div>
-                            <h2 style="color:#fca5a5;margin:0;font-size:20px;">${title}</h2>
-                        </div>
-                        <p style="color:#e5e7eb;font-size:15px;line-height:1.6;margin:0 0 18px;">${intro}</p>
-                        <table style="width:100%;border-collapse:collapse;border:1px solid #1d2733;border-radius:8px;overflow:hidden;">
-                            <thead><tr style="background:#111827;">
-                                <th style="padding:10px 14px;text-align:left;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${colProduct}</th>
-                                <th style="padding:10px 14px;text-align:left;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${colCode}</th>
-                                <th style="padding:10px 14px;text-align:center;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${colStock}</th>
-                            </tr></thead>
-                            <tbody>${rows}</tbody>
-                        </table>
-                        <p style="text-align:center;margin:24px 0 8px;">
-                            <a href="${process.env.FRONTEND_URL || ""}/products" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px;">${ctaLabel}</a>
-                        </p>
-                        <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                        <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
-                    </div>
-                `,
+                ...buildEmail({
+                    lang: en ? "en" : "es",
+                    category: en ? "Inventory" : "Inventario",
+                    tone: outOfStock ? "danger" : "warning",
+                    badge: outOfStock ? (en ? "Out of stock" : "Agotado") : en ? "Low stock" : "Stock bajo",
+                    preheader: en ? `${count} product${count === 1 ? "" : "s"} fell below the alert threshold.` : `${count} producto${count === 1 ? "" : "s"} quedó por debajo del umbral de alerta.`,
+                    title: en ? "Some products are running low" : "Tienes productos por agotarse",
+                    greeting: en ? `Hi ${username},` : `Hola ${username},`,
+                    intro: en
+                        ? "After your last sale, these products fell below their alert threshold:"
+                        : "Tras tu última venta, estos productos quedaron por debajo de su umbral de alerta:",
+                    blocks: [
+                        {
+                            type: "table",
+                            columns: [
+                                { label: en ? "Product" : "Producto" },
+                                { label: en ? "Code" : "Código" },
+                                { label: en ? "Alert at" : "Alerta en", align: "right" },
+                                { label: en ? "Stock" : "Stock", align: "right" },
+                            ],
+                            rows: products.map((p) => [
+                                { text: p.productName, bold: true },
+                                { text: p.productCode || "—", color: "#8b98a0" },
+                                { text: p.threshold !== undefined && p.threshold !== null ? String(p.threshold) : "—", color: "#8b98a0" },
+                                Number(p.stock) <= 0
+                                    ? { text: en ? "Out" : "Agotado", color: "#fb7185", bold: true }
+                                    : { text: String(p.stock), color: "#f5a524", bold: true },
+                            ]),
+                        },
+                    ],
+                    cta: { label: en ? "Review inventory" : "Revisar inventario", url: emailLinks.app("/products") },
+                    secondaryCta: { label: en ? "Create a purchase" : "Registrar una compra", url: emailLinks.app("/purchases") },
+                    reason: en
+                        ? "You get this because stock alerts are on for your Ohnix account."
+                        : "Recibes este correo porque las alertas de inventario están activas en tu cuenta de Ohnix.",
+                }),
             });
         } catch (err) {
             console.error(`[realtime-low-stock] Failed for ${userEmail}:`, err?.message);

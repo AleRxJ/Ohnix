@@ -25,7 +25,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { sendMailSafe } from "../utils/nodemailer.js";
 import { logAdminAction } from "../utils/adminAudit.js";
-import { buildOtpEmail } from "../controllers/user.controller.js";
+import { accountAccessEmail } from "../utils/accountEmails.js";
 import { getPlanLimits } from "../middleware/pricing.middleware.js";
 import { findAvailableUsername } from "./guestCertificateCheckout.service.js";
 import { buildCatalogProducts, detectCatalogMapping, sanitizeMapping } from "./demoCatalog.service.js";
@@ -230,8 +230,8 @@ export const sendDemoAccess = async ({ demoRequestId, adminId }) => {
         {
             from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: user.email,
-            subject: "Ohnix — Tu cuenta está lista, con tus productos cargados",
-            html: buildOtpEmail({ username: user.username, otp: resetOtp, locale: "es", context: "reset_password" }),
+            subject: "Tu cuenta de Ohnix está lista, con tus productos cargados",
+            ...accountAccessEmail({ variant: "demo", username: user.username, email: user.email, otp: resetOtp, companyName: demoRequest.companyName }),
         },
         "demo-access"
     );

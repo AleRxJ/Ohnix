@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Form, Steps, message } from "antd";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../api/api.js";
 import AuthLayout from "../../components/auth/AuthLayout";
 import AuthCard from "../../components/auth/AuthCard";
@@ -24,6 +24,22 @@ const ResetPassword = () => {
     const [otpSent, setOtpSent] = useState(false);
     const navigate = useNavigate();
     const { t } = useI18n();
+
+    // Link from an access email (demo account handover, guest checkout):
+    // ?email=...&code=... arrives with a code already issued, so go straight
+    // to "choose your password" - asking for a new code here would REPLACE
+    // the one the email carried.
+    const [searchParams] = useSearchParams();
+    useEffect(() => {
+        const linkEmail = searchParams.get("email");
+        const linkCode = searchParams.get("code");
+        if (linkEmail && linkCode) {
+            setEmail(linkEmail);
+            setOtp(linkCode);
+            setOtpSent(true);
+            setCurrentStep(1);
+        }
+    }, [searchParams]);
 
     const handleSendOTP = async () => {
         if (!email) {

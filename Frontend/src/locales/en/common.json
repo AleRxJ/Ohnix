@@ -3808,7 +3808,19 @@
     "cufe": "CUFE",
     "thanks": "Thank you for your purchase!",
     "kitchen_ticket": "KITCHEN ORDER",
-    "guests": "guests"
+    "guests": "guests",
+    "kitchen_additional": "Additional",
+    "kitchen_round": "Round {{round}}",
+    "kitchen_order_no": "Order",
+    "kitchen_time": "Time",
+    "kitchen_waiter": "Server",
+    "kitchen_guests": "Guests",
+    "kitchen_opened": "Table open for",
+    "kitchen_qty": "QTY",
+    "kitchen_item": "ITEM",
+    "kitchen_total": "Total",
+    "kitchen_units": "items",
+    "kitchen_sent_at": "Sent to kitchen {{time}}"
   },
   "tables": {
     "mode_counter": "Counter",
@@ -3948,7 +3960,18 @@
     "paper_width": "Paper width",
     "auto_print": "Print when each sale finishes",
     "print_help": "Uses the thermal printer installed on this device. Settings are saved on this device only.",
-    "sent_to_kitchen": "In kitchen"
+    "sent_to_kitchen": "In kitchen",
+    "table_paid_title": "{{table}} paid!",
+    "back_to_tables": "Back to tables",
+    "charge_refused": "The sale couldn't be recorded",
+    "kitchen_note": "Kitchen note",
+    "kitchen_note_placeholder": "E.g. no onion, medium rare",
+    "add_note": "Note",
+    "remove_note": "Remove note",
+    "note_no_onion": "No onion",
+    "note_to_go": "To go",
+    "note_no_ice": "No ice",
+    "note_well_done": "Well done"
   },
   "orders": {
     "order": "Order",

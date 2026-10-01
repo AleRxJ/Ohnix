@@ -24,7 +24,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { sendMailSafe } from "../utils/nodemailer.js";
-import { buildOtpEmail } from "../controllers/user.controller.js";
+import { accountAccessEmail } from "../utils/accountEmails.js";
 import { createOrReuseMyCertificateOrder } from "./certificateOrder.service.js";
 import { provisionCompanyWithItcycleForCertificate } from "./electronicInvoicing.service.js";
 
@@ -206,13 +206,8 @@ export const registerGuestCompanyForCertificate = async ({
         const mailOptions = {
             from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: normalizedEmail,
-            subject: "Ohnix — Tu cuenta y tu certificado digital",
-            html: buildOtpEmail({
-                username: user.username,
-                otp: resetOtp,
-                locale: "es",
-                context: "reset_password",
-            }),
+            subject: "Tu cuenta de Ohnix y tu certificado digital",
+            ...accountAccessEmail({ variant: "certificate", username: user.username, email: normalizedEmail, otp: resetOtp }),
         };
         const mailResult = await sendMailSafe(mailOptions, "guest-certificate-checkout-welcome");
         if (!mailResult?.sent) {

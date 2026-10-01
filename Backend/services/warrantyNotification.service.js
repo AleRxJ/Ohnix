@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { getProvider } from "../notificationProviders/registry.js";
 import { renderTemplate } from "../utils/warrantyTemplateRenderer.js";
+import { buildEmail, companyBrand } from "../utils/emailTemplate.js";
 import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_WHATSAPP_TEMPLATES, GENERIC_UPDATE_TEMPLATE } from "../utils/warrantyNotificationDefaults.js";
 
 const BACKOFF_MINUTES = [1, 5, 30, 120, 360, 1440];
@@ -19,6 +20,30 @@ const getBusinessProfile = async (accountId) => {
         name: user?.company?.name || user?.company?.legalName || user?.username || "Ohnix",
         phone: user?.company?.phone || "",
         address: "",
+    };
+};
+
+// The merchant writes these bodies as plain text (see
+// warrantyNotificationDefaults.js), so they go in escaped, inside the shared
+// layout in company-brand mode - the customer hears from the business, not
+// from Ohnix.
+const buildWarrantyEmail = async (accountId, subject, body) => {
+    const user = await prisma.user.findUnique({
+        where: { id: accountId },
+        select: { username: true, company: { select: { name: true, legalName: true, contactEmail: true, logoUrl: true, pdfAccentColor: true } } },
+    });
+    const brand = { ...companyBrand(user?.company, user?.username || "Ohnix"), name: user?.company?.name || user?.company?.legalName || user?.username || "Ohnix" };
+    return {
+        fromName: brand.name,
+        ...buildEmail({
+        lang: "es",
+        brand,
+        category: "Garantía",
+        preheader: subject || "",
+        title: subject || "Actualización de tu garantía",
+        blocks: [{ type: "paragraph", text: body || "" }],
+        reason: `Recibes este correo porque tienes una garantía registrada con ${brand.name}.`,
+        }),
     };
 };
 
@@ -91,7 +116,7 @@ const sendViaChannel = async ({ warranty, channel, template, variables, recipien
     const provider = getProvider(channel);
     const result =
         channel === "email"
-            ? await provider.send({ to: recipient, subject: communication.subject, html: communication.body.replace(/\n/g, "<br/>"), text: communication.body })
+            ? await provider.send({ to: recipient, subject: communication.subject, ...(await buildWarrantyEmail(warranty.createdById, communication.subject, communication.body)) })
             : await provider.send({
                   to: recipient,
                   templateName: template.metaTemplateName,
@@ -220,8 +245,7 @@ export const sweepDueWarrantyCommunications = async (limit = 50) => {
                 ? await provider.send({
                       to: communication.recipient,
                       subject: communication.subject,
-                      html: (communication.body || "").replace(/\n/g, "<br/>"),
-                      text: communication.body,
+                      ...(await buildWarrantyEmail(communication.warranty.createdById, communication.subject, communication.body)),
                   })
                 : await provider.send({ to: communication.recipient, templateName: null, params: [] });
 

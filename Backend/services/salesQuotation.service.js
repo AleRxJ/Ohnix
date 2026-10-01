@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import transporter, { isMailConfigured } from "../utils/nodemailer.js";
+import { buildEmail, companyBrand, emailLinks } from "../utils/emailTemplate.js";
 import crypto from "node:crypto";
 import { getCapabilities } from "../middleware/team.permissions.js";
 import { assertSalePricesAllowed } from "../utils/salePriceControl.js";
@@ -18,7 +19,6 @@ const findProductByAnyId = (id) =>
     });
 
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
-const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]));
 
 const buildDetails = async (details, userId, userRole, companyVatResponsible) => {
     if (!Array.isArray(details) || details.length === 0) {
@@ -155,7 +155,7 @@ class SalesQuotationService {
             where: { id: quotationId },
             include: {
                 customer: { select: { id: true, name: true, email: true } },
-                pointOfSale: { select: { account: { select: { company: { select: { name: true, legalName: true, contactEmail: true, phone: true } } } } } },
+                pointOfSale: { select: { account: { select: { company: { select: { name: true, legalName: true, contactEmail: true, phone: true, logoUrl: true, pdfAccentColor: true } } } } } },
                 details: { include: { product: { select: { productName: true } } } },
             },
         });
@@ -172,41 +172,43 @@ class SalesQuotationService {
         // sending domain), so this is the only place the real issuer shows.
         const company = quotation.pointOfSale?.account?.company;
         const companyName = company?.legalName || company?.name || "Ohnix";
-        const rows = quotation.details.map((detail) => `<tr><td style="padding:10px 14px;color:#e5e7eb;border-bottom:1px solid #1d2733;">${escapeHtml(detail.product.productName)}</td><td style="padding:10px 14px;color:#9ca3af;text-align:center;border-bottom:1px solid #1d2733;">${escapeHtml(detail.quantity)}</td><td style="padding:10px 14px;color:#e5e7eb;text-align:right;border-bottom:1px solid #1d2733;">${escapeHtml(Number(detail.lineTotal).toLocaleString())}</td></tr>`).join("");
-        const publicUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/public/sales-quotations/${quotation.publicToken}`;
-        // Spanish content by default, matching every other transactional
-        // email's default (Ohnix's primary market is Colombia and this
-        // email reaches the ISSUING company's own customer, not an Ohnix
-        // platform user) - same dark-card/teal-accent template as
-        // upgradeRequestNotifications.js, teamNotifications.js, etc. so this
-        // doesn't look like a different product from the rest of Ohnix's mail.
+        const brand = companyBrand(company);
+        const money = (value) => `$ ${Number(value).toLocaleString("es-CO")}`;
+        const publicUrl = emailLinks.app(`/public/sales-quotations/${quotation.publicToken}`);
+        // Spanish by default (Ohnix's market is Colombia and this reaches the
+        // ISSUING company's own customer) and rendered in company-brand mode:
+        // the company leads the header, Ohnix only signs the footer.
         await transporter.sendMail({
             from: `${companyName} <${process.env.SENDER_EMAIL}>`,
             to: quotation.customer.email,
             replyTo: company?.contactEmail || undefined,
             subject: `${companyName} - Cotización #${quotation.quotationNo}`,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">${escapeHtml(companyName)}</div>
-                    <h2 style="color:#e5e7eb;margin:0 0 16px;">Cotización #${escapeHtml(quotation.quotationNo)}</h2>
-                    <p style="font-size:15px;color:#e5e7eb;margin:0 0 20px;">Hola <strong>${escapeHtml(quotation.customer.name)}</strong>, ${escapeHtml(companyName)} te comparte la siguiente cotización.</p>
-                    <table style="width:100%;border-collapse:collapse;border:1px solid #1d2733;border-radius:8px;overflow:hidden;">
-                        <thead><tr style="background:#111827;">
-                            <th style="text-align:left;padding:10px 14px;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">Producto</th>
-                            <th style="padding:10px 14px;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">Cant.</th>
-                            <th style="text-align:right;padding:10px 14px;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">Total</th>
-                        </tr></thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                    <p style="text-align:right;font-size:20px;font-weight:700;color:#e5e7eb;border-top:2px solid #29D8D5;padding-top:12px;margin-top:16px;">Total: ${escapeHtml(Number(quotation.total).toLocaleString())}</p>
-                    ${quotation.notes ? `<p style="color:#9ca3af;font-size:13px;border-top:1px solid #1d2733;padding-top:12px;margin-top:12px;white-space:pre-wrap;">${escapeHtml(quotation.notes)}</p>` : ""}
-                    <div style="text-align:center;margin:28px 0;">
-                        <a href="${escapeHtml(publicUrl)}" style="display:inline-block;background:#29D8D5;color:#021314;padding:14px 32px;border-radius:10px;font-weight:700;text-decoration:none;font-size:15px;">Ver cotización</a>
-                    </div>
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;">Enviado vía Ohnix · &copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
-                </div>
-            `,
+            ...buildEmail({
+                lang: "es",
+                brand,
+                category: "Cotización",
+                preheader: `${companyName} te envió la cotización #${quotation.quotationNo} por ${money(quotation.total)}.`,
+                title: `Cotización #${quotation.quotationNo}`,
+                greeting: `Hola ${quotation.customer.name || ""},`,
+                intro: `${companyName} te comparte la siguiente cotización. Puedes verla completa y aceptarla o rechazarla desde el botón.`,
+                blocks: [
+                    {
+                        type: "table",
+                        columns: [{ label: "Producto" }, { label: "Cant.", align: "center" }, { label: "Total", align: "right" }],
+                        rows: [
+                            ...quotation.details.map((detail) => [detail.product?.productName || "—", String(detail.quantity), money(detail.lineTotal)]),
+                            [{ text: "Total", bold: true }, "", { text: money(quotation.total), bold: true }],
+                        ],
+                    },
+                    {
+                        type: "details",
+                        rows: [["Válida hasta", quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "long", year: "numeric" }) : ""]],
+                    },
+                    ...(quotation.notes ? [{ type: "heading", text: "Notas" }, { type: "paragraph", text: quotation.notes }] : []),
+                ],
+                cta: { label: "Ver cotización", url: publicUrl },
+                reason: `Recibes este correo porque ${companyName} te envió una cotización.`,
+            }),
         });
         return prisma.salesQuotation.update({ where: { id: quotationId }, data: { status: "sent", updatedById: userId } });
     }

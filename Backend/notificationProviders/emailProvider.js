@@ -21,9 +21,9 @@ export const isConfigured = () => {
 // Returns {sent, providerMessageId, error} - never throws, matching
 // sendMailSafe's own contract, since warrantyNotification.service.js decides
 // what to persist either way.
-export const send = async ({ to, subject, html, text }) => {
+export const send = async ({ to, subject, html, text, fromName }) => {
     const result = await sendMailSafe(
-        { from: `Ohnix <${process.env.SENDER_EMAIL}>`, to, subject, html, text },
+        { from: `${(fromName || "Ohnix").replace(/[<>"]/g, "")} <${process.env.SENDER_EMAIL}>`, to, subject, html, text },
         "warranty-notification"
     );
 

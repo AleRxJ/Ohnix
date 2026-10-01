@@ -3,12 +3,13 @@
 // Emails for automatic renewal with a stored card (see
 // services/subscriptionAutoRenew.service.js): the pre-charge notice, the
 // receipt, a failed charge, retries exhausted, and a card about to expire.
-// Same dark brand shell as upgradeRequestNotifications.js.
+// Rendered through the shared Ohnix layout (utils/emailTemplate.js).
 
 import transporter, { isMailConfigured } from "./nodemailer.js";
+import { buildEmail, emailLinks } from "./emailTemplate.js";
 
-const frontendBase = () => `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
-const billingUrl = () => `${frontendBase()}/dashboard/billing`;
+// The app route is /billing (App.jsx) - /dashboard/billing does not exist.
+const billingUrl = () => emailLinks.app("/billing");
 
 const isEnglish = (locale) => `${locale || ""}`.toLowerCase().startsWith("en");
 
@@ -36,50 +37,53 @@ export const formatChargeAmount = (amount, currency, en) => {
 const cardLabel = ({ cardBrand, cardLast4 }) =>
     cardLast4 ? `${cardBrand ? cardBrand.toUpperCase() : "Tarjeta"} •••• ${cardLast4}` : "";
 
-const send = async ({ to, subject, title, color = "#29D8D5", body, cta, footnote }) => {
+const send = async ({ to, subject, email }) => {
     if (!isMailConfigured() || !to) return;
     try {
-        await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
-            to,
-            subject,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <h2 style="color:${color};margin:0 0 12px;">${title}</h2>
-                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
-                    ${cta ? `<div style="text-align:center;margin:28px 0;">
-                        <a href="${billingUrl()}" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
-                    </div>` : ""}
-                    ${footnote ? `<p style="color:#9ca3af;font-size:13px;text-align:center;">${footnote}</p>` : ""}
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
-                </div>
-            `,
-        });
+        await transporter.sendMail({ from: `Ohnix <${process.env.SENDER_EMAIL}>`, to, subject, ...buildEmail(email) });
     } catch (err) {
         console.error("[auto-renew-email] Failed to send:", err?.message);
     }
 };
 
+const common = (en) => ({
+    lang: en ? "en" : "es",
+    category: en ? "Billing" : "Facturación",
+    reason: en ? "Billing email for your Ohnix subscription." : "Correo de facturación de tu suscripción a Ohnix.",
+});
+
 export const notifyUpcomingAutoCharge = ({ user, subscription, amount, currency, chargeDate }) => {
     const en = isEnglish(user.preferredLanguage);
     const money = formatChargeAmount(amount, currency, en);
-    const card = cardLabel(subscription);
     const date = formatDate(chargeDate, en);
     const plan = planLabel(subscription.scheduledPlan || subscription.plan);
     return send({
         to: user.email,
-        subject: en
-            ? `[Ohnix] Your ${plan} plan renews on ${date}`
-            : `[Ohnix] Tu plan ${plan} se renueva el ${date}`,
-        title: en ? "Upcoming automatic renewal" : "Próxima renovación automática",
-        body: en
-            ? `Hello <strong>${user.username || "there"}</strong>, on <strong>${date}</strong> we'll charge <strong>${money}</strong> to your <strong>${card}</strong> to renew your <strong>${plan}</strong> plan. You don't need to do anything.`
-            : `Hola <strong>${user.username || ""}</strong>, el <strong>${date}</strong> cobraremos <strong>${money}</strong> a tu <strong>${card}</strong> para renovar tu plan <strong>${plan}</strong>. No tienes que hacer nada.`,
-        cta: en ? "Manage billing" : "Gestionar facturación",
-        footnote: en
-            ? "To change your card or stop automatic renewal, go to Billing before that date."
-            : "Si quieres cambiar la tarjeta o desactivar la renovación automática, hazlo en Facturación antes de esa fecha.",
+        subject: en ? `Your ${plan} plan renews on ${date}` : `Tu plan ${plan} se renueva el ${date}`,
+        email: {
+            ...common(en),
+            tone: "info",
+            badge: en ? "Upcoming renewal" : "Próxima renovación",
+            preheader: en ? `We'll charge ${money} on ${date}. You don't need to do anything.` : `Cobraremos ${money} el ${date}. No tienes que hacer nada.`,
+            title: en ? "Your plan renews soon" : "Tu plan se renueva pronto",
+            greeting: en ? `Hi ${user.username || "there"},` : `Hola ${user.username || ""},`,
+            intro: en ? "We'll renew your plan automatically. You don't need to do anything." : "Renovaremos tu plan automáticamente. No tienes que hacer nada.",
+            blocks: [
+                {
+                    type: "details",
+                    rows: [
+                        ["Plan", plan, { bold: true }],
+                        [en ? "Amount" : "Monto", money, { bold: true }],
+                        [en ? "Charge date" : "Fecha de cobro", date],
+                        [en ? "Card" : "Tarjeta", cardLabel(subscription)],
+                    ],
+                },
+            ],
+            cta: { label: en ? "Manage billing" : "Gestionar facturación", url: billingUrl() },
+            footnote: en
+                ? "To change your card or stop automatic renewal, do it in Billing before that date."
+                : "Si quieres cambiar la tarjeta o desactivar la renovación automática, hazlo en Facturación antes de esa fecha.",
+        },
     });
 };
 
@@ -89,46 +93,76 @@ export const notifyAutoChargeSucceeded = ({ user, subscription, amount, currency
     const plan = planLabel(subscription.plan);
     return send({
         to: user.email,
-        subject: en ? `[Ohnix] Payment received - ${plan} plan renewed` : `[Ohnix] Pago recibido - plan ${plan} renovado`,
-        title: en ? "Your plan was renewed" : "Tu plan fue renovado",
-        color: "#22c55e",
-        body: en
-            ? `We charged <strong>${money}</strong> to your <strong>${cardLabel(subscription)}</strong>. Your <strong>${plan}</strong> plan is active until <strong>${formatDate(periodEndsAt, en)}</strong>.${reactivated ? " Your account access has been restored." : ""}`
-            : `Cobramos <strong>${money}</strong> a tu <strong>${cardLabel(subscription)}</strong>. Tu plan <strong>${plan}</strong> está activo hasta el <strong>${formatDate(periodEndsAt, en)}</strong>.${reactivated ? " El acceso a tu cuenta fue restablecido." : ""}`,
-        cta: en ? "View billing" : "Ver facturación",
+        subject: en ? `Payment received: your ${plan} plan was renewed` : `Pago recibido: tu plan ${plan} fue renovado`,
+        email: {
+            ...common(en),
+            tone: "success",
+            badge: en ? "Payment received" : "Pago recibido",
+            preheader: en ? `${money} charged. Your plan is active until ${formatDate(periodEndsAt, en)}.` : `Cobramos ${money}. Tu plan está activo hasta el ${formatDate(periodEndsAt, en)}.`,
+            title: en ? "Your plan was renewed" : "Tu plan fue renovado",
+            intro: en ? "Thanks! We received your payment." : "¡Gracias! Recibimos tu pago.",
+            blocks: [
+                {
+                    type: "details",
+                    rows: [
+                        ["Plan", plan, { bold: true }],
+                        [en ? "Amount charged" : "Monto cobrado", money, { bold: true }],
+                        [en ? "Card" : "Tarjeta", cardLabel(subscription)],
+                        [en ? "Active until" : "Activo hasta", formatDate(periodEndsAt, en)],
+                    ],
+                },
+                ...(reactivated
+                    ? [{ type: "alert", tone: "success", text: en ? "Your account access has been restored." : "El acceso a tu cuenta fue restablecido." }]
+                    : []),
+            ],
+            cta: { label: en ? "View billing" : "Ver facturación", url: billingUrl() },
+        },
     });
 };
 
 export const notifyAutoChargeFailed = ({ user, subscription, amount, currency, nextAttemptAt, willPauseAt, requiresAction }) => {
     const en = isEnglish(user.preferredLanguage);
     const money = formatChargeAmount(amount, currency, en);
-    const card = cardLabel(subscription);
-    const retryLine = nextAttemptAt
+    const cause = requiresAction
         ? en
-            ? ` We'll try again on <strong>${formatDate(nextAttemptAt, en)}</strong>.`
-            : ` Volveremos a intentarlo el <strong>${formatDate(nextAttemptAt, en)}</strong>.`
-        : "";
-    const pauseLine = willPauseAt
-        ? en
-            ? ` If it isn't resolved by <strong>${formatDate(willPauseAt, en)}</strong>, access to your account will be paused.`
-            : ` Si no se resuelve antes del <strong>${formatDate(willPauseAt, en)}</strong>, el acceso a tu cuenta quedará en pausa.`
-        : "";
-    const reason = requiresAction
-        ? en
-            ? "your bank asked for additional verification that can't be completed automatically"
-            : "tu banco pidió una verificación adicional que no se puede completar de forma automática"
+            ? "Your bank asked for an additional verification that can't be completed automatically."
+            : "Tu banco pidió una verificación adicional que no se puede completar de forma automática."
         : en
-          ? "it was declined"
-          : "fue rechazado";
+          ? "The charge was declined by your bank."
+          : "Tu banco rechazó el cobro.";
     return send({
         to: user.email,
-        subject: en ? "[Ohnix] We couldn't charge your card" : "[Ohnix] No pudimos cobrar tu tarjeta",
-        title: en ? "Automatic payment failed" : "El cobro automático falló",
-        color: "#ef4444",
-        body: en
-            ? `We tried to charge <strong>${money}</strong> to your <strong>${card}</strong> to renew your plan, but ${reason}.${retryLine}${pauseLine}`
-            : `Intentamos cobrar <strong>${money}</strong> a tu <strong>${card}</strong> para renovar tu plan, pero ${reason}.${retryLine}${pauseLine}`,
-        cta: en ? "Update card or pay now" : "Actualizar tarjeta o pagar ahora",
+        subject: en ? "We couldn't charge your card" : "No pudimos cobrar tu tarjeta",
+        email: {
+            ...common(en),
+            tone: "danger",
+            badge: en ? "Payment failed" : "Pago rechazado",
+            preheader: en ? `We couldn't charge ${money}. Update your card to keep your plan active.` : `No pudimos cobrar ${money}. Actualiza tu tarjeta para mantener tu plan activo.`,
+            title: en ? "We couldn't renew your plan" : "No pudimos renovar tu plan",
+            greeting: en ? `Hi ${user.username || "there"},` : `Hola ${user.username || ""},`,
+            intro: cause,
+            blocks: [
+                {
+                    type: "details",
+                    rows: [
+                        [en ? "Amount" : "Monto", money, { bold: true }],
+                        [en ? "Card" : "Tarjeta", cardLabel(subscription)],
+                        [en ? "Next attempt" : "Próximo intento", nextAttemptAt ? formatDate(nextAttemptAt, en) : null],
+                    ],
+                },
+                ...(willPauseAt
+                    ? [{
+                          type: "alert",
+                          tone: "danger",
+                          title: en ? "Avoid a pause" : "Evita la pausa",
+                          text: en
+                              ? `If it isn't resolved by ${formatDate(willPauseAt, en)}, access to your account will be paused. Your data stays safe.`
+                              : `Si no se resuelve antes del ${formatDate(willPauseAt, en)}, el acceso a tu cuenta quedará en pausa. Tus datos se conservan.`,
+                      }]
+                    : []),
+            ],
+            cta: { label: en ? "Update card or pay now" : "Actualizar tarjeta o pagar ahora", url: billingUrl() },
+        },
     });
 };
 
@@ -136,13 +170,26 @@ export const notifyAutoChargeRetriesExhausted = ({ user, subscription }) => {
     const en = isEnglish(user.preferredLanguage);
     return send({
         to: user.email,
-        subject: en ? "[Ohnix] Automatic renewal turned off" : "[Ohnix] Renovación automática desactivada",
-        title: en ? "We stopped trying to charge your card" : "Dejamos de intentar cobrar tu tarjeta",
-        color: "#f59e0b",
-        body: en
-            ? `After several attempts we couldn't charge your <strong>${cardLabel(subscription)}</strong>, so automatic renewal was turned off. Your data is safe - you can reactivate your plan any time from Billing.`
-            : `Después de varios intentos no pudimos cobrar tu <strong>${cardLabel(subscription)}</strong>, así que desactivamos la renovación automática. Tus datos están a salvo: puedes reactivar tu plan cuando quieras desde Facturación.`,
-        cta: en ? "Reactivate my plan" : "Reactivar mi plan",
+        subject: en ? "Automatic renewal turned off" : "Desactivamos la renovación automática",
+        email: {
+            ...common(en),
+            tone: "warning",
+            badge: en ? "Renewal off" : "Renovación desactivada",
+            title: en ? "We stopped trying to charge your card" : "Dejamos de intentar cobrar tu tarjeta",
+            intro: en
+                ? `After several attempts we couldn't charge your ${cardLabel(subscription)}, so automatic renewal was turned off.`
+                : `Después de varios intentos no pudimos cobrar tu ${cardLabel(subscription)}, así que desactivamos la renovación automática.`,
+            blocks: [
+                {
+                    type: "alert",
+                    tone: "info",
+                    text: en
+                        ? "Your data is safe. You can reactivate your plan any time from Billing."
+                        : "Tus datos están a salvo. Puedes reactivar tu plan cuando quieras desde Facturación.",
+                },
+            ],
+            cta: { label: en ? "Reactivate my plan" : "Reactivar mi plan", url: billingUrl() },
+        },
     });
 };
 
@@ -150,12 +197,25 @@ export const notifyCardExpiringSoon = ({ user, subscription, chargeDate }) => {
     const en = isEnglish(user.preferredLanguage);
     return send({
         to: user.email,
-        subject: en ? "[Ohnix] Your saved card is about to expire" : "[Ohnix] Tu tarjeta guardada está por vencer",
-        title: en ? "Update your card" : "Actualiza tu tarjeta",
-        color: "#f59e0b",
-        body: en
-            ? `Your <strong>${cardLabel(subscription)}</strong> expires before your next renewal on <strong>${formatDate(chargeDate, en)}</strong>. Update it to avoid interruptions.`
-            : `Tu <strong>${cardLabel(subscription)}</strong> vence antes de tu próxima renovación del <strong>${formatDate(chargeDate, en)}</strong>. Actualízala para evitar interrupciones.`,
-        cta: en ? "Update card" : "Actualizar tarjeta",
+        subject: en ? "Your saved card is about to expire" : "Tu tarjeta guardada está por vencer",
+        email: {
+            ...common(en),
+            tone: "warning",
+            badge: en ? "Card expiring" : "Tarjeta por vencer",
+            title: en ? "Update your card" : "Actualiza tu tarjeta",
+            intro: en
+                ? "Your saved card expires before your next renewal. Update it to avoid interruptions."
+                : "Tu tarjeta guardada vence antes de tu próxima renovación. Actualízala para evitar interrupciones.",
+            blocks: [
+                {
+                    type: "details",
+                    rows: [
+                        [en ? "Card" : "Tarjeta", cardLabel(subscription)],
+                        [en ? "Next renewal" : "Próxima renovación", formatDate(chargeDate, en)],
+                    ],
+                },
+            ],
+            cta: { label: en ? "Update card" : "Actualizar tarjeta", url: billingUrl() },
+        },
     });
 };

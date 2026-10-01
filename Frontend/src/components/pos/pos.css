@@ -721,12 +721,33 @@
     grid-template-columns: minmax(0, 1fr);
 }
 
-/* While the mobile charge bar is showing, lift the floating helpers
-   (tour + assistant) above it - they're parked bottom-right, exactly where
-   "Cobrar" sits, and covered it. `translate` is independent of the FABs' own
-   transform/drag positioning. */
-body.pos-cart-bar-open .inventory-tour-fab-wrap,
-body.pos-cart-bar-open .assistant-fab-wrap {
-    translate: 0 -84px;
-    transition: translate 0.25s ease;
+/* While the mobile charge bar is showing, lift the floating helpers above
+   it - tour + assistant are parked bottom-right, exactly where "Cobrar" sits,
+   and discoveries bottom-left, over the total. The bar is 70px tall at 12px +
+   the safe-area inset, so the lift has to include that inset too or on an
+   iPhone the FABs still land on the bar. Only the corner-parked FABs move
+   (`:not([style])`): once the user dragged one, its inline top/left is where
+   they chose to put it. `translate` is independent of the FABs' own
+   transform. The plan banner (DashboardLayout) moves with them. */
+body.pos-cart-bar-open :is(.inventory-tour-fab-wrap, .assistant-fab-wrap, .discovery-fab-wrap):not([style]),
+body.pos-cart-bar-open .ohnix-plan-banner {
+    translate: 0 calc(-84px - env(safe-area-inset-bottom));
+    transition: translate 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The cart sheet and checkout switch to their mobile form below lg (1024px),
+   but index.css only hides the FABs over modals/drawers below md - so on a
+   tablet they sat on top of the sheet's "Cobrar" and the checkout tiles. */
+@media (max-width: 1023.98px) {
+    body.pos-cart-bar-open:has(.ant-drawer-open, .ant-modal-wrap:not([style*="display: none"])) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventory-tour-fab-wrap) {
+        visibility: hidden;
+        pointer-events: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.pos-cart-bar-open :is(.inventory-tour-fab-wrap, .assistant-fab-wrap, .discovery-fab-wrap),
+    body.pos-cart-bar-open .ohnix-plan-banner {
+        transition: none;
+    }
 }

@@ -212,6 +212,18 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
         [saveTabLocally, send]
     );
 
+    // Kitchen note for one line ("sin cebolla") - printed on the comanda.
+    const setLineNote = useCallback(
+        async (tabId, lineId, note) => {
+            const tab = tabsRef.current.find((x) => x._id === tabId);
+            if (!tab) return;
+            const clean = String(note || "").trim().slice(0, 120) || null;
+            await saveTabLocally({ ...tab, items: tab.items.map((i) => (i._id === lineId ? { ...i, note: clean } : i)) });
+            await send({ method: "patch", url: `/restaurant/table-tabs/${tabId}/items/${lineId}`, data: { note: clean } }).catch(() => {});
+        },
+        [saveTabLocally, send]
+    );
+
     // Returns the lines that go on the kitchen ticket.
     const sendToKitchen = useCallback(
         async (tabId) => {
@@ -279,6 +291,7 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
         addProduct,
         changeQuantity,
         setLinePrice,
+        setLineNote,
         sendToKitchen,
         moveTab,
         cancelTab,

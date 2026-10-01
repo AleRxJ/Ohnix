@@ -48,8 +48,37 @@ const quickCashOptions = (total) => {
 
 const KBD_ON_ACCENT = "pos-kbd border-[rgba(2,19,20,0.25)] text-[rgba(2,19,20,0.6)]";
 
+// How long the success screen ignores "Nueva venta" after appearing. The
+// cashier confirms with Enter; a held Enter (OS key auto-repeat) used to land
+// on the auto-focused button and close this screen before it was ever seen,
+// dropping them straight back to the tables/grid.
+const SUCCESS_ARM_MS = 700;
+
 const SuccessView = ({ result, onNewSale, onDownload, downloading, onPrint, printing }) => {
     const { t } = useI18n();
+    const [armed, setArmed] = useState(false);
+    useEffect(() => {
+        const id = setTimeout(() => setArmed(true), SUCCESS_ARM_MS);
+        return () => clearTimeout(id);
+    }, []);
+    // Enter still means "next sale" - but only a fresh press, never a repeat
+    // of the one that confirmed the charge.
+    useEffect(() => {
+        if (!armed) return undefined;
+        const onKey = (event) => {
+            if (event.key === "Enter" && !event.repeat) {
+                event.preventDefault();
+                onNewSale();
+            }
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [armed, onNewSale]);
+    const title = result.offline
+        ? t("pos.saved_offline_title")
+        : result.tableName
+          ? t("pos.table_paid_title", { table: result.tableName })
+          : t("pos.sale_done_title");
     return (
         <div className="pos-success">
             <svg className={`pos-success-check ${result.offline ? "is-offline" : ""}`} viewBox="0 0 88 88" fill="none" aria-hidden="true">
@@ -57,7 +86,7 @@ const SuccessView = ({ result, onNewSale, onDownload, downloading, onPrint, prin
                 <path d="M28 45 L39 56 L61 33" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <h3 className="mb-1 mt-4 text-2xl font-bold text-[var(--ohnix-text-primary)]">
-                {result.offline ? t("pos.saved_offline_title") : t("pos.sale_done_title")}
+                {title}
             </h3>
             <p className="m-0 text-sm text-[var(--ohnix-text-muted)]">
                 {result.offline ? t("pos.saved_offline_hint") : result.invoiceNo ? t("pos.sale_number", { number: result.invoiceNo }) : null}
@@ -108,8 +137,8 @@ const SuccessView = ({ result, onNewSale, onDownload, downloading, onPrint, prin
                         </Button>
                     )}
                 </div>
-                <button type="button" className="pos-charge" onClick={onNewSale} autoFocus>
-                    {t("pos.new_sale")}
+                <button type="button" className="pos-charge" onClick={armed ? onNewSale : undefined} aria-disabled={!armed}>
+                    {result.tableName ? t("pos.back_to_tables") : t("pos.new_sale")}
                     <kbd className={KBD_ON_ACCENT}>Enter</kbd>
                 </button>
             </div>
@@ -226,6 +255,7 @@ const PosCheckoutModal = ({
     charging,
     chargeBusy,
     onConfirm,
+    error,
     onClose,
     onNewSale,
     onDownload,
@@ -349,6 +379,9 @@ const PosCheckoutModal = ({
                     <div className="mt-1 text-5xl font-bold tabular-nums tracking-tight text-[var(--ohnix-text-primary)]">{cop(total)}</div>
                 </div>
 
+                {/* The reason a charge was refused, where the cashier is looking -
+                    not only as a toast in the corner. */}
+                {error && <Alert type="error" showIcon message={t("pos.charge_refused")} description={<span className="whitespace-pre-line">{error}</span>} />}
                 {!canRegisterPayment && <Alert type="info" showIcon message={t("pos.no_finance_permission")} />}
                 {canRegisterPayment && cashAccounts.length === 0 && <Alert type="warning" showIcon message={t("pos.no_cash_accounts")} />}
 
@@ -497,7 +530,7 @@ const PosCheckoutModal = ({
             open={open}
             onCancel={result ? onNewSale : charging ? undefined : onClose}
             footer={null}
-            width={Math.min(560, window.innerWidth * 0.96)}
+            width={560}
             centered
             destroyOnClose
             maskClosable={!submitting && !charging}
@@ -533,6 +566,7 @@ PosCheckoutModal.propTypes = {
     charging: PropTypes.object,
     chargeBusy: PropTypes.bool,
     onConfirm: PropTypes.func.isRequired,
+    error: PropTypes.string,
     onClose: PropTypes.func.isRequired,
     onNewSale: PropTypes.func.isRequired,
     onDownload: PropTypes.func.isRequired,

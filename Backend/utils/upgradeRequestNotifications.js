@@ -1,547 +1,332 @@
 import transporter, { isMailConfigured } from "./nodemailer.js";
 import { prisma } from "../db/prisma.js";
+import { buildEmail, emailLinks, esc } from "./emailTemplate.js";
 
-// ─── Plan renewal reminder ────────────────────────────────────────────────────
-export const notifyUserRenewalReminder = async ({ user, plan, endsAt, daysLeft, locale }) => {
-    if (!isMailConfigured() || !user?.email) return;
-    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
-    const planLabel = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : "";
-    const endsAtFormatted = new Date(endsAt).toLocaleDateString(isEN ? "en-US" : "es-CO", {
-        year: "numeric", month: "long", day: "numeric",
-    });
-    const subject = isEN
-        ? `[Ohnix] Your ${planLabel} plan has expired — renew to keep access`
-        : `[Ohnix] Tu plan ${planLabel} venció — renueva para mantener el acceso`;
-    const title = isEN ? `Your ${planLabel} plan has expired` : `Tu plan ${planLabel} venció`;
-    const body = isEN
-        ? `Hello <strong>${user.username || "there"}</strong>, your <strong>${planLabel}</strong> plan expired yesterday. You have a few days to renew before losing full access to your data and features.`
-        : `Hola <strong>${user.username || ""}</strong>, tu plan <strong>${planLabel}</strong> venció ayer. Tienes unos días para renovar antes de perder el acceso completo a tus datos y funcionalidades.`;
-    const cta = isEN ? "Renew my plan" : "Renovar mi plan";
-    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
+// Plan / account lifecycle emails - all through the shared Ohnix layout
+// (utils/emailTemplate.js). Prices are deliberately NOT written in these
+// emails: the canonical prices live on the pricing page (COP), and a
+// hardcoded figure here drifts out of date.
+
+const isEnglish = (locale) => `${locale || ""}`.toLowerCase().startsWith("en");
+const planLabel = (plan) => (plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : "");
+const formatDate = (date, en) => new Date(date).toLocaleDateString(en ? "en-US" : "es-CO", { year: "numeric", month: "long", day: "numeric" });
+const formatDateTime = (date) => new Date(date || Date.now()).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
+const from = () => `Ohnix <${process.env.SENDER_EMAIL}>`;
+const billing = () => emailLinks.app("/billing");
+const billingReason = (en) => (en ? "Billing email for your Ohnix subscription." : "Correo de facturación de tu suscripción a Ohnix.");
+
+const sendSafe = async (label, mail) => {
     try {
-        await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
-            to: user.email,
-            subject,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <h2 style="color:#f59e0b;margin:0 0 12px;">⏳ ${title}</h2>
-                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
-                    <div style="text-align:center;margin:28px 0;">
-                        <a href="${frontendBase}/billing" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
-                    </div>
-                    <p style="color:#6b7280;font-size:13px;text-align:center;">Si ya renovaste, ignora este mensaje.</p>
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
-                </div>
-            `,
-        });
+        await transporter.sendMail({ from: from(), ...mail });
     } catch (err) {
-        console.error("[renewal-reminder] Failed to send:", err?.message);
+        console.error(`[${label}] Failed to send:`, err?.message);
     }
 };
 
+// ─── Plan renewal reminder ────────────────────────────────────────────────────
+export const notifyUserRenewalReminder = async ({ user, plan, endsAt, locale }) => {
+    if (!isMailConfigured() || !user?.email) return;
+    const en = isEnglish(locale);
+    const label = planLabel(plan);
+    await sendSafe("renewal-reminder", {
+        to: user.email,
+        subject: en ? `Your ${label} plan expired: renew to keep full access` : `Tu plan ${label} venció: renueva para mantener el acceso`,
+        ...buildEmail({
+            lang: en ? "en" : "es",
+            category: en ? "Billing" : "Facturación",
+            tone: "warning",
+            badge: en ? "Plan expired" : "Plan vencido",
+            preheader: en ? "You have a few days to renew before losing full access." : "Tienes unos días para renovar antes de perder el acceso completo.",
+            title: en ? `Your ${label} plan expired` : `Tu plan ${label} venció`,
+            greeting: en ? `Hi ${user.username || "there"},` : `Hola ${user.username || ""},`,
+            intro: en
+                ? "Your plan expired. You have a few days to renew before losing full access to your data and features."
+                : "Tu plan venció. Tienes unos días para renovar antes de perder el acceso completo a tus datos y funcionalidades.",
+            blocks: [
+                { type: "details", rows: [["Plan", label, { bold: true }], [en ? "Expired on" : "Venció el", endsAt ? formatDate(endsAt, en) : null]] },
+                { type: "alert", tone: "info", text: en ? "Your data is kept safe while you renew." : "Tus datos se conservan mientras renuevas." },
+            ],
+            cta: { label: en ? "Renew my plan" : "Renovar mi plan", url: billing() },
+            footnote: en ? "Already renewed? You can ignore this email." : "¿Ya renovaste? Puedes ignorar este correo.",
+            reason: billingReason(en),
+        }),
+    });
+};
+
 // ─── Trial ending soon ────────────────────────────────────────────────────
-// Starter is a paid plan ($19/mo, see pricing.middleware.js) - once the
-// 14-day trial ends, staying on Ohnix requires a subscription. Sent a few
-// days before trialEndsAt so the user isn't blocked with zero warning.
+// Sent a few days before trialEndsAt so the user isn't blocked with no
+// warning once the 14-day trial ends.
 export const notifyUserTrialEndingSoon = async ({ user, trialEndsAt, daysLeft, locale }) => {
     if (!isMailConfigured() || !user?.email) return;
-    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
-    const endsAtFormatted = new Date(trialEndsAt).toLocaleDateString(isEN ? "en-US" : "es-CO", {
-        year: "numeric", month: "long", day: "numeric",
+    const en = isEnglish(locale);
+    const date = formatDate(trialEndsAt, en);
+    const days = en ? `${daysLeft} day${daysLeft !== 1 ? "s" : ""}` : `${daysLeft} día${daysLeft !== 1 ? "s" : ""}`;
+    await sendSafe("trial-ending", {
+        to: user.email,
+        subject: en ? `Your free trial ends in ${days}` : `Tu prueba gratuita termina en ${days}`,
+        ...buildEmail({
+            lang: en ? "en" : "es",
+            category: en ? "Billing" : "Facturación",
+            tone: "warning",
+            badge: en ? `${days} left` : `Quedan ${days}`,
+            preheader: en ? `Your trial ends on ${date}. Choose a plan to keep using Ohnix.` : `Tu prueba termina el ${date}. Elige un plan para seguir usando Ohnix.`,
+            title: en ? "Your free trial is ending soon" : "Tu prueba gratuita está por terminar",
+            greeting: en ? `Hi ${user.username || "there"},` : `Hola ${user.username || ""},`,
+            introHtml: en
+                ? `Your 14-day free trial ends on <strong>${esc(date)}</strong>. Choose a plan to keep using Ohnix without interruptions - everything you've set up stays as it is.`
+                : `Tu prueba gratuita de 14 días termina el <strong>${esc(date)}</strong>. Elige un plan para seguir usando Ohnix sin interrupciones: todo lo que configuraste se mantiene.`,
+            cta: { label: en ? "Choose my plan" : "Elegir mi plan", url: billing() },
+            secondaryCta: { label: en ? "Compare plans" : "Comparar planes", url: emailLinks.app("/precios") },
+            reason: billingReason(en),
+        }),
     });
-    const subject = isEN
-        ? `[Ohnix] Your free trial ends in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`
-        : `[Ohnix] Tu prueba gratuita termina en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`;
-    const title = isEN ? "Your free trial is ending soon" : "Tu prueba gratuita está por terminar";
-    const body = isEN
-        ? `Hello <strong>${user.username || "there"}</strong>, your 14-day free trial ends on <strong>${endsAtFormatted}</strong>. Subscribe to the Starter plan ($19/mo) or a higher tier to keep using Ohnix without interruptions.`
-        : `Hola <strong>${user.username || ""}</strong>, tu prueba gratuita de 14 días termina el <strong>${endsAtFormatted}</strong>. Suscríbete al plan Emprendedor ($19/mes) o a uno superior para seguir usando Ohnix sin interrupciones.`;
-    const cta = isEN ? "Subscribe now" : "Suscribirme ahora";
-    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
-    try {
-        await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
-            to: user.email,
-            subject,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <h2 style="color:#f59e0b;margin:0 0 12px;">⏳ ${title}</h2>
-                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
-                    <div style="text-align:center;margin:28px 0;">
-                        <a href="${frontendBase}/billing" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
-                    </div>
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
-                </div>
-            `,
-        });
-    } catch (err) {
-        console.error("[trial-ending] Failed to send:", err?.message);
-    }
 };
 
 // ─── Plan activated confirmation ────────────────────────────────────────────
 export const notifyUserPlanActivated = async ({ user, targetPlan, locale }) => {
     if (!isMailConfigured() || !user?.email) return;
-    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
-    const planLabel = targetPlan
-        ? targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1)
-        : "";
-    const subject = isEN
-        ? `[Ohnix] Your ${planLabel} plan is now active`
-        : `[Ohnix] Tu plan ${planLabel} ya está activo`;
-    const title = isEN ? `Plan ${planLabel} activated` : `Plan ${planLabel} activado`;
-    const body = isEN
-        ? `Hello <strong>${user.username || "there"}</strong>, your payment has been confirmed and your <strong>${planLabel}</strong> plan is now active. Your new limits are available immediately.`
-        : `Hola <strong>${user.username || ""}</strong>, tu pago fue confirmado y tu plan <strong>${planLabel}</strong> ya está activo. Tus nuevos límites están disponibles de inmediato.`;
-    const cta = isEN ? "Go to Dashboard" : "Ir al Dashboard";
-    const footer = isEN ? "Ohnix by iTCycle" : "Ohnix by iTCycle";
-    try {
-        await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
-            to: user.email,
-            subject,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <h2 style="color:#29D8D5;margin:0 0 12px;">✅ ${title}</h2>
-                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
-                    <div style="text-align:center;margin:28px 0;">
-                        <a href="${process.env.FRONTEND_URL || ""}" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
-                    </div>
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} ${footer}. Todos los derechos reservados.</p>
-                </div>
-            `,
-        });
-    } catch (err) {
-        console.error("[plan-activated] Failed to send notification:", err?.message);
-    }
+    const en = isEnglish(locale);
+    const label = planLabel(targetPlan);
+    await sendSafe("plan-activated", {
+        to: user.email,
+        subject: en ? `Your ${label} plan is now active` : `Tu plan ${label} ya está activo`,
+        ...buildEmail({
+            lang: en ? "en" : "es",
+            category: en ? "Billing" : "Facturación",
+            tone: "success",
+            badge: en ? "Plan active" : "Plan activo",
+            preheader: en ? "Payment confirmed. Your new limits are available now." : "Pago confirmado. Tus nuevos límites ya están disponibles.",
+            title: en ? `Your ${label} plan is active` : `Tu plan ${label} está activo`,
+            greeting: en ? `Hi ${user.username || "there"},` : `Hola ${user.username || ""},`,
+            intro: en
+                ? "Your payment was confirmed and your new plan is active. Your new limits and features are available right away."
+                : "Tu pago fue confirmado y tu nuevo plan ya está activo. Los nuevos límites y funcionalidades están disponibles de inmediato.",
+            blocks: [{ type: "details", rows: [["Plan", label, { bold: true }], [en ? "Status" : "Estado", en ? "Active" : "Activo", { color: "#34d399", bold: true }]] }],
+            cta: { label: en ? "Go to my account" : "Ir a mi cuenta", url: emailLinks.app("/dashboard") },
+            reason: billingReason(en),
+        }),
+    });
 };
 
 // ─── Payment failed / rejected ───────────────────────────────────────────────
-// Fired when a webhook (ePayco confirmation, Stripe async_payment_failed)
-// determines a payment did NOT go through - without this, a user whose
-// delayed-method payment (PSE, bank transfer) fails hours after checkout has
-// no way of finding out short of noticing PaymentSuccess.jsx never resolved.
-//
-// `reason` mirrors the paymentStatus written to the request ("rejected" |
-// "failed" | "expired") so the copy doesn't blame the user's card for a
-// gateway-side technical error, or vice versa - a card genuinely declined
-// for insufficient funds needs different guidance ("check your card/funds")
-// than ePayco's own systems failing to communicate with the authorization
-// center ("this wasn't your card's fault, just try again").
+// `reason` mirrors the paymentStatus written to the request, so the copy
+// never blames the user's card for a gateway-side technical error (or vice
+// versa): a declined card needs "check your card", a gateway error needs
+// "not your card's fault, try again".
 const PAYMENT_FAILED_COPY = {
     rejected: {
-        es: (planLabel, username) =>
-            `Hola <strong>${username || ""}</strong>, tu banco o la pasarela de pago rechazó el cobro para actualizar a <strong>${planLabel}</strong>. No se activó ningún cargo en tu cuenta. Verifica los datos de tu tarjeta o los fondos disponibles, y vuelve a intentarlo.`,
-        en: (planLabel, username) =>
-            `Hello <strong>${username || "there"}</strong>, your bank or payment gateway declined the charge to upgrade to <strong>${planLabel}</strong>. No charge was made to your account. Check your card details or available funds and try again.`,
+        es: { cause: "Tu banco o la pasarela de pago rechazó el cobro.", advice: "Verifica los datos de tu tarjeta o los fondos disponibles y vuelve a intentarlo." },
+        en: { cause: "Your bank or the payment gateway declined the charge.", advice: "Check your card details or available funds and try again." },
     },
     failed: {
-        es: (planLabel, username) =>
-            `Hola <strong>${username || ""}</strong>, tuvimos un error técnico al procesar tu pago para actualizar a <strong>${planLabel}</strong> - no fue un problema con tu tarjeta. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo, es probable que funcione en el siguiente intento.`,
-        en: (planLabel, username) =>
-            `Hello <strong>${username || "there"}</strong>, we hit a technical error processing your payment to upgrade to <strong>${planLabel}</strong> - this wasn't an issue with your card. No charge was made to your account. You can try again, it will likely go through on the next attempt.`,
+        es: { cause: "Tuvimos un error técnico al procesar tu pago. No fue un problema de tu tarjeta.", advice: "Vuelve a intentarlo: lo más probable es que funcione en el siguiente intento." },
+        en: { cause: "We hit a technical error processing your payment. It wasn't an issue with your card.", advice: "Try again: it will most likely go through on the next attempt." },
     },
     expired: {
-        es: (planLabel, username) =>
-            `Hola <strong>${username || ""}</strong>, el tiempo para completar tu pago para actualizar a <strong>${planLabel}</strong> se agotó. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo cuando quieras.`,
-        en: (planLabel, username) =>
-            `Hello <strong>${username || "there"}</strong>, the time window to complete your payment to upgrade to <strong>${planLabel}</strong> ran out. No charge was made to your account. You can try again anytime.`,
+        es: { cause: "Se agotó el tiempo para completar tu pago.", advice: "Puedes intentarlo de nuevo cuando quieras." },
+        en: { cause: "The time window to complete your payment ran out.", advice: "You can try again anytime." },
     },
     cancelled: {
-        es: (planLabel, username) =>
-            `Hola <strong>${username || ""}</strong>, cancelaste el pago para actualizar a <strong>${planLabel}</strong>. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo cuando quieras.`,
-        en: (planLabel, username) =>
-            `Hello <strong>${username || "there"}</strong>, you cancelled the payment to upgrade to <strong>${planLabel}</strong>. No charge was made to your account. You can try again anytime.`,
+        es: { cause: "Cancelaste el pago antes de completarlo.", advice: "Puedes intentarlo de nuevo cuando quieras." },
+        en: { cause: "You cancelled the payment before completing it.", advice: "You can try again anytime." },
     },
     default: {
-        es: (planLabel, username) =>
-            `Hola <strong>${username || ""}</strong>, no pudimos confirmar tu pago para actualizar a <strong>${planLabel}</strong> con nuestro proveedor de pagos. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo con el mismo método u otro distinto.`,
-        en: (planLabel, username) =>
-            `Hello <strong>${username || "there"}</strong>, your payment to upgrade to <strong>${planLabel}</strong> could not be confirmed by our payment provider. No charge was activated on your account. You can try again with the same or a different payment method.`,
+        es: { cause: "No pudimos confirmar tu pago con nuestro proveedor de pagos.", advice: "Puedes intentarlo de nuevo con el mismo método u otro distinto." },
+        en: { cause: "Our payment provider couldn't confirm your payment.", advice: "You can try again with the same or a different payment method." },
     },
 };
 
 export const notifyUserPaymentFailed = async ({ request, user, locale, reason }) => {
     if (!isMailConfigured() || !user?.email || !request?.targetPlan) return;
-    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
-    const planLabel = request.targetPlan.charAt(0).toUpperCase() + request.targetPlan.slice(1);
-    const subject = isEN
-        ? `[Ohnix] Your payment for the ${planLabel} plan could not be confirmed`
-        : `[Ohnix] No pudimos confirmar tu pago del plan ${planLabel}`;
-    const title = isEN ? "Payment not confirmed" : "Pago no confirmado";
-    const copy = PAYMENT_FAILED_COPY[reason] || PAYMENT_FAILED_COPY.default;
-    const body = copy[isEN ? "en" : "es"](planLabel, user.username);
-    const cta = isEN ? "Try again" : "Intentar de nuevo";
-    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
-    try {
-        await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
-            to: user.email,
-            subject,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <h2 style="color:#ef4444;margin:0 0 12px;">⚠️ ${title}</h2>
-                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
-                    <div style="text-align:center;margin:28px 0;">
-                        <a href="${frontendBase}/billing" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
-                    </div>
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
-                </div>
-            `,
-        });
-    } catch (err) {
-        console.error("[payment-failed] Failed to send notification:", err?.message);
-    }
+    const en = isEnglish(locale);
+    const label = planLabel(request.targetPlan);
+    const copy = (PAYMENT_FAILED_COPY[reason] || PAYMENT_FAILED_COPY.default)[en ? "en" : "es"];
+    await sendSafe("payment-failed", {
+        to: user.email,
+        subject: en ? `We couldn't confirm your payment for the ${label} plan` : `No pudimos confirmar tu pago del plan ${label}`,
+        ...buildEmail({
+            lang: en ? "en" : "es",
+            category: en ? "Billing" : "Facturación",
+            tone: "danger",
+            badge: en ? "Payment not confirmed" : "Pago no confirmado",
+            preheader: en ? "No charge was made. You can try again." : "No se hizo ningún cobro. Puedes intentarlo de nuevo.",
+            title: en ? "Your payment didn't go through" : "Tu pago no se completó",
+            greeting: en ? `Hi ${user.username || "there"},` : `Hola ${user.username || ""},`,
+            intro: copy.cause,
+            blocks: [
+                { type: "details", rows: [[en ? "Plan" : "Plan", label, { bold: true }], [en ? "Charge" : "Cobro", en ? "None - nothing was charged" : "Ninguno: no se cobró nada", { color: "#34d399" }]] },
+                { type: "paragraph", text: copy.advice },
+            ],
+            cta: { label: en ? "Try again" : "Intentar de nuevo", url: billing() },
+            reason: billingReason(en),
+        }),
+    });
 };
 
 // ─── Email verified confirmation ─────────────────────────────────────────────
 export const notifyUserEmailVerified = async ({ user, locale }) => {
     if (!isMailConfigured() || !user?.email) return;
-    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
-    const subject = isEN ? "[Ohnix] Email verified ✅" : "[Ohnix] Correo verificado ✅";
-    const title = isEN ? "Account verified" : "Cuenta verificada";
-    const body = isEN
-        ? `Hello <strong>${user.username || "there"}</strong>, your email has been verified successfully. Your account is now fully active.`
-        : `Hola <strong>${user.username || ""}</strong>, tu correo fue verificado exitosamente. Tu cuenta está completamente activa.`;
-    try {
-        await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
-            to: user.email,
-            subject,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <h2 style="color:#29D8D5;margin:0 0 12px;">✅ ${title}</h2>
-                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
-                </div>
-            `,
-        });
-    } catch (err) {
-        console.error("[email-verified] Failed to send notification:", err?.message);
-    }
+    const en = isEnglish(locale);
+    await sendSafe("email-verified", {
+        to: user.email,
+        subject: en ? "Your email is verified" : "Tu correo quedó verificado",
+        ...buildEmail({
+            lang: en ? "en" : "es",
+            category: en ? "Account" : "Cuenta",
+            tone: "success",
+            badge: en ? "Verified" : "Verificado",
+            title: en ? "Your account is active" : "Tu cuenta está activa",
+            greeting: en ? `Hi ${user.username || "there"},` : `Hola ${user.username || ""},`,
+            intro: en ? "Your email was verified successfully. Your account is now fully active." : "Tu correo fue verificado con éxito. Tu cuenta ya está completamente activa.",
+            cta: { label: en ? "Go to my account" : "Ir a mi cuenta", url: emailLinks.app("/dashboard") },
+            reason: en ? "Security email sent to the owner of this Ohnix account." : "Correo de seguridad enviado al titular de esta cuenta de Ohnix.",
+        }),
+    });
 };
+
+// ─── Internal (Ohnix team) alerts ─────────────────────────────────────────────
+// Always Spanish: these go to Ohnix's own admins, never follow the customer's
+// language (an English-browser signup used to send admins an English alert).
+const parseAdditionalRecipients = () =>
+    (process.env.UPGRADE_ALERT_EMAILS || "")
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean);
+
+const adminRecipients = async () => {
+    const admins = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } });
+    return Array.from(new Set([...admins.map((a) => a.email?.toLowerCase()).filter(Boolean), ...parseAdditionalRecipients()]));
+};
+
+const INTERNAL_REASON = "Alerta interna para el equipo de Ohnix.";
 
 // ─── New user registered → admin notification ────────────────────────────────
 export const notifyAdminsNewUserRegistered = async ({ user }) => {
     if (!isMailConfigured() || !user?.email) return;
     try {
-        const adminUsers = await prisma.user.findMany({
-            where: { role: "admin" },
-            select: { email: true },
-        });
-        const recipients = Array.from(new Set([
-            ...adminUsers.map((a) => a.email?.toLowerCase()).filter(Boolean),
-            ...parseAdditionalRecipients(),
-        ]));
+        const recipients = await adminRecipients();
         if (!recipients.length) return;
         await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            from: from(),
             bcc: recipients,
-            subject: `[Ohnix] Nuevo usuario registrado: ${user.username}`,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #1d2733;border-radius:12px;">
-                    <h2 style="color:#29D8D5;margin:0 0 12px;">👤 Nuevo usuario registrado</h2>
-                    <table style="width:100%;border-collapse:separate;border-spacing:0 8px;">
-                        <tr><td style="color:#9ca3af;padding:8px 12px;border:1px solid #1d2733;border-radius:8px 0 0 8px;width:35%;">Usuario</td><td style="color:#e5e7eb;padding:8px 12px;border:1px solid #1d2733;border-radius:0 8px 8px 0;">${user.username}</td></tr>
-                        <tr><td style="color:#9ca3af;padding:8px 12px;border:1px solid #1d2733;border-radius:8px 0 0 8px;">Email</td><td style="color:#e5e7eb;padding:8px 12px;border:1px solid #1d2733;border-radius:0 8px 8px 0;">${user.email}</td></tr>
-                        <tr><td style="color:#9ca3af;padding:8px 12px;border:1px solid #1d2733;border-radius:8px 0 0 8px;">Plan</td><td style="color:#e5e7eb;padding:8px 12px;border:1px solid #1d2733;border-radius:0 8px 8px 0;">${user.plan || "starter"}</td></tr>
-                        <tr><td style="color:#9ca3af;padding:8px 12px;border:1px solid #1d2733;border-radius:8px 0 0 8px;">Fecha</td><td style="color:#e5e7eb;padding:8px 12px;border:1px solid #1d2733;border-radius:0 8px 8px 0;">${new Date().toLocaleString()}</td></tr>
-                    </table>
-                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
-                </div>
-            `,
+            subject: `[Interno] Nuevo usuario: ${user.username}`,
+            ...buildEmail({
+                lang: "es",
+                category: "Interno",
+                tone: "info",
+                badge: "Nuevo registro",
+                title: "Se registró un nuevo usuario",
+                blocks: [
+                    {
+                        type: "details",
+                        rows: [
+                            ["Usuario", user.username, { bold: true }],
+                            ["Correo", user.email],
+                            ["Plan", user.plan || "starter"],
+                            ["Fecha", formatDateTime()],
+                        ],
+                    },
+                ],
+                cta: { label: "Abrir administración", url: emailLinks.app("/admin/management") },
+                reason: INTERNAL_REASON,
+            }),
         });
     } catch (err) {
         console.error("[new-user-admin] Failed to send notification:", err?.message);
     }
 };
 
-const BRAND = {
-    bg: "#050608",
-    panel: "#0b0f14",
-    border: "#1d2733",
-    accent: "#29D8D5",
-    accentSoft: "#44F3F0",
-    text: "#e5e7eb",
-    muted: "#9ca3af",
+const decisionCopy = {
+    approved: { es: "aprobada", en: "approved", tone: "success" },
+    rejected: { es: "rechazada", en: "rejected", tone: "danger" },
+    closed: { es: "activada", en: "activated", tone: "success" },
 };
 
-const resolveLocale = (localeHint) => {
-    const normalized = `${localeHint || process.env.DEFAULT_EMAIL_LOCALE || "es"}`
-        .toLowerCase()
-        .trim();
-
-    return normalized.startsWith("en") ? "en" : "es";
-};
-
-const getCopy = (locale) => {
-    if (locale === "en") {
-        return {
-            adminSubject: (fromPlan, toPlan) =>
-                `[Ohnix] New upgrade request: ${fromPlan} -> ${toPlan}`,
-            adminTitle: "New plan upgrade request",
-            adminSubtitle: "A user submitted a request to change plan.",
-            userSubject: (decisionLabel) =>
-                `[Ohnix] Your upgrade request was ${decisionLabel}`,
-            userTitle: "Upgrade request update",
-            userSubtitle: (username, decisionLabel) =>
-                `Hello ${username || "there"}, your request has been ${decisionLabel}.`,
-            labels: {
-                requestId: "Request ID",
-                source: "Source",
-                user: "User",
-                currentPlan: "Current plan",
-                targetPlan: "Target plan",
-                createdAt: "Created at",
-                decisionTime: "Decision time",
-                reviewedBy: "Reviewed by",
-                notes: "Notes",
-                adminResponse: "Admin response",
-            },
-            textAdmin: {
-                intro: "A new plan upgrade request was created.",
-            },
-            textUser: {
-                greeting: (username) => `Hello ${username || "there"},`,
-                intro: (decisionLabel) =>
-                    `Your plan upgrade request has been ${decisionLabel}.`,
-                outro: "You can review the request details in your Billing section.",
-            },
-            na: "N/A",
-        };
-    }
-
-    return {
-        adminSubject: (fromPlan, toPlan) =>
-            `[Ohnix] Nueva solicitud de upgrade: ${fromPlan} -> ${toPlan}`,
-        adminTitle: "Nueva solicitud de cambio de plan",
-        adminSubtitle: "Un usuario envió una solicitud para cambiar su plan.",
-        userSubject: (decisionLabel) =>
-            `[Ohnix] Tu solicitud de upgrade fue ${decisionLabel}`,
-        userTitle: "Actualización de solicitud de upgrade",
-        userSubtitle: (username, decisionLabel) =>
-            `Hola ${username || ""}, tu solicitud fue ${decisionLabel}.`,
-        labels: {
-            requestId: "ID de solicitud",
-            source: "Origen",
-            user: "Usuario",
-            currentPlan: "Plan actual",
-            targetPlan: "Plan solicitado",
-            createdAt: "Fecha de creación",
-            decisionTime: "Fecha de decisión",
-            reviewedBy: "Revisado por",
-            notes: "Notas",
-            adminResponse: "Respuesta admin",
-        },
-        textAdmin: {
-            intro: "Se ha creado una nueva solicitud de cambio de plan.",
-        },
-        textUser: {
-            greeting: (username) => `Hola ${username || ""},`,
-            intro: (decisionLabel) =>
-                `Tu solicitud de cambio de plan fue ${decisionLabel}.`,
-            outro: "Puedes revisar el detalle en la sección de Facturación.",
-        },
-        na: "N/A",
-    };
-};
-
-const getDecisionLabel = (status, locale) => {
-    if (locale === "en") {
-        if (status === "approved") return "approved";
-        if (status === "rejected") return "rejected";
-        if (status === "closed") return "activated";
-        return status;
-    }
-
-    if (status === "approved") return "aprobada";
-    if (status === "rejected") return "rechazada";
-    if (status === "closed") return "activada";
-    return status;
-};
-
-const wrapBrandEmail = ({ title, subtitle, bodyRows }) => `
-    <div style="background:${BRAND.bg};padding:24px 12px;font-family:Arial,sans-serif;">
-        <div style="max-width:680px;margin:0 auto;border:1px solid ${BRAND.border};border-radius:18px;overflow:hidden;background:${BRAND.panel};">
-            <div style="padding:18px 22px;background:linear-gradient(120deg, rgba(41,216,213,0.22), rgba(68,243,240,0.08));border-bottom:1px solid ${BRAND.border};">
-                <div style="font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:${BRAND.accent};font-weight:700;">OHNIX</div>
-                <h2 style="margin:10px 0 8px;color:${BRAND.text};font-size:22px;line-height:1.2;">${title}</h2>
-                <p style="margin:0;color:${BRAND.muted};font-size:14px;line-height:1.5;">${subtitle}</p>
-            </div>
-            <div style="padding:20px 22px;">
-                <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">${bodyRows}</table>
-            </div>
-            <div style="padding:14px 22px;border-top:1px solid ${BRAND.border};color:${BRAND.muted};font-size:12px;">
-                Ohnix by ITCycle
-            </div>
-        </div>
-    </div>
-`;
-
-const row = (label, value) => `
-    <tr>
-        <td style="width:36%;padding:10px 12px;border:1px solid ${BRAND.border};border-right:none;border-radius:10px 0 0 10px;color:${BRAND.muted};font-size:13px;">${label}</td>
-        <td style="padding:10px 12px;border:1px solid ${BRAND.border};border-radius:0 10px 10px 0;color:${BRAND.text};font-size:13px;">${value}</td>
-    </tr>
-`;
-
-const parseAdditionalRecipients = () => {
-    const raw = process.env.UPGRADE_ALERT_EMAILS || "";
-    return raw
-        .split(",")
-        .map((email) => email.trim().toLowerCase())
-        .filter(Boolean);
-};
-
-export const notifyAdminsUpgradeRequestCreated = async ({
-    request,
-    user,
-    source = "app",
-}) => {
+export const notifyAdminsUpgradeRequestCreated = async ({ request, user, source = "app" }) => {
     try {
-        if (!request?.id || !user?.email) {
-            return;
-        }
-
-        const adminUsers = await prisma.user.findMany({
-            where: { role: "admin" },
-            select: { email: true },
-        });
-
-        const recipients = Array.from(
-            new Set([
-                ...adminUsers.map((admin) => admin.email?.toLowerCase()).filter(Boolean),
-                ...parseAdditionalRecipients(),
-            ])
-        );
-
+        if (!request?.id || !user?.email) return;
+        const recipients = await adminRecipients();
         if (!recipients.length || !isMailConfigured()) {
             if (process.env.NODE_ENV !== "production" || process.env.AUTH_DEBUG === "true") {
                 console.warn("[upgrade-notify] Admin email skipped: mail not configured or no recipients.");
             }
             return;
         }
-
-        // Ohnix's admin team is Spanish-speaking - this is an internal alert,
-        // not a customer-facing email, so it must never follow the
-        // REQUESTING user's own preferredLanguage (an English-browser signup
-        // used to send admins an English alert). Every other admin-only
-        // notification in this codebase (dianTestMatrixNotifications.js,
-        // firmaPassNotifications.js, notifyAdminsNewUserRegistered below)
-        // is hardcoded Spanish for the same reason.
-        const copy = getCopy("es");
-        const subject = copy.adminSubject(request.currentPlan, request.targetPlan);
-        const createdAt = request.createdAt
-            ? new Date(request.createdAt).toLocaleString()
-            : new Date().toLocaleString();
-
-        const text = [
-            copy.textAdmin.intro,
-            `${copy.labels.requestId}: ${request.id}`,
-            `${copy.labels.source}: ${source}`,
-            `${copy.labels.user}: ${user.username || copy.na} (${user.email})`,
-            `${copy.labels.currentPlan}: ${request.currentPlan}`,
-            `${copy.labels.targetPlan}: ${request.targetPlan}`,
-            `${copy.labels.createdAt}: ${createdAt}`,
-            `${copy.labels.notes}: ${request.notes || copy.na}`,
-        ].join("\n");
-
-        const html = wrapBrandEmail({
-            title: copy.adminTitle,
-            subtitle: copy.adminSubtitle,
-            bodyRows: [
-                row(copy.labels.requestId, request.id),
-                row(copy.labels.source, source),
-                row(copy.labels.user, `${user.username || copy.na} (${user.email})`),
-                row(copy.labels.currentPlan, request.currentPlan),
-                row(copy.labels.targetPlan, request.targetPlan),
-                row(copy.labels.createdAt, createdAt),
-                row(copy.labels.notes, request.notes || copy.na),
-            ].join(""),
-        });
-
         await transporter.sendMail({
-            from: process.env.SENDER_EMAIL,
+            from: from(),
             bcc: recipients,
-            subject,
-            text,
-            html,
+            subject: `[Interno] Solicitud de cambio de plan: ${request.currentPlan} → ${request.targetPlan}`,
+            ...buildEmail({
+                lang: "es",
+                category: "Interno",
+                tone: "info",
+                badge: "Por revisar",
+                preheader: `${user.username || user.email} quiere pasar de ${request.currentPlan} a ${request.targetPlan}.`,
+                title: "Nueva solicitud de cambio de plan",
+                blocks: [
+                    {
+                        type: "details",
+                        rows: [
+                            ["Usuario", `${user.username || "—"} (${user.email})`, { bold: true }],
+                            ["Plan actual", request.currentPlan],
+                            ["Plan solicitado", request.targetPlan, { bold: true, color: "#29D8D5" }],
+                            ["Origen", source],
+                            ["Creada", formatDateTime(request.createdAt)],
+                            ["ID de solicitud", request.id],
+                        ],
+                    },
+                    ...(request.notes ? [{ type: "alert", tone: "info", title: "Notas del usuario", text: request.notes }] : []),
+                ],
+                cta: { label: "Revisar solicitud", url: emailLinks.app("/admin/subscriptions") },
+                reason: INTERNAL_REASON,
+            }),
         });
     } catch (error) {
         console.error("Failed to send upgrade request admin notification:", error);
     }
 };
 
-export const notifyUserUpgradeRequestResolved = async ({
-    request,
-    user,
-    actedBy = "admin",
-    locale,
-}) => {
+export const notifyUserUpgradeRequestResolved = async ({ request, user, actedBy = "admin", locale }) => {
     try {
-        if (!request?.id || !user?.email) {
-            return;
-        }
-
-        if (!["approved", "rejected", "closed"].includes(request.status)) {
-            return;
-        }
-
+        if (!request?.id || !user?.email) return;
+        if (!["approved", "rejected", "closed"].includes(request.status)) return;
         if (!isMailConfigured()) {
             if (process.env.NODE_ENV !== "production" || process.env.AUTH_DEBUG === "true") {
                 console.warn("[upgrade-notify] User resolution email skipped: mail not configured.");
             }
             return;
         }
-
-        const language = resolveLocale(locale);
-        const copy = getCopy(language);
-        const decisionLabel = getDecisionLabel(request.status, language);
-        const subject = copy.userSubject(decisionLabel);
-        const resolvedAt = request.updatedAt
-            ? new Date(request.updatedAt).toLocaleString()
-            : new Date().toLocaleString();
-
-        const text = [
-            copy.textUser.greeting(user.username),
-            "",
-            copy.textUser.intro(decisionLabel),
-            `${copy.labels.requestId}: ${request.id}`,
-            `${copy.labels.currentPlan}: ${request.currentPlan}`,
-            `${copy.labels.targetPlan}: ${request.targetPlan}`,
-            `${copy.labels.decisionTime}: ${resolvedAt}`,
-            `${copy.labels.reviewedBy}: ${actedBy}`,
-            `${copy.labels.adminResponse}: ${request.adminResponse || copy.na}`,
-            "",
-            copy.textUser.outro,
-        ].join("\n");
-
-        const html = wrapBrandEmail({
-            title: copy.userTitle,
-            subtitle: copy.userSubtitle(user.username, decisionLabel),
-            bodyRows: [
-                row(copy.labels.requestId, request.id),
-                row(copy.labels.currentPlan, request.currentPlan),
-                row(copy.labels.targetPlan, request.targetPlan),
-                row(copy.labels.decisionTime, resolvedAt),
-                row(copy.labels.reviewedBy, actedBy),
-                row(copy.labels.adminResponse, request.adminResponse || copy.na),
-            ].join(""),
-        });
-
+        const en = isEnglish(locale || process.env.DEFAULT_EMAIL_LOCALE);
+        const decision = decisionCopy[request.status];
+        const word = decision[en ? "en" : "es"];
         await transporter.sendMail({
-            from: process.env.SENDER_EMAIL,
+            from: from(),
             to: user.email,
-            subject,
-            text,
-            html,
+            subject: en ? `Your plan change request was ${word}` : `Tu solicitud de cambio de plan fue ${word}`,
+            ...buildEmail({
+                lang: en ? "en" : "es",
+                category: en ? "Billing" : "Facturación",
+                tone: decision.tone,
+                badge: en ? `Request ${word}` : `Solicitud ${word}`,
+                title: en ? `Your plan change request was ${word}` : `Tu solicitud de cambio de plan fue ${word}`,
+                greeting: en ? `Hi ${user.username || "there"},` : `Hola ${user.username || ""},`,
+                intro: en ? "Here are the details of the decision:" : "Este es el detalle de la decisión:",
+                blocks: [
+                    {
+                        type: "details",
+                        rows: [
+                            [en ? "Current plan" : "Plan actual", request.currentPlan],
+                            [en ? "Requested plan" : "Plan solicitado", request.targetPlan, { bold: true }],
+                            [en ? "Decision" : "Decisión", word, { bold: true, color: decision.tone === "danger" ? "#fb7185" : "#34d399" }],
+                            [en ? "Date" : "Fecha", formatDateTime(request.updatedAt)],
+                            [en ? "Reviewed by" : "Revisada por", actedBy],
+                        ],
+                    },
+                    ...(request.adminResponse ? [{ type: "alert", tone: "info", title: en ? "Message from our team" : "Mensaje de nuestro equipo", text: request.adminResponse }] : []),
+                ],
+                cta: { label: en ? "View billing" : "Ver facturación", url: billing() },
+                reason: billingReason(en),
+            }),
         });
     } catch (error) {
         console.error("Failed to send upgrade resolution notification to user:", error);

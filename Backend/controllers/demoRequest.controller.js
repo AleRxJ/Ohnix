@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { sendMailSafe } from "../utils/nodemailer.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
+import { buildEmail } from "../utils/emailTemplate.js";
 import { logAdminAction } from "../utils/adminAudit.js";
 import { sendMetaConversionEvent } from "../services/metaConversionsApi.service.js";
 import { detectCatalogMapping, sanitizeCatalogPayload } from "../services/demoCatalog.service.js";
@@ -90,33 +91,41 @@ const findDemoRequestOr404 = async (id, select) => {
 
 const notifyTeam = async (request) => {
     const adminUrl = `${process.env.FRONTEND_URL || "https://ohnix.co"}/admin/demo-requests?id=${request.id}`;
-    const rows = [
-        ["Nombre", request.name],
-        ["Empresa", request.companyName],
-        ["WhatsApp", request.phone],
-        ["Correo", request.email],
-        ["Negocio", request.businessType || "-"],
-        ["Productos", request.productCountRange || "-"],
-        ["Horario preferido", `${toDateOnly(request.preferredDate) || "-"} · ${request.preferredSlot === "morning" ? "mañana" : request.preferredSlot === "afternoon" ? "tarde" : "-"}`],
-        ["Lista de productos", request.catalogFileName || "No adjuntó"],
-        ["Origen", [request.utmSource, request.utmCampaign].filter(Boolean).join(" / ") || "-"],
-    ];
+    const slot = request.preferredSlot === "morning" ? "mañana" : request.preferredSlot === "afternoon" ? "tarde" : null;
     await sendMailSafe(
         {
             from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: process.env.CONTACT_FORM_TO_EMAIL || process.env.SENDER_EMAIL,
             replyTo: request.email,
-            subject: `[Ohnix] Nueva solicitud de demo: ${request.companyName}`,
-            text: `${rows.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\nMensaje: ${request.message || "-"}\n\n${adminUrl}`,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">OHNIX</div>
-                    <h2 style="color:#29D8D5;margin:0 0 16px;">Nueva solicitud de demo</h2>
-                    ${rows.map(([k, v]) => `<p style="font-size:14px;color:#e5e7eb;margin:0 0 6px;"><strong>${k}:</strong> ${escapeHtml(v)}</p>`).join("")}
-                    <p style="font-size:14px;color:#e5e7eb;line-height:1.6;margin:16px 0 0;white-space:pre-wrap;">${escapeHtml(request.message || "")}</p>
-                    <p style="margin:20px 0 0;"><a href="${adminUrl}" style="color:#021314;background:#29D8D5;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:700;">Abrir en el panel</a></p>
-                </div>
-            `,
+            subject: `[Interno] Nueva solicitud de demo: ${request.companyName}`,
+            ...buildEmail({
+                lang: "es",
+                category: "Interno · Demos",
+                tone: "info",
+                badge: "Nueva demo",
+                preheader: `${request.name} (${request.companyName}) pidió una demo.`,
+                title: "Nueva solicitud de demo",
+                intro: "Confírmale el horario por WhatsApp y, si adjuntó su lista de productos, prepárale la cuenta antes de la llamada.",
+                blocks: [
+                    {
+                        type: "details",
+                        rows: [
+                            ["Nombre", request.name, { bold: true }],
+                            ["Empresa", request.companyName, { bold: true }],
+                            ["WhatsApp", request.phone],
+                            ["Correo", request.email],
+                            ["Negocio", request.businessType || "—"],
+                            ["Productos", request.productCountRange || "—"],
+                            ["Horario preferido", [toDateOnly(request.preferredDate), slot].filter(Boolean).join(" · ") || "—"],
+                            ["Lista de productos", request.catalogFileName || "No adjuntó", { color: request.catalogFileName ? "#34d399" : "#8b98a0" }],
+                            ["Origen", [request.utmSource, request.utmCampaign].filter(Boolean).join(" / ") || "—"],
+                        ],
+                    },
+                    ...(request.message ? [{ type: "heading", text: "Mensaje" }, { type: "paragraph", html: escapeHtml(request.message).split("\n").join("<br>") }] : []),
+                ],
+                cta: { label: "Abrir en el panel", url: adminUrl },
+                reason: "Alerta interna para el equipo de Ohnix.",
+            }),
         },
         "demo-request-team"
     );
@@ -129,19 +138,30 @@ const confirmToProspect = async (request) => {
             from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: request.email,
             subject: "Recibimos tu solicitud de demo de Ohnix",
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                    <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">OHNIX</div>
-                    <h2 style="color:#ffffff;margin:0 0 16px;">¡Hola, ${escapeHtml(firstName)}!</h2>
-                    <p style="font-size:15px;color:#e5e7eb;line-height:1.6;">Recibimos tu solicitud de demo para <strong>${escapeHtml(request.companyName)}</strong>. Te escribiremos por WhatsApp al ${escapeHtml(request.phone)} para confirmar el horario.</p>
-                    ${
-                        request.catalogFileName
-                            ? `<p style="font-size:15px;color:#e5e7eb;line-height:1.6;">Antes de la llamada cargamos tu lista de productos (<em>${escapeHtml(request.catalogFileName)}</em>) en una cuenta a tu nombre, para que veas Ohnix funcionando con tu propio catálogo.</p>`
-                            : `<p style="font-size:15px;color:#e5e7eb;line-height:1.6;">Si quieres ver Ohnix con tus propios productos, responde a este correo con tu lista en Excel y la cargamos antes de la llamada.</p>`
-                    }
-                    <p style="text-align:center;font-size:12px;color:#6b7280;margin-top:24px;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
-                </div>
-            `,
+            ...buildEmail({
+                lang: "es",
+                category: "Demo",
+                tone: "success",
+                badge: "Solicitud recibida",
+                preheader: "Te escribiremos por WhatsApp para confirmar el horario.",
+                title: `¡Gracias, ${firstName}!`,
+                introHtml: `Recibimos tu solicitud de demo para <strong>${escapeHtml(request.companyName)}</strong>. Te escribiremos por WhatsApp al <strong>${escapeHtml(request.phone)}</strong> para confirmar el horario.`,
+                blocks: [
+                    { type: "heading", text: "Qué sigue" },
+                    {
+                        type: "list",
+                        items: [
+                            "Te confirmamos el día y la hora por WhatsApp.",
+                            request.catalogFileName
+                                ? { html: `Cargamos tu lista de productos (<em>${escapeHtml(request.catalogFileName)}</em>) en una cuenta a tu nombre, para que veas Ohnix con tu propio catálogo.` }
+                                : "Si quieres verlo con tus productos, responde este correo con tu lista en Excel y la cargamos antes de la llamada.",
+                            "En la demo te mostramos inventario, ventas, caja y facturación DIAN con tu negocio.",
+                        ],
+                    },
+                ],
+                secondaryCta: { label: "Conoce Ohnix mientras tanto", url: "https://ohnix.co" },
+                reason: "Recibes este correo porque solicitaste una demo en ohnix.co.",
+            }),
         },
         "demo-request-confirmation"
     );

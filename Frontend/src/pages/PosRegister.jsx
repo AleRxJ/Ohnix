@@ -44,6 +44,10 @@ const readStoredLocation = () => {
 // ledger/DIAN path as the order modal), optionally with its payment attached
 // in the same request (see order.controller.js#createOrder) so an offline
 // checkout is one outbox entry.
+// dvh follows the mobile browser's collapsing address bar; plain vh made the
+// sheet overflow under it on iOS/Android.
+const SHEET_HEIGHT = typeof CSS !== "undefined" && CSS.supports?.("height", "1dvh") ? "85dvh" : "85vh";
+
 const PosRegister = () => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
@@ -156,6 +160,8 @@ const PosRegister = () => {
     // payment, intent, error }
     const [charging, setCharging] = useState(null);
     const [chargeBusy, setChargeBusy] = useState(false);
+    // Why the last "Confirmar" was refused - shown inside the checkout modal.
+    const [checkoutError, setCheckoutError] = useState(null);
     // Ticket printing (per device: roll width, print automatically).
     const [printSettings, setPrintSettings] = useState(readPrintSettings);
     const [printing, setPrinting] = useState(false);
@@ -180,6 +186,7 @@ const PosRegister = () => {
         if (!canCharge) return;
         idempotencyKey.current = crypto.randomUUID();
         setResult(null);
+        setCheckoutError(null);
         setCartSheetOpen(false);
         setCheckoutOpen(true);
     }, [canCharge]);
@@ -264,6 +271,8 @@ const PosRegister = () => {
         }
 
         setSubmitting(true);
+        setCheckoutError(null);
+        const tableName = saleTab?.table_name || null;
         try {
             if (!getConnectivityState()) {
                 await queueCreate({
@@ -276,7 +285,7 @@ const PosRegister = () => {
                         invoice_no: t("orders.pending_sync_invoice_placeholder"),
                     },
                 });
-                setResult({ offline: true, total, change, method, einvoiceDeferred, verification: payment?.requires_verification ? "pending" : null });
+                setResult({ offline: true, tableName, total, change, method, einvoiceDeferred, verification: payment?.requires_verification ? "pending" : null });
             } else {
                 const response = await api.post("/orders", orderData, {
                     headers: { "Idempotency-Key": idempotencyKey.current },
@@ -291,6 +300,7 @@ const PosRegister = () => {
                         mode: payment.mode,
                         payment,
                         einvoiceDeferred,
+                        tableName,
                         intent: order.payment_intent || null,
                         error: order.payment_intent ? null : order.payment_error || t("pos.charge_error"),
                     });
@@ -298,6 +308,7 @@ const PosRegister = () => {
                     setResult({
                         orderId: order._id,
                         invoiceNo: order.invoice_no,
+                        tableName,
                         total: order.total ?? total,
                         change,
                         method,
@@ -317,7 +328,7 @@ const PosRegister = () => {
             }
         } catch (error) {
             console.error("POS checkout failed:", error);
-            toast.error(describeError(error));
+            setCheckoutError(describeError(error));
         } finally {
             setSubmitting(false);
         }
@@ -333,6 +344,7 @@ const PosRegister = () => {
                 change: 0,
                 einvoicing,
                 einvoiceDeferred: charging.einvoiceDeferred,
+                tableName: charging.tableName,
                 ...extra,
             });
             setCharging(null);
@@ -514,9 +526,25 @@ const PosRegister = () => {
         if (!activeTab) return;
         setSendingKitchen(true);
         try {
+            // Round = how many comandas this tab already sent + 1 (each send
+            // stamps its lines with one sent_at), so a 2nd trip reads ADICIONAL.
+            const round = new Set(activeTab.items.filter((i) => i.sent_at).map((i) => i.sent_at)).size + 1;
+            const table = tables.tables.find((x) => x._id === activeTab.table_id);
             const items = await tables.sendToKitchen(activeTab._id);
             if (items.length) {
-                await printKitchenTicket({ tableName: activeTab.table_name, guests: activeTab.guests, waiter: user?.username, items, width: printSettings.width, t });
+                await printKitchenTicket({
+                    companyName: user?.company?.name,
+                    tableName: activeTab.table_name,
+                    zone: table?.zone,
+                    guests: activeTab.guests,
+                    waiter: user?.username,
+                    items,
+                    round,
+                    tabCode: activeTab._id.replace(/-/g, "").slice(-5).toUpperCase(),
+                    openedAt: activeTab.opened_at,
+                    width: printSettings.width,
+                    t,
+                });
             }
         } catch (error) {
             console.error("Kitchen ticket failed:", error);
@@ -562,7 +590,7 @@ const PosRegister = () => {
     );
 
     return (
-        <div className={`min-h-screen bg-transparent text-[var(--ohnix-text-primary)] ${isDesktop ? "" : "pb-28"}`}>
+        <div className={`min-h-screen bg-transparent text-[var(--ohnix-text-primary)] ${isDesktop ? "" : "pb-[calc(7rem+env(safe-area-inset-bottom))]"}`}>
             <div className="mx-auto max-w-[1600px] px-3 py-4 sm:px-6 sm:py-6">
                 <header className="mb-5 flex flex-wrap items-center gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -672,7 +700,7 @@ const PosRegister = () => {
                     open={cartSheetOpen}
                     onClose={() => setCartSheetOpen(false)}
                     placement="bottom"
-                    height="85vh"
+                    height={SHEET_HEIGHT}
                     title={null}
                     styles={{ body: { padding: 16, display: "flex", flexDirection: "column" } }}
                 >
@@ -717,6 +745,7 @@ const PosRegister = () => {
                 charging={charging}
                 chargeBusy={chargeBusy}
                 onConfirm={handleConfirm}
+                error={checkoutError}
                 onClose={() => setCheckoutOpen(false)}
                 onNewSale={startNewSale}
                 onDownload={downloadReceipt}

@@ -638,8 +638,8 @@ export const createStripeSetupSession = async ({ user }) => {
         mode: "setup",
         customer: customerId,
         payment_method_types: ["card"],
-        success_url: `${frontendBase}/dashboard/billing?card=updated`,
-        cancel_url: `${frontendBase}/dashboard/billing?card=cancelled`,
+        success_url: `${frontendBase}/billing?card=updated`,
+        cancel_url: `${frontendBase}/billing?card=cancelled`,
         custom_text: { submit: { message: RECURRING_CONSENT_TEXT_STRIPE } },
         metadata: { ohnixUserId: user.id, purpose: "auto_renew_card_update" },
     });

@@ -238,7 +238,7 @@ export const TablesConfigDrawer = ({ open, onClose, tables, tabs, onCreate, onUp
     };
 
     return (
-        <Drawer open={open} onClose={onClose} title={t("tables.configure")} width={Math.min(560, window.innerWidth)} destroyOnClose>
+        <Drawer open={open} onClose={onClose} title={t("tables.configure")} width={560} styles={{ wrapper: { maxWidth: "100vw" } }} destroyOnClose>
             <Form form={form} layout="vertical" onFinish={create} initialValues={{ prefix: t("tables.default_prefix"), from: tables.length + 1, count: 10, seats: 4 }}>
                 <div className="grid grid-cols-2 gap-x-3 sm:grid-cols-4">
                     <Form.Item name="prefix" label={t("tables.prefix")} rules={[{ required: true }]}>

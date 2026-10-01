@@ -62,6 +62,7 @@ export const useTabCart = (tab, tablesApi, products) => {
             if (delta) tablesApi.changeQuantity(tab._id, { lineId: key, product: line.product, delta });
         },
         setPrice: (key, price) => tab && tablesApi.setLinePrice(tab._id, key, Math.max(0, Number(price) || 0)),
+        setNote: (key, note) => tab && tablesApi.setLineNote(tab._id, key, note),
         remove: (key) => {
             const line = lineByKey(key);
             if (tab && line) tablesApi.changeQuantity(tab._id, { lineId: key, product: line.product, delta: -line.quantity });

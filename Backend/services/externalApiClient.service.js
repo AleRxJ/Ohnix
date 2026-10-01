@@ -19,6 +19,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { provisionItcycleCompany, createItcycleApiKey, listItcycleApiKeys, getItcycleCompanyUsage } from "./itcycleDian.service.js";
 import { createEpaycoCustomerForClient } from "./epaycoRecurringBilling.service.js";
 import { sendMailSafe } from "../utils/nodemailer.js";
+import { buildEmail, emailLinks } from "../utils/emailTemplate.js";
 
 const BILLING_ENROLLMENT_TOKEN_VALIDITY_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -206,32 +207,32 @@ export const getBillingHistoryForExternalClient = async ({ externalApiClientId }
     });
 };
 
-const buildUpsellEmail = ({ companyName, note }) => {
-    const signupUrl = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "") + "/signup";
-    const noteBlock = note
-        ? `<p style="font-size:14px;color:#e5e7eb;margin:0 0 20px;background:#111827;border:1px solid #29D8D5;border-radius:10px;padding:14px;">${note}</p>`
-        : "";
-    return `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-            <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">OHNIX</div>
-            <h2 style="color:#29D8D5;margin:0 0 16px;">¿Conoces Ohnix completo?</h2>
-            <p style="font-size:15px;color:#e5e7eb;margin:0 0 6px;">Hola equipo de <strong>${companyName}</strong>,</p>
-            <p style="font-size:15px;color:#e5e7eb;margin:0 0 20px;">
-                Hoy usan la API de facturación electrónica de Ohnix directamente desde su propio sistema.
-                Quisimos contarles que Ohnix también existe como plataforma completa: inventario, pedidos,
-                compras, clientes, reportes y facturación electrónica DIAN integrada, todo en un solo lugar -
-                sin que eso cambie en nada la integración por API que ya tienen hoy.
-            </p>
-            ${noteBlock}
-            <div style="text-align:center;margin:24px 0;">
-                <a href="${signupUrl}" style="background:#29D8D5;color:#021314;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:800;display:inline-block;text-decoration:none;">Conocer Ohnix completo</a>
-            </div>
-            <p style="font-size:13px;color:#9ca3af;margin:0 0 20px;">Sin compromiso - si no les interesa, pueden ignorar este correo y seguir usando la API exactamente como hasta ahora.</p>
-            <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-            <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
-        </div>
-    `;
-};
+const buildUpsellEmail = ({ companyName, note }) =>
+    buildEmail({
+        lang: "es",
+        category: "Ohnix completo",
+        badge: "Para tu empresa",
+        preheader: "Inventario, ventas, caja y facturación DIAN en un solo lugar, sin tocar tu integración por API.",
+        title: "¿Conoces Ohnix completo?",
+        greeting: `Hola equipo de ${companyName || "tu empresa"},`,
+        intro: "Hoy usan la API de facturación electrónica de Ohnix desde su propio sistema. Ohnix también existe como plataforma completa, y usarla no cambia en nada la integración que ya tienen.",
+        blocks: [
+            {
+                type: "list",
+                items: [
+                    "Inventario por bodega y alertas de stock bajo.",
+                    "Caja, pedidos, compras y clientes.",
+                    "Facturación electrónica DIAN integrada.",
+                    "Reportes de ventas y de tu negocio.",
+                ],
+            },
+            ...(note ? [{ type: "alert", tone: "info", title: "Para ustedes", text: note }] : []),
+        ],
+        cta: { label: "Conocer Ohnix completo", url: emailLinks.app("/signup") },
+        secondaryCta: { label: "Ver planes y precios", url: emailLinks.app("/precios") },
+        footnote: "Sin compromiso: si no les interesa, ignoren este correo y sigan usando la API como hasta ahora.",
+        reason: "Recibes este correo porque tu empresa usa la API de facturación de Ohnix.",
+    });
 
 // Admin-triggered, occasional cross-sell to the full Ohnix SaaS for a client
 // that today only has an API-only relationship (no Ohnix account at all -
@@ -248,7 +249,7 @@ export const sendExternalClientUpsellEmail = async ({ externalApiClientId, note 
             from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: client.contactEmail,
             subject: "Ohnix — También puedes gestionar tu inventario y facturación completa",
-            html: buildUpsellEmail({ companyName: client.companyName, note: note?.trim() || "" }),
+            ...buildUpsellEmail({ companyName: client.companyName, note: note?.trim() || "" }),
         },
         "external-client-upsell"
     );

@@ -3808,7 +3808,19 @@
     "cufe": "CUFE",
     "thanks": "¡Gracias por su compra!",
     "kitchen_ticket": "COMANDA",
-    "guests": "pers."
+    "guests": "pers.",
+    "kitchen_additional": "Adicional",
+    "kitchen_round": "Ronda {{round}}",
+    "kitchen_order_no": "Pedido",
+    "kitchen_time": "Hora",
+    "kitchen_waiter": "Mesero",
+    "kitchen_guests": "Personas",
+    "kitchen_opened": "Mesa abierta hace",
+    "kitchen_qty": "CANT",
+    "kitchen_item": "PRODUCTO",
+    "kitchen_total": "Total",
+    "kitchen_units": "prod.",
+    "kitchen_sent_at": "Enviado a cocina {{time}}"
   },
   "tables": {
     "mode_counter": "Mostrador",
@@ -3948,7 +3960,18 @@
     "paper_width": "Ancho del papel",
     "auto_print": "Imprimir al terminar cada venta",
     "print_help": "Usa la impresora térmica instalada en este equipo. La configuración se guarda solo aquí.",
-    "sent_to_kitchen": "En cocina"
+    "sent_to_kitchen": "En cocina",
+    "table_paid_title": "¡{{table}} cobrada!",
+    "back_to_tables": "Volver a las mesas",
+    "charge_refused": "No se pudo registrar la venta",
+    "kitchen_note": "Nota para cocina",
+    "kitchen_note_placeholder": "Ej.: sin cebolla, término medio",
+    "add_note": "Nota",
+    "remove_note": "Quitar nota",
+    "note_no_onion": "Sin cebolla",
+    "note_to_go": "Para llevar",
+    "note_no_ice": "Sin hielo",
+    "note_well_done": "Bien asado"
   },
   "orders": {
     "order": "Pedido",

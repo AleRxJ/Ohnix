@@ -25,42 +25,54 @@ import {
 } from "../utils/impersonationSession.js";
 import { shouldRouteToManualReview } from "./subscription.controller.js";
 import { logAdminAction } from "../utils/adminAudit.js";
+import { buildEmail } from "../utils/emailTemplate.js";
 
-// ─── Bilingual OTP email builder ─────────────────────────────────────────────
-const buildOtpEmail = ({ username, otp, locale, context }) => {
-    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
-    const titles = {
-        verify:          { es: "Verificación de cuenta",    en: "Account verification" },
-        change_password: { es: "Cambio de contraseña",      en: "Change password" },
-        reset_password:  { es: "Restablecer contraseña",    en: "Reset password" },
-    };
-    const intros = {
-        verify:          { es: "Usa el siguiente código OTP para verificar tu correo:", en: "Use the following OTP code to verify your email:" },
-        change_password: { es: "Usa el siguiente código OTP para cambiar tu contraseña:", en: "Use the following OTP code to change your password:" },
-        reset_password:  { es: "Usa el siguiente código OTP para restablecer tu contraseña:", en: "Use the following OTP code to reset your password:" },
-    };
-    const title = isEN ? titles[context]?.en : titles[context]?.es;
-    const intro = isEN ? intros[context]?.en : intros[context]?.es;
-    const greeting = isEN ? `Hello <strong>${username}</strong>,` : `Hola <strong>${username}</strong>,`;
-    const validity = isEN
-        ? "This code is valid for <strong>10 minutes</strong>. If you didn't request this, ignore this email."
-        : "Este código es válido por <strong>10 minutos</strong>. Si no solicitaste esto, ignora este correo.";
-    const footer = `&copy; ${new Date().getFullYear()} Ohnix by iTCycle. ${isEN ? "All rights reserved." : "Todos los derechos reservados."}`;
-    return `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-            <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">OHNIX</div>
-            <h2 style="color:#29D8D5;margin:0 0 16px;">${title}</h2>
-            <p style="font-size:15px;color:#e5e7eb;margin:0 0 6px;">${greeting}</p>
-            <p style="font-size:15px;color:#e5e7eb;margin:0 0 20px;">${intro}</p>
-            <div style="text-align:center;margin:24px 0;">
-                <span style="background:#29D8D5;color:#021314;padding:14px 32px;border-radius:10px;font-size:30px;font-weight:800;display:inline-block;letter-spacing:8px;">${otp}</span>
-            </div>
-            <p style="font-size:13px;color:#9ca3af;margin:0 0 20px;">${validity}</p>
-            <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-            <p style="text-align:center;font-size:12px;color:#6b7280;">${footer}</p>
-        </div>
-    `;
+// ─── One-time code emails (shared Ohnix layout) ──────────────────────────────
+// otpEmail() returns { html, text }; buildOtpEmail() keeps returning just the
+// HTML for the services that import it (demo provisioning, guest checkout).
+const OTP_COPY = {
+    verify: {
+        es: { title: "Verifica tu correo", intro: "Escribe este código en Ohnix para confirmar tu correo y activar tu cuenta.", badge: "Verificación" },
+        en: { title: "Verify your email", intro: "Enter this code in Ohnix to confirm your email and activate your account.", badge: "Verification" },
+    },
+    change_password: {
+        es: { title: "Confirma el cambio de contraseña", intro: "Escribe este código en Ohnix para confirmar el cambio de tu contraseña.", badge: "Seguridad" },
+        en: { title: "Confirm your password change", intro: "Enter this code in Ohnix to confirm your password change.", badge: "Security" },
+    },
+    reset_password: {
+        es: { title: "Restablece tu contraseña", intro: "Escribe este código en Ohnix para crear una contraseña nueva.", badge: "Seguridad" },
+        en: { title: "Reset your password", intro: "Enter this code in Ohnix to create a new password.", badge: "Security" },
+    },
 };
+
+export const otpEmail = ({ username, otp, locale, context, validMinutes = 10 }) => {
+    const en = `${locale || ""}`.toLowerCase().startsWith("en");
+    const copy = (OTP_COPY[context] || OTP_COPY.verify)[en ? "en" : "es"];
+    return buildEmail({
+        lang: en ? "en" : "es",
+        category: en ? "Account" : "Cuenta",
+        tone: "info",
+        badge: copy.badge,
+        preheader: en ? `Your code is ${otp}. It expires in ${validMinutes} minutes.` : `Tu código es ${otp}. Vence en ${validMinutes} minutos.`,
+        title: copy.title,
+        greeting: en ? `Hi ${username},` : `Hola ${username},`,
+        intro: copy.intro,
+        blocks: [
+            { type: "code", value: otp, caption: en ? `Valid for ${validMinutes} minutes` : `Válido por ${validMinutes} minutos` },
+            {
+                type: "alert",
+                tone: "warning",
+                text: en
+                    ? "Never share this code. Ohnix will never ask you for it by phone, chat or email."
+                    : "No compartas este código. Ohnix nunca te lo pedirá por teléfono, chat ni correo.",
+            },
+        ],
+        footnote: en ? "If you didn't request this, you can ignore this email: your account stays safe." : "Si no fuiste tú, ignora este correo: tu cuenta sigue protegida.",
+        reason: en ? "Security email sent to the owner of this Ohnix account." : "Correo de seguridad enviado al titular de esta cuenta de Ohnix.",
+    });
+};
+
+const buildOtpEmail = (args) => otpEmail(args).html;
 
 const shouldLogAuthDebug =
     process.env.NODE_ENV !== "production" || process.env.AUTH_DEBUG === "true";
@@ -292,31 +304,32 @@ const registerUser = asyncHandler(async (req, res, next) => {
     const isWelcomeEN = `${normalizedPreferredLanguage || ""}`.toLowerCase().startsWith("en");
     const welcomeFrontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
     const welcomeSubject = isWelcomeEN ? "Welcome to Ohnix" : "Bienvenido a Ohnix";
-    const welcomeCta = isWelcomeEN ? "Go to Dashboard" : "Ir al Dashboard";
-    const welcomeGreeting = isWelcomeEN
-        ? `Hello <strong>${createdUser.username}</strong>,`
-        : `Hola <strong>${createdUser.username}</strong>,`;
-    const welcomeBody = isWelcomeEN
-        ? "Your account has been created. Ohnix helps you manage inventory, sales, and billing in one place — let's get you started."
-        : "Tu cuenta ha sido creada. Ohnix te ayuda a gestionar inventario, ventas y facturación en un solo lugar — empecemos.";
     const mailOptions = {
         from: `Ohnix <${process.env.SENDER_EMAIL}>`,
         to: createdUser.email,
         subject: welcomeSubject,
-        text: `${welcomeGreeting.replace(/<\/?strong>/g, "")} ${welcomeBody}`,
-        html: `
-            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
-                <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">OHNIX</div>
-                <h2 style="color:#29D8D5;margin:0 0 16px;">${welcomeSubject}</h2>
-                <p style="font-size:15px;color:#e5e7eb;margin:0 0 6px;">${welcomeGreeting}</p>
-                <p style="font-size:15px;color:#e5e7eb;line-height:1.6;margin:0 0 20px;">${welcomeBody}</p>
-                <div style="text-align:center;margin:28px 0;">
-                    <a href="${welcomeFrontendBase}" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${welcomeCta}</a>
-                </div>
-                <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
-                <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. ${isWelcomeEN ? "All rights reserved." : "Todos los derechos reservados."}</p>
-            </div>
-        `,
+        ...buildEmail({
+            lang: isWelcomeEN ? "en" : "es",
+            category: isWelcomeEN ? "Welcome" : "Bienvenida",
+            tone: "success",
+            badge: isWelcomeEN ? "Account created" : "Cuenta creada",
+            preheader: isWelcomeEN ? "Your account is ready. Here's how to get started in 3 steps." : "Tu cuenta está lista. Así empiezas en 3 pasos.",
+            title: isWelcomeEN ? `Welcome to Ohnix, ${createdUser.username}` : `Bienvenido a Ohnix, ${createdUser.username}`,
+            intro: isWelcomeEN
+                ? "Inventory, sales, accounting and DIAN e-invoicing for your business, all in one place. Here's the fastest way to start:"
+                : "Inventario, ventas, contabilidad y facturación DIAN de tu negocio, en un solo lugar. Así arrancas más rápido:",
+            blocks: [
+                {
+                    type: "list",
+                    items: isWelcomeEN
+                        ? ["<strong>Add your products</strong> - one by one or importing an Excel file.", "<strong>Make your first sale</strong> from the Register (Caja).", "<strong>Set up DIAN e-invoicing</strong> when you're ready to invoice."].map((html) => ({ html }))
+                        : ["<strong>Carga tus productos</strong>: uno a uno o importando un Excel.", "<strong>Haz tu primera venta</strong> desde la Caja.", "<strong>Configura la facturación DIAN</strong> cuando estés listo para facturar."].map((html) => ({ html })),
+                },
+            ],
+            cta: { label: isWelcomeEN ? "Go to my account" : "Entrar a mi cuenta", url: `${welcomeFrontendBase}/dashboard` },
+            footnote: isWelcomeEN ? "Inside the app, the assistant can guide you step by step." : "Dentro de la app, el asistente te guía paso a paso.",
+            reason: isWelcomeEN ? "You get this because you just created an Ohnix account." : "Recibes este correo porque acabas de crear una cuenta en Ohnix.",
+        }),
     };
 
     // Sending Welcome Email (fire and forget — do not block registration response)
@@ -1167,7 +1180,7 @@ const sendVerifyOtp = asyncHandler(async (req, res, next) => {
             subject: user.preferredLanguage === "en"
                 ? "Ohnix — Verify your email"
                 : "Ohnix — Verifica tu correo",
-            html: buildOtpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "verify" }),
+            ...otpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "verify" }),
         };
         const mailResult = await sendMailSafe(mailOptions, "verify-email-otp");
 
@@ -1239,7 +1252,7 @@ const sendChangePasswordOtp = asyncHandler(async (req, res, next) => {
             subject: user.preferredLanguage === "en"
                 ? "Ohnix — Change password OTP"
                 : "Ohnix — Código para cambiar contraseña",
-            html: buildOtpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "change_password" }),
+            ...otpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "change_password" }),
         };
         const mailResult = await sendMailSafe(mailOptions, "change-password-otp");
 
@@ -1443,7 +1456,7 @@ const sendResetOtp = asyncHandler(async (req, res, next) => {
             subject: user.preferredLanguage === "en"
                 ? "Ohnix — Reset your password"
                 : "Ohnix — Código para restablecer contraseña",
-            html: buildOtpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "reset_password" }),
+            ...otpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "reset_password" }),
         };
 
         const mailResult = await sendMailSafe(mailOptions, "reset-password-otp");

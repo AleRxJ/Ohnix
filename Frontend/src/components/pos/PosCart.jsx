@@ -1,10 +1,11 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
-import { Button, InputNumber, Popover, Select, Tooltip } from "antd";
+import { Button, Input, InputNumber, Popover, Select, Tooltip } from "antd";
 import {
     CloseOutlined,
     DeleteOutlined,
     EditOutlined,
+    MessageOutlined,
     MinusOutlined,
     PlusOutlined,
     ShoppingOutlined,
@@ -33,6 +34,65 @@ const usePriceFloor = () => {
             return listPrice > 0 ? listPrice * (1 - maxDiscountPct / 100) : null;
         },
     };
+};
+
+// Kitchen note on a table line ("sin cebolla") - only while it hasn't gone
+// to the kitchen yet; after that the comanda is already printed.
+const NOTE_SUGGESTIONS = ["pos.note_no_onion", "pos.note_to_go", "pos.note_no_ice", "pos.note_well_done"];
+const NoteEditor = ({ line, onSetNote }) => {
+    const { t } = useI18n();
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState(line.note || "");
+    const save = (value) => {
+        onSetNote(line.key, value);
+        setOpen(false);
+    };
+    return (
+        <Popover
+            open={open}
+            onOpenChange={(next) => {
+                setOpen(next);
+                if (next) setDraft(line.note || "");
+            }}
+            trigger="click"
+            title={t("pos.kitchen_note")}
+            content={
+                <div className="w-64 space-y-2">
+                    <Input.TextArea autoFocus rows={2} maxLength={120} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("pos.kitchen_note_placeholder")} />
+                    <div className="flex flex-wrap gap-1">
+                        {NOTE_SUGGESTIONS.map((key) => (
+                            <button key={key} type="button" className="pos-chip !h-7 !px-2.5 !text-xs" onClick={() => setDraft((d) => (d ? `${d}, ${t(key)}` : t(key)))}>
+                                {t(key)}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex gap-2">
+                        {line.note && (
+                            <Button onClick={() => save("")} className="flex-1">
+                                {t("pos.remove_note")}
+                            </Button>
+                        )}
+                        <Button type="primary" onClick={() => save(draft)} className="flex-1">
+                            {t("pos.apply")}
+                        </Button>
+                    </div>
+                </div>
+            }
+        >
+            <button
+                type="button"
+                className={`inline-flex items-center gap-1 text-xs ${line.note ? "text-[var(--ohnix-status-amber)]" : "text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-accent)]"}`}
+                aria-label={t("pos.kitchen_note")}
+            >
+                <MessageOutlined /> {line.note ? "" : t("pos.add_note")}
+            </button>
+        </Popover>
+    );
+};
+
+NoteEditor.propTypes = {
+    line: PropTypes.object.isRequired,
+    onSetNote: PropTypes.func.isRequired,
 };
 
 const PriceEditor = ({ line, onSetPrice }) => {
@@ -199,7 +259,11 @@ const PosCart = ({ cart, customer, customers, onCustomerChange, onCharge, canCha
                                         <span className="truncate">{line.product.product_name}</span>
                                         {line.sent && <span className="shrink-0 rounded-md bg-[var(--ohnix-status-success-soft)] px-1.5 text-[10px] font-medium text-[var(--ohnix-status-success)]">{t("pos.sent_to_kitchen")}</span>}
                                     </div>
-                                    <PriceEditor line={line} onSetPrice={cart.setPrice} />
+                                    <div className="flex flex-wrap items-center gap-x-3">
+                                        <PriceEditor line={line} onSetPrice={cart.setPrice} />
+                                        {cart.setNote && !line.sent && <NoteEditor line={line} onSetNote={cart.setNote} />}
+                                    </div>
+                                    {line.note && <div className="mt-0.5 truncate text-xs italic text-[var(--ohnix-status-amber)]">» {line.note}</div>}
                                 </div>
                                 <div className="pos-stepper">
                                     <button type="button" onClick={() => cart.setQuantity(line.key, line.quantity - 1)} aria-label={t("pos.decrease")}>
