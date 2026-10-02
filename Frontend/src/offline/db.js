@@ -171,9 +171,17 @@ db.version(14).stores({
     tableTabs: "_id",
 });
 
+// v15: restaurant flow - the kitchen display's open rounds (KitchenDisplay.jsx)
+// and pending customer requests from the table QR, so the kitchen and the
+// waiters keep working through a connection drop.
+db.version(15).stores({
+    kitchenRounds: "_id",
+    tableRequests: "_id",
+});
+
 // Mirror tables added as each module is wired for offline support - keep in
 // sync with the list above so account/logout resets actually clear them.
-export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods", "warranties", "demoRequests", "diningTables", "tableTabs"];
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods", "warranties", "demoRequests", "diningTables", "tableTabs", "kitchenRounds", "tableRequests"];
 
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 

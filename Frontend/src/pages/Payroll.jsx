@@ -52,6 +52,16 @@ const EmployeesPanel = ({ canEdit, canAdmin, canDelete }) => {
         { title: t("payroll.full_name"), dataIndex: "full_name", key: "full_name" },
         { title: t("payroll.document_number"), dataIndex: "document_number", key: "document_number" },
         { title: t("payroll.position"), dataIndex: "position", key: "position" },
+        {
+            title: t("payroll.linked_user"),
+            key: "user",
+            render: (_, row) =>
+                row.user ? (
+                    <span className="rounded-full border border-[var(--ohnix-accent-line)] bg-[var(--ohnix-accent-soft)] px-2 py-0.5 text-xs text-[var(--ohnix-accent)]">{row.user.username}</span>
+                ) : (
+                    <span className="text-xs text-[var(--ohnix-text-dim)]">{t("payroll.no_linked_user")}</span>
+                ),
+        },
         { title: t("payroll.base_salary"), key: "base_salary", render: (_, row) => formatCurrency(row.base_salary) },
         {
             title: t("payroll.pay_frequency"),

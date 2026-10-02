@@ -4,12 +4,26 @@
 // Keys match Backend MODULE_KEYS; labels are team.template_<key>.
 // Backend/test/teamPermissionCatalog.test.js checks every template against
 // the real module list, MODULE_DEPENDENCIES and the locale files.
-const NONE = { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false, deleteRecords: false, processReturns: false, reportsExport: false, deferEinvoice: false };
+const NONE = { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false, deleteRecords: false, processReturns: false, reportsExport: false, deferEinvoice: false, posCharge: false };
 
 export const ROLE_TEMPLATES = [
     {
         key: "cashier",
         permissions: { dashboard: "view", orders: "edit", einvoicing: "edit", customers: "edit", products: "view", categories: "view", units: "view", warranties: "view" },
+        capabilities: { ...NONE, posCharge: true },
+    },
+    {
+        key: "waiter",
+        // Restaurant: works tables (open, add, send to kitchen, pre-bill)
+        // but doesn't collect - posCharge stays off, the cashier charges.
+        permissions: { orders: "edit", customers: "view", products: "view", categories: "view", units: "view" },
+        capabilities: NONE,
+    },
+    {
+        key: "kitchen",
+        // Kitchen display (/pos/cocina): sees comandas and marks them
+        // preparing/ready. Same data access as a waiter, never charges.
+        permissions: { orders: "edit", customers: "view", products: "view", categories: "view", units: "view" },
         capabilities: NONE,
     },
     {
@@ -19,7 +33,7 @@ export const ROLE_TEMPLATES = [
             dashboard: "view", orders: "admin", einvoicing: "admin", customers: "edit", products: "edit", categories: "view", units: "view",
             inventory: "edit", warranties: "edit", reports: "view",
         },
-        capabilities: { ...NONE, salesMaxDiscountPct: 15, processReturns: true, reportsExport: true },
+        capabilities: { ...NONE, salesMaxDiscountPct: 15, processReturns: true, reportsExport: true, posCharge: true },
     },
     {
         key: "warehouse",

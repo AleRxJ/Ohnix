@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --env-file=.env \"C:/Users/User/AppData/Local/Temp/claude/c--Users-User-Documents-GitHub-Ohnix/97682bfd-c651-4dad-ac91-a6a3e267ee1f/scratchpad/restore_role_access.mjs\")"
+    ]
+  }
+}

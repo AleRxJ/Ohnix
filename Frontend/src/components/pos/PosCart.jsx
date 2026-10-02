@@ -11,6 +11,7 @@ import {
     ShoppingOutlined,
     SwapOutlined,
     UserOutlined,
+    WalletOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
@@ -216,7 +217,7 @@ CustomerPicker.propTypes = {
     disabled: PropTypes.bool,
 };
 
-const PosCart = ({ cart, customer, customers, onCustomerChange, onCharge, canCharge, chargeHint, sheet = false, header = null }) => {
+const PosCart = ({ cart, customer, customers, onCustomerChange, onCharge, canCharge, chargeHint, chargeElsewhere = false, sheet = false, header = null }) => {
     const { t } = useI18n();
     const { lines, totals, lastAddedId, bump } = cart;
 
@@ -305,12 +306,20 @@ const PosCart = ({ cart, customer, customers, onCustomerChange, onCharge, canCha
                 </div>
             </div>
 
-            <Tooltip title={chargeHint}>
-                <button type="button" className="pos-charge mt-4" onClick={onCharge} disabled={!canCharge}>
-                    {t("pos.charge")}
-                    <kbd className="pos-kbd hidden border-[rgba(2,19,20,0.25)] text-[rgba(2,19,20,0.6)] md:inline">F9</kbd>
-                </button>
-            </Tooltip>
+            {chargeElsewhere ? (
+                // Waiter role (no "Cobrar en caja"): the table is charged at the register.
+                <div className="pos-charge-elsewhere">
+                    <WalletOutlined className="text-lg" />
+                    <span>{t("pos.charged_at_register")}</span>
+                </div>
+            ) : (
+                <Tooltip title={chargeHint}>
+                    <button type="button" className="pos-charge mt-4" onClick={onCharge} disabled={!canCharge}>
+                        {t("pos.charge")}
+                        <kbd className="pos-kbd hidden border-[rgba(2,19,20,0.25)] text-[rgba(2,19,20,0.6)] md:inline">F9</kbd>
+                    </button>
+                </Tooltip>
+            )}
         </aside>
     );
 };
@@ -323,6 +332,7 @@ PosCart.propTypes = {
     onCharge: PropTypes.func.isRequired,
     canCharge: PropTypes.bool,
     chargeHint: PropTypes.string,
+    chargeElsewhere: PropTypes.bool,
     sheet: PropTypes.bool,
     header: PropTypes.node,
 };

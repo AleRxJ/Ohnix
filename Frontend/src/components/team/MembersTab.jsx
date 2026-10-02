@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button, Table, Avatar, Tag, Select, Popconfirm, Form, Empty } from "antd";
 import { PlusOutlined, UserOutlined, DeleteOutlined, MailOutlined, ReloadOutlined, SettingOutlined, SafetyCertificateOutlined, ShopOutlined, DesktopOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
@@ -76,6 +77,20 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
     useEffect(() => {
         load();
     }, [load]);
+
+    // /team?invite=<email> - "Invitar al equipo" from an employee's payroll
+    // record opens the invite form with their email; accepting it links the
+    // new login to that employee (Backend employeeLink.service.js).
+    const [searchParams, setSearchParams] = useSearchParams();
+    useEffect(() => {
+        const email = searchParams.get("invite");
+        if (!email || !canViewTeam) return;
+        form.setFieldsValue({ email });
+        setInviteOpen(true);
+        const next = new URLSearchParams(searchParams);
+        next.delete("invite");
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams, form, canViewTeam]);
 
     const seatLimit = TEAM_SEAT_LIMITS[plan] ?? null;
     const seatsUsed = members.length + invitations.length;

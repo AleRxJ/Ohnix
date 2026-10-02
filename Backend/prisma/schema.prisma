@@ -282,6 +282,7 @@ model User {
   updatedAt         DateTime      @updatedAt @map("updated_at")
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
+  employeeProfile   Employee?     @relation("EmployeeUser")
 
   categoriesCreated                    Category[]                     @relation("CategoryCreatedBy")
   categoriesUpdated                    Category[]                     @relation("CategoryUpdatedBy")
@@ -951,6 +952,10 @@ model Category {
   // Created by the interactive "how does Ohnix work" tour as practice data -
   // see tutorialData.service.js, the only thing that ever deletes these.
   isTutorialData Boolean  @default(false) @map("is_tutorial_data")
+  // Restaurant QR menu (public /m/:token): whether this category is shown
+  // to customers and in which order.
+  menuVisible    Boolean  @default(true) @map("menu_visible")
+  menuSortOrder  Int      @default(0) @map("menu_sort_order")
   createdById    String   @map("created_by")
   updatedById    String?  @map("updated_by")
   createdAt      DateTime @default(now()) @map("created_at")
@@ -1150,6 +1155,9 @@ model Product {
   // see productLocationStock.service.js#claimLocationStock.
   stock                        Int                 @default(0)
   productImage                 String              @default("default-product.png") @map("product_image")
+  // Short customer-facing text for the restaurant QR menu ("Con papas y
+  // ensalada"). Products have no other description field.
+  menuDescription              String?             @map("menu_description")
   unitMeasureCode              String              @default("94") @map("unit_measure_code")
   standardCode                 String              @default("999") @map("standard_code")
   taxCode                      String?             @default("01") @map("tax_code")
@@ -2071,12 +2079,17 @@ model Order {
   paymentAllocations OrderPaymentAllocation[]
   salesQuotation     SalesQuotation?
   warranties         Warranty[]
+  // Restaurant mode: the person (User id, the team member - not the account)
+  // who attended the table this sale closed. Copied from TableTab.waiterId
+  // by tableTab.service.js#closeTabWithOrder. Null for counter sales.
+  waiterId           String?                  @map("waiter_id")
 
   @@unique([externalConnectionId, externalOrderId])
   @@index([createdById])
   @@index([customerId])
   @@index([pointOfSaleId])
   @@index([externalConnectionId])
+  @@index([waiterId])
   @@map("orders")
 }
 
@@ -2533,6 +2546,9 @@ model PointOfSale {
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @updatedAt @map("updated_at")
   defaultCostCenterId String?      @map("default_cost_center_id")
+  // Customers can order from the per-table QR/link (public /m/:token page).
+  // Off by default - the restaurant turns it on once its menu is ready.
+  qrOrderingEnabled   Boolean      @default(false) @map("qr_ordering_enabled")
 
   account           User                    @relation("PointOfSaleAccount", fields: [accountId], references: [id])
   members           TeamMemberPointOfSale[]
@@ -2553,6 +2569,7 @@ model PointOfSale {
   warranties        Warranty[]
   diningTables      DiningTable[]
   tableTabs         TableTab[]
+  tableRequests     TableRequest[]
   defaultCostCenter CostCenter?             @relation(fields: [defaultCostCenterId], references: [id])
 
   @@index([accountId, isActive])
@@ -4726,6 +4743,12 @@ model Employee {
   // resolveLocationCostCenter mechanism orders/purchases already use, keyed
   // off where this employee actually works rather than off the period/order.
   pointOfSaleId     String?                    @map("point_of_sale_id")
+  // The employee's own Ohnix login (a team member, or the owner) - links the
+  // payroll record to what that person does in the app (tables they served
+  // as a waiter -> Order.waiterId, later tips/commissions). Optional; one
+  // employee per user. Set from the employee form or automatically when the
+  // employee accepts a team invitation sent to their email.
+  userId            String?                    @unique @map("user_id")
   status            EmployeeStatus             @default(active)
   createdById       String                     @map("created_by")
   updatedById       String?                    @map("updated_by")
@@ -4735,6 +4758,7 @@ model Employee {
   createdBy             User                          @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
   updatedBy             User?                         @relation("EmployeeUpdatedBy", fields: [updatedById], references: [id])
   pointOfSale           PointOfSale?                  @relation(fields: [pointOfSaleId], references: [id])
+  user                  User?                         @relation("EmployeeUser", fields: [userId], references: [id], onDelete: SetNull)
   payrollDocuments      PayrollDocument[]
   benefitAccruals       EmployeeBenefitAccrual[]
   benefitSettlements    PayrollBenefitSettlement[]
@@ -5485,11 +5509,15 @@ model DiningTable {
   seats         Int      @default(4)
   sortOrder     Int      @default(0) @map("sort_order")
   isActive      Boolean  @default(true) @map("is_active")
+  // Secret in the table's QR link (/m/:token). Random, regenerable from the
+  // tables drawer - regenerating invalidates every printed QR of the table.
+  publicToken   String?  @unique @map("public_token")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+  pointOfSale PointOfSale    @relation(fields: [pointOfSaleId], references: [id])
   tabs        TableTab[]
+  requests    TableRequest[]
 
   @@unique([pointOfSaleId, name])
   @@index([accountId])
@@ -5517,6 +5545,9 @@ model TableTab {
   note          String?
   orderId       String?        @unique @map("order_id")
   openedById    String         @map("opened_by")
+  // Who attends the table (User id). Starts as whoever opened it; another
+  // waiter can take it over. Copied to Order.waiterId on charge.
+  waiterId      String?        @map("waiter_id")
   closedById    String?        @map("closed_by")
   openedAt      DateTime       @default(now()) @map("opened_at")
   closedAt      DateTime?      @map("closed_at")
@@ -5526,6 +5557,7 @@ model TableTab {
   table       DiningTable    @relation(fields: [tableId], references: [id])
   pointOfSale PointOfSale    @relation(fields: [pointOfSaleId], references: [id])
   items       TableTabItem[]
+  requests    TableRequest[]
 
   @@index([accountId, status])
   @@index([tableId, status])
@@ -5545,6 +5577,15 @@ model TableTabItem {
   unitPrice   Decimal   @map("unit_price") @db.Decimal(12, 2)
   note        String?
   sentAt      DateTime? @map("sent_at")
+  // Kitchen display progress once sent (see KitchenDisplay.jsx). Only
+  // meaningful while sentAt is set.
+  kitchenStatus KitchenStatus @default(pending) @map("kitchen_status")
+  readyAt     DateTime? @map("ready_at")
+  servedAt    DateTime? @map("served_at")
+  // Claimed by the device that auto-prints kitchen tickets - an
+  // updateMany(printedAt: null) claim, so two print stations never print the
+  // same round twice (tableTab.service.js#claimKitchenPrint).
+  printedAt   DateTime? @map("printed_at")
   createdById String    @map("created_by")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -5554,4 +5595,54 @@ model TableTabItem {
 
   @@index([tabId])
   @@map("table_tab_items")
+}
+
+enum KitchenStatus {
+  pending
+  preparing
+  ready
+  served
+}
+
+enum TableRequestType {
+  order
+  call_waiter
+  bill
+}
+
+enum TableRequestStatus {
+  pending
+  accepted
+  rejected
+  done
+}
+
+// Something a customer sent from the table's QR page (public /m/:token):
+// an order to confirm, "call the waiter" or "bring the bill". Staff accept
+// or dismiss it from the Caja; an accepted order becomes tab items. items =
+// [{product_id, product_name, quantity, unit_price, note}] priced by the
+// server at request time.
+model TableRequest {
+  id            String             @id @default(cuid())
+  accountId     String             @map("account_id")
+  pointOfSaleId String             @map("point_of_sale_id")
+  tableId       String             @map("table_id")
+  tabId         String?            @map("tab_id")
+  type          TableRequestType
+  status        TableRequestStatus @default(pending)
+  items         Json               @default("[]")
+  note          String?
+  customerName  String?            @map("customer_name")
+  handledById   String?            @map("handled_by")
+  handledAt     DateTime?          @map("handled_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  table       DiningTable @relation(fields: [tableId], references: [id])
+  tab         TableTab?   @relation(fields: [tabId], references: [id])
+  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+
+  @@index([accountId, status])
+  @@index([tableId, status])
+  @@map("table_requests")
 }

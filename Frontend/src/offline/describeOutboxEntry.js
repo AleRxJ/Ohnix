@@ -28,6 +28,10 @@ export const ENTITY_LABELS = {
     payrollPeriods: { es: "Período de nómina", en: "Payroll period" },
     warranties: { es: "Garantía", en: "Warranty" },
     demoRequests: { es: "Solicitud de demo", en: "Demo request" },
+    diningTables: { es: "Mesa", en: "Table" },
+    tableTabs: { es: "Cuenta de mesa", en: "Table tab" },
+    kitchenRounds: { es: "Comanda", en: "Kitchen ticket" },
+    tableRequests: { es: "Pedido QR", en: "QR order" },
 };
 
 export const OP_LABELS = {
@@ -46,6 +50,14 @@ const CUSTOM_ACTIONS = [
     { match: /aceptacion-expresa$/, es: "Aceptación expresa", en: "Express acceptance" },
     { match: /reclamo$/, es: "Reclamo", en: "Claim" },
     { match: /transfer-stock$/, es: "Traslado entre ubicaciones", en: "Transfer between locations" },
+    { match: /\/restaurant\/table-tabs$/, es: "Abrir mesa", en: "Open table" },
+    { match: /\/restaurant\/table-tabs\/[^/]+\/items(\/[^/]+)?$/, es: "Producto en la mesa", en: "Table item" },
+    { match: /\/restaurant\/table-tabs\/[^/]+\/send$/, es: "Enviar a cocina", en: "Send to kitchen" },
+    { match: /\/restaurant\/table-tabs\/[^/]+\/kitchen-status$/, es: "Estado en cocina", en: "Kitchen status" },
+    { match: /\/restaurant\/table-tabs\/[^/]+\/cancel$/, es: "Cancelar cuenta de mesa", en: "Cancel table tab" },
+    { match: /\/restaurant\/table-tabs\/[^/]+$/, es: "Cambio en la mesa", en: "Table change" },
+    { match: /\/restaurant\/requests\/[^/]+\/accept$/, es: "Aceptar pedido QR", en: "Accept QR order" },
+    { match: /\/restaurant\/requests\/[^/]+\/reject$/, es: "Descartar pedido QR", en: "Dismiss QR order" },
 ];
 
 // For custom actions whose entity isn't where the named record lives

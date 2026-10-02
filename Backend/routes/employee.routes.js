@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createEmployee, getEmployees, getEmployee, updateEmployee, deleteEmployee } from "../controllers/employee.controller.js";
+import { createEmployee, getEmployees, getEmployee, updateEmployee, deleteEmployee, getLinkableUsers } from "../controllers/employee.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { requireModulePermission, requireCapability } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
@@ -12,6 +12,9 @@ router
     .route("/")
     .post(requireModulePermission("payroll", "edit"), idempotent("employee.create"), createEmployee)
     .get(requireModulePermission("payroll", "view"), getEmployees);
+
+// Declared before "/:id" so it isn't read as an employee id.
+router.get("/linkable-users", requireModulePermission("payroll", "edit"), getLinkableUsers);
 
 router
     .route("/:id")

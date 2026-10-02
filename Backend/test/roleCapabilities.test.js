@@ -9,7 +9,7 @@ import {
 import { findLinesBelowFloor, assertSalePricesAllowed } from "../utils/salePriceControl.js";
 
 test("normalizeCapabilities denies missing keys and clamps the discount", () => {
-    const none = { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false, deleteRecords: false, processReturns: false, reportsExport: false };
+    const none = { salesPriceOverride: false, salesMaxDiscountPct: 0, catalogViewCosts: false, deleteRecords: false, processReturns: false, reportsExport: false, deferEinvoice: false, posCharge: false };
     assert.deepEqual(normalizeCapabilities(undefined), none);
     assert.deepEqual(normalizeCapabilities({ salesPriceOverride: "yes", salesMaxDiscountPct: 250, catalogViewCosts: true }), {
         ...none,

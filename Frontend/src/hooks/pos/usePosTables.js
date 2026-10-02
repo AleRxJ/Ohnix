@@ -15,8 +15,13 @@ import useI18n from "../useI18n";
 // when earlier table operations are still queued (so a tab opened offline
 // always reaches the server before the items added to it). Tab and line ids
 // are generated here, which is what makes queued writes safe to replay.
+//
+// Also carries the two signals a waiter reacts to: the kitchen marking one
+// of THEIR tables' rounds "ready" (onKitchenReady) and a customer sending
+// something from a table's QR (onNewRequest).
 
 const ENTITY = "tableTabs";
+const REQUESTS = "tableRequests";
 const newId = () => crypto.randomUUID();
 
 const withTotals = (tab) => {
@@ -25,6 +30,7 @@ const withTotals = (tab) => {
         ...tab,
         subtotal: items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0),
         unsent_count: items.filter((i) => !i.sent_at).reduce((sum, i) => sum + i.quantity, 0),
+        ready_count: items.filter((i) => i.kitchen_status === "ready").reduce((sum, i) => sum + i.quantity, 0),
     };
 };
 
@@ -32,49 +38,86 @@ const withTotals = (tab) => {
 const QUEUED = [OUTBOX_STATUS.PENDING, OUTBOX_STATUS.SYNCING, OUTBOX_STATUS.ERROR];
 const hasQueuedTableOps = async () => (await db.outbox.where("entity").equals(ENTITY).filter((e) => QUEUED.includes(e.status)).count()) > 0;
 
-export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
+export const usePosTables = ({ pointOfSaleId, enabled = true, me = null, onKitchenReady, onNewRequest }) => {
     const { t } = useI18n();
     const [tables, setTables] = useState([]);
     const [tabs, setTabs] = useState([]);
+    const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const tabsRef = useRef(tabs);
     tabsRef.current = tabs;
+    const requestsRef = useRef(requests);
+    requestsRef.current = requests;
+    // What was already seen, so only *changes* notify (never the first load).
+    const readySeen = useRef(null);
+    const requestsSeen = useRef(null);
+    const callbacks = useRef({ onKitchenReady, onNewRequest });
+    callbacks.current = { onKitchenReady, onNewRequest };
+    const meId = me?.id || null;
 
     const inLocation = useCallback((row) => !pointOfSaleId || String(row.point_of_sale_id) === String(pointOfSaleId), [pointOfSaleId]);
+
+    const notifyChanges = useCallback(
+        (nextTabs, nextRequests) => {
+            const readyKeys = new Set();
+            const fresh = [];
+            for (const tab of nextTabs) {
+                for (const item of tab.items || []) {
+                    if (item.kitchen_status !== "ready") continue;
+                    const key = `${tab._id}|${item._id}`;
+                    readyKeys.add(key);
+                    if (readySeen.current && !readySeen.current.has(key) && (!tab.waiter?.id || tab.waiter.id === meId)) fresh.push(tab);
+                }
+            }
+            if (readySeen.current) [...new Set(fresh)].forEach((tab) => callbacks.current.onKitchenReady?.(tab));
+            readySeen.current = readyKeys;
+
+            const ids = new Set(nextRequests.map((r) => r._id));
+            if (requestsSeen.current) nextRequests.filter((r) => !requestsSeen.current.has(r._id)).forEach((r) => callbacks.current.onNewRequest?.(r));
+            requestsSeen.current = ids;
+        },
+        [meId]
+    );
 
     const reload = useCallback(async () => {
         if (!enabled) return;
         setLoading(true);
+        const fromMirror = async () => {
+            const [localTables, localTabs, localRequests] = await Promise.all([readMirrorAll("diningTables"), readMirrorAll(ENTITY), readMirrorAll(REQUESTS)]);
+            setTables(localTables);
+            setTabs(localTabs.filter((t) => t.status === "open"));
+            setRequests(localRequests.filter((r) => r.status === "pending"));
+        };
         try {
             if (getConnectivityState() && !(await hasQueuedTableOps())) {
-                const [tablesRes, tabsRes] = await Promise.all([api.get("/restaurant/tables"), api.get("/restaurant/table-tabs/open")]);
+                const [tablesRes, tabsRes, requestsRes] = await Promise.all([
+                    api.get("/restaurant/tables"),
+                    api.get("/restaurant/table-tabs/open"),
+                    api.get("/restaurant/requests/pending").catch(() => null),
+                ]);
                 const nextTables = tablesRes.data?.data || [];
                 const nextTabs = tabsRes.data?.data || [];
-                await Promise.all([mirrorReplaceAll("diningTables", nextTables), mirrorReplaceAll(ENTITY, nextTabs)]);
+                const nextRequests = requestsRes?.data?.data || requestsRef.current;
+                await Promise.all([mirrorReplaceAll("diningTables", nextTables), mirrorReplaceAll(ENTITY, nextTabs), mirrorReplaceAll(REQUESTS, nextRequests)]);
+                notifyChanges(nextTabs, nextRequests);
                 setTables(nextTables);
                 setTabs(nextTabs);
+                setRequests(nextRequests);
             } else {
-                const [localTables, localTabs] = await Promise.all([readMirrorAll("diningTables"), readMirrorAll(ENTITY)]);
-                setTables(localTables);
-                setTabs(localTabs.filter((t) => t.status === "open"));
+                await fromMirror();
             }
         } catch (error) {
-            if (!error.response) {
-                const [localTables, localTabs] = await Promise.all([readMirrorAll("diningTables"), readMirrorAll(ENTITY)]);
-                setTables(localTables);
-                setTabs(localTabs.filter((t) => t.status === "open"));
-            } else {
-                console.error("Error loading tables:", error);
-            }
+            if (!error.response) await fromMirror();
+            else console.error("Error loading tables:", error);
         } finally {
             setLoading(false);
         }
-    }, [enabled]);
+    }, [enabled, notifyChanges]);
 
     useEffect(() => {
         reload();
     }, [reload]);
-    useDataInvalidation(["table"], reload);
+    useDataInvalidation(["table", "kitchen"], reload);
     useEffect(() => subscribeSyncCompleted(reload), [reload]);
 
     const saveTabLocally = useCallback(async (tab) => {
@@ -131,6 +174,8 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
                 guests: guests || null,
                 note: null,
                 opened_at: new Date().toISOString(),
+                opened_by: me,
+                waiter: me,
                 items: [],
             });
             try {
@@ -146,7 +191,7 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
             }
             return tab;
         },
-        [tabForTable, saveTabLocally, dropTabLocally, send]
+        [tabForTable, saveTabLocally, dropTabLocally, send, me]
     );
 
     const changeQuantity = useCallback(
@@ -168,6 +213,8 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
                     unit_price: unitPrice ?? (Number(product.selling_price) || 0),
                     note: null,
                     sent_at: null,
+                    kitchen_status: null,
+                    created_by: me,
                     created_at: new Date().toISOString(),
                 });
             } else {
@@ -188,7 +235,7 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
             // the line the server refused - nothing more to undo here.
             ).catch(() => {});
         },
-        [saveTabLocally, send, t]
+        [saveTabLocally, send, t, me]
     );
 
     // Tapping a product adds to its not-yet-sent line (new units after a
@@ -224,19 +271,45 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
         [saveTabLocally, send]
     );
 
-    // Returns the lines that go on the kitchen ticket.
+    // Returns the lines that go on the kitchen ticket. printed = this device
+    // prints the comanda itself, so the print station must skip it.
     const sendToKitchen = useCallback(
-        async (tabId) => {
+        async (tabId, { printed = false } = {}) => {
             const tab = tabsRef.current.find((t) => t._id === tabId);
             if (!tab) return [];
             const pending = tab.items.filter((i) => !i.sent_at);
             if (!pending.length) return [];
             const now = new Date().toISOString();
-            await saveTabLocally({ ...tab, items: tab.items.map((i) => (i.sent_at ? i : { ...i, sent_at: now })) });
-            await send({ method: "post", url: `/restaurant/table-tabs/${tabId}/send` }).catch(() => {});
+            await saveTabLocally({ ...tab, items: tab.items.map((i) => (i.sent_at ? i : { ...i, sent_at: now, kitchen_status: "pending" })) });
+            await send({ method: "post", url: `/restaurant/table-tabs/${tabId}/send`, data: { printed } }).catch(() => {});
             return pending;
         },
         [saveTabLocally, send]
+    );
+
+    // The waiter delivered what the kitchen marked ready.
+    const markServed = useCallback(
+        async (tabId) => {
+            const tab = tabsRef.current.find((t) => t._id === tabId);
+            if (!tab) return;
+            const lineIds = tab.items.filter((i) => i.kitchen_status === "ready").map((i) => i._id);
+            if (!lineIds.length) return;
+            const now = new Date().toISOString();
+            await saveTabLocally({ ...tab, items: tab.items.map((i) => (lineIds.includes(i._id) ? { ...i, kitchen_status: "served", served_at: now } : i)) });
+            await send({ method: "post", url: `/restaurant/table-tabs/${tabId}/kitchen-status`, data: { status: "served", line_ids: lineIds } }).catch(() => {});
+        },
+        [saveTabLocally, send]
+    );
+
+    // "Atender esta mesa": the current user becomes the tab's waiter.
+    const takeOver = useCallback(
+        async (tabId) => {
+            const tab = tabsRef.current.find((t) => t._id === tabId);
+            if (!tab || !me) return;
+            await saveTabLocally({ ...tab, waiter: me });
+            await send({ method: "patch", url: `/restaurant/table-tabs/${tabId}`, data: { take_over: true } }).catch(() => {});
+        },
+        [saveTabLocally, send, me]
     );
 
     const moveTab = useCallback(
@@ -261,6 +334,69 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
     // After a sale: the server closes the tab in the same POST /orders.
     const closeTabLocally = dropTabLocally;
 
+    // --- Customer requests from the table QR -------------------------------
+    const dropRequestLocally = useCallback(async (requestId) => {
+        await mirrorRemove(REQUESTS, requestId);
+        setRequests((prev) => prev.filter((r) => r._id !== requestId));
+    }, []);
+
+    // An accepted QR order lands on the table's tab - opened now if the table
+    // is free. Line ids mirror the server's (`<request id>-<index>`), so the
+    // optimistic tab and a queued accept replayed later agree on the lines.
+    // Returns the tab the order went to.
+    const acceptRequest = useCallback(
+        async (request, { sendToKitchen: alsoSend = false, printed = false } = {}) => {
+            await dropRequestLocally(request._id);
+            let tab = null;
+            if (request.type === "order") {
+                const table = tables.find((x) => x._id === request.table_id);
+                const existing = tabsRef.current.find((x) => x.table_id === request.table_id && x.status === "open");
+                const now = new Date().toISOString();
+                const lines = (request.items || []).map((item, index) => ({
+                    _id: `${request._id}-${index}`,
+                    product_id: item.product_id,
+                    product_name: item.product_name,
+                    quantity: item.quantity,
+                    unit_price: Number(item.unit_price) || 0,
+                    note: item.note || null,
+                    sent_at: alsoSend ? now : null,
+                    kitchen_status: alsoSend ? "pending" : null,
+                    created_by: me,
+                    created_at: now,
+                }));
+                const base = existing || {
+                    _id: newId(),
+                    table_id: request.table_id,
+                    table_name: table?.name || request.table_name,
+                    point_of_sale_id: request.point_of_sale_id,
+                    status: "open",
+                    guests: null,
+                    note: null,
+                    opened_at: now,
+                    opened_by: me,
+                    waiter: me,
+                    items: [],
+                };
+                const known = new Set((base.items || []).map((i) => i._id));
+                tab = await saveTabLocally({ ...base, items: [...(base.items || []), ...lines.filter((l) => !known.has(l._id))] });
+            }
+            await send(
+                { method: "post", url: `/restaurant/requests/${request._id}/accept`, data: { tab_id: tab?._id, send_to_kitchen: alsoSend, printed: alsoSend && printed } },
+                { toastId: "pos-table-request" }
+            ).catch(() => {});
+            return tab;
+        },
+        [tables, dropRequestLocally, saveTabLocally, send, me]
+    );
+
+    const rejectRequest = useCallback(
+        async (request) => {
+            await dropRequestLocally(request._id);
+            await send({ method: "post", url: `/restaurant/requests/${request._id}/reject` }, { toastId: "pos-table-request" }).catch(() => {});
+        },
+        [dropRequestLocally, send]
+    );
+
     const createTables = useCallback(
         async (rows) => {
             const response = await api.post("/restaurant/tables", { tables: rows, ...(pointOfSaleId ? { pointOfSaleId } : {}) });
@@ -280,10 +416,12 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
 
     const locationTables = useMemo(() => tables.filter((t) => t.is_active !== false && inLocation(t)), [tables, inLocation]);
     const locationTabs = useMemo(() => tabs.filter((t) => t.status === "open" && inLocation(t)).map(withTotals), [tabs, inLocation]);
+    const locationRequests = useMemo(() => requests.filter((r) => r.status === "pending" && inLocation(r)), [requests, inLocation]);
 
     return {
         tables: locationTables,
         tabs: locationTabs,
+        requests: locationRequests,
         loading,
         reload,
         tabForTable,
@@ -293,9 +431,13 @@ export const usePosTables = ({ pointOfSaleId, enabled = true }) => {
         setLinePrice,
         setLineNote,
         sendToKitchen,
+        markServed,
+        takeOver,
         moveTab,
         cancelTab,
         closeTabLocally,
+        acceptRequest,
+        rejectRequest,
         createTables,
         updateTable,
     };

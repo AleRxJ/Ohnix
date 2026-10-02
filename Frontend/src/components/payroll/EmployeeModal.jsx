@@ -1,11 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Modal, Form, Input, Select, InputNumber, Row, Col, Button, Switch, DatePicker } from "antd";
-import { UserOutlined } from "@ant-design/icons";
+import { LinkOutlined, UserAddOutlined, UserOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
 import PointOfSaleField from "../common/PointOfSaleField";
+import { api } from "../../api/api";
+import { getConnectivityState } from "../../offline/connectivity";
 
 const { Option } = Select;
 
@@ -18,6 +21,28 @@ const EmployeeModal = ({ visible, editingEmployee, loading, onSave, onCancel }) 
     const { currency } = useCurrency();
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const [form] = Form.useForm();
+    const navigate = useNavigate();
+    // Team members (and the owner) this employee can be linked to - their
+    // Ohnix login, so what they do in the app (e.g. tables served as a
+    // waiter) is attributed to this payroll record.
+    const [linkable, setLinkable] = useState([]);
+    useEffect(() => {
+        if (!visible || !getConnectivityState()) return;
+        api.get("/employees/linkable-users")
+            .then((res) => setLinkable(res.data?.data || []))
+            .catch(() => setLinkable([]));
+    }, [visible]);
+    const linkedUser = editingEmployee?.user || null;
+    const userOptions = [
+        ...linkable.map((u) => ({
+            value: u._id,
+            label: `${u.username}${u.role_name ? ` · ${u.role_name}` : u.is_owner ? ` · ${t("payroll.user_owner")}` : ""}`,
+            disabled: Boolean(u.employee_id) && u.employee_id !== editingEmployee?._id,
+        })),
+        ...(linkedUser && !linkable.some((u) => u._id === linkedUser._id) ? [{ value: linkedUser._id, label: linkedUser.username }] : []),
+    ];
+    const email = Form.useWatch("email", form);
+    const selectedUser = Form.useWatch("user_id", form);
 
     useEffect(() => {
         if (!visible) return;
@@ -26,6 +51,7 @@ const EmployeeModal = ({ visible, editingEmployee, loading, onSave, onCancel }) 
                 ...editingEmployee,
                 hire_date: editingEmployee.hire_date ? dayjs(editingEmployee.hire_date) : null,
                 point_of_sale_id: editingEmployee.point_of_sale_id?._id,
+                user_id: editingEmployee.user?._id,
             });
         } else {
             form.resetFields();
@@ -45,6 +71,8 @@ const EmployeeModal = ({ visible, editingEmployee, loading, onSave, onCancel }) 
         await onSave({
             ...values,
             hire_date: values.hire_date ? values.hire_date.toISOString() : undefined,
+            // Cleared select = unlink (undefined would leave it unchanged).
+            user_id: values.user_id || null,
         });
     };
 
@@ -223,6 +251,37 @@ const EmployeeModal = ({ visible, editingEmployee, loading, onSave, onCancel }) 
 
                     <Col xs={24}>
                         <PointOfSaleField name="point_of_sale_id" />
+                    </Col>
+
+                    <Col xs={24}>
+                        <div className="rounded-2xl border border-[var(--ohnix-accent-line)] bg-[var(--ohnix-accent-soft)] p-4">
+                            <Form.Item name="user_id" label={fieldLabel(t("payroll.linked_user"))} extra={t("payroll.linked_user_hint")} className="mb-0">
+                                <Select
+                                    size="large"
+                                    allowClear
+                                    showSearch
+                                    optionFilterProp="label"
+                                    suffixIcon={<LinkOutlined />}
+                                    placeholder={t("payroll.linked_user_placeholder")}
+                                    options={userOptions}
+                                    className="auth-ohnix-input"
+                                />
+                            </Form.Item>
+                            {!selectedUser && (
+                                <Button
+                                    type="link"
+                                    icon={<UserAddOutlined />}
+                                    className="mt-2 px-0"
+                                    disabled={!email}
+                                    onClick={() => {
+                                        onCancel();
+                                        navigate(`/team?tab=members&invite=${encodeURIComponent(email)}`);
+                                    }}
+                                >
+                                    {email ? t("payroll.invite_to_team") : t("payroll.invite_needs_email")}
+                                </Button>
+                            )}
+                        </div>
                     </Col>
                 </Row>
             </Form>

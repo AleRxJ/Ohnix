@@ -156,6 +156,7 @@ import purchaseRouter from "./routes/purchase.routes.js";
 import purchaseQuotationRouter from "./routes/purchaseQuotation.routes.js";
 import salesQuotationRouter from "./routes/salesQuotation.routes.js";
 import publicSalesQuotationRouter from "./routes/publicSalesQuotation.routes.js";
+import publicMenuRouter from "./routes/publicMenu.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import warrantyRouter from "./routes/warranty.routes.js";
 import reportRouter from "./routes/report.routes.js";
@@ -206,6 +207,8 @@ app.use("/api/v1/purchases", purchaseRouter);
 app.use("/api/v1/purchase-quotations", purchaseQuotationRouter);
 app.use("/api/v1/sales-quotations", salesQuotationRouter);
 app.use("/api/v1/public", publicSalesQuotationRouter);
+// Restaurant QR menu (public /m/:token page) - no auth, see publicMenu.routes.js.
+app.use("/api/v1/public/menu", publicMenuRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/warranties", warrantyRouter);
 app.use("/api/v1/reports", reportRouter);

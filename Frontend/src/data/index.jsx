@@ -7,6 +7,7 @@ import {
     ShoppingCartOutlined,
     ShoppingOutlined,
     ShopOutlined,
+    FireOutlined,
     UserSwitchOutlined,
     CreditCardOutlined,
     ApartmentOutlined,
@@ -106,6 +107,16 @@ export const getNavItems = (t, role, showElectronicInvoicing = false, showTeam =
             moduleKey: "orders",
             icon: <ShopOutlined />,
             label: <Link to="/pos">{t("common.pos_nav")}</Link>,
+        },
+        {
+            // Restaurant kitchen display - same orders access as the Caja.
+            key: "kitchen",
+            group: "sell",
+            path: "/kitchen",
+            textKey: "common.kitchen_nav",
+            moduleKey: "orders",
+            icon: <FireOutlined />,
+            label: <Link to="/kitchen">{t("common.kitchen_nav")}</Link>,
         },
         {
             key: "orders",

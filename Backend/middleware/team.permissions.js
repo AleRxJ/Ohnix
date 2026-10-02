@@ -216,6 +216,12 @@ export const CAPABILITIES = {
     // for now (Company.einvoiceIssueMode = ask). Issuing later needs only
     // "einvoicing: edit"; deferring is the sensitive part.
     deferEinvoice: { type: "boolean", module: "einvoicing" },
+    // Charge sales from the Caja (counter sales and closing a table's tab).
+    // Without it a member can still work tables - take orders, send them to
+    // the kitchen, print the pre-bill - but not collect: the waiter/cashier
+    // split of a restaurant. Existing roles got it ON in the
+    // 20261002120000_restaurant_flow migration.
+    posCharge: { type: "boolean", module: "orders" },
 };
 
 export const FULL_CAPABILITIES = {
@@ -226,6 +232,7 @@ export const FULL_CAPABILITIES = {
     processReturns: true,
     reportsExport: true,
     deferEinvoice: true,
+    posCharge: true,
 };
 
 export const normalizeCapabilities = (raw) => {

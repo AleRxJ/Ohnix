@@ -34,6 +34,7 @@ const { Content } = Layout;
 // in sync in one place.
 const PAGE_TITLE_KEYS = {
     dashboard: "common.dashboard",
+    kitchen: "common.kitchen_nav",
     products: "common.products",
     orders: "common.orders",
     customers: "common.customers",

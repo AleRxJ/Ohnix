@@ -1,6 +1,6 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
-import { getPlanFeatures } from "../middleware/pricing.middleware.js";
+import { ensureActiveSubscription, ensureUserSubscription, getEffectivePlan, getPlanFeatures, getPlanLimits } from "../middleware/pricing.middleware.js";
 import { emitAccountEvent } from "../live/dataEvents.js";
 import { publishPosScopeChange } from "../utils/posScopeStore.js";
 
@@ -20,9 +20,16 @@ export const ensureDefaultPointOfSale = async (accountId) => {
     });
     if (existing) return existing;
 
-    return prisma.pointOfSale.create({
+    const created = await prisma.pointOfSale.create({
         data: { accountId, name: "Principal", isDefault: true, isActive: true },
     });
+    // Sockets that connected before this row existed never joined its room
+    // (socketServer.js#joinPosRoomsForUser runs at connect), so live POS
+    // events - tables, kitchen - would silently not reach them until a
+    // reconnect. Same nudge createPointOfSale gives.
+    emitAccountEvent(accountId, "pointOfSale", "created");
+    publishPosScopeChange({ accountId }).catch(() => {});
+    return created;
 };
 
 export const listPointOfSales = async (accountId) =>
@@ -98,6 +105,18 @@ export const deactivatePointOfSale = async ({ accountId, pointOfSaleId }) => {
     if (existing.isDefault) {
         throw new ApiError(400, "El punto de venta principal no se puede desactivar.");
     }
+    // An open table tab is a sale in progress - deactivating would strand it
+    // (out of every scope, uncollectable). Close or move them first.
+    const openTabs = await prisma.tableTab.count({ where: { pointOfSaleId, status: "open" } });
+    if (openTabs) {
+        throw new ApiError(
+            409,
+            `Este punto de venta tiene ${openTabs} ${openTabs === 1 ? "mesa con cuenta abierta" : "mesas con cuenta abierta"}; cóbralas o cancélalas antes de desactivarlo.`,
+            [],
+            "",
+            "point_of_sale_has_open_tabs"
+        );
+    }
 
     const updated = await prisma.pointOfSale.update({
         where: { id: pointOfSaleId },
@@ -105,6 +124,35 @@ export const deactivatePointOfSale = async ({ accountId, pointOfSaleId }) => {
     });
 
     emitAccountEvent(accountId, "pointOfSale", "deactivated");
+    publishPosScopeChange({ accountId }).catch(() => {});
+    return updated;
+};
+
+// Bringing a deactivated location back. Its tables, history and stock come
+// back with it (they were never touched). It counts against the plan's
+// location limit again, so that's re-checked here - the route can't run
+// enforceEntityLimit for a PATCH that may just be a rename.
+export const reactivatePointOfSale = async ({ accountId, pointOfSaleId, skipLimit = false }) => {
+    const existing = await prisma.pointOfSale.findUnique({ where: { id: pointOfSaleId } });
+    if (!existing || existing.accountId !== accountId) {
+        throw new ApiError(404, "Punto de venta no encontrado.");
+    }
+    if (existing.isActive) return existing;
+
+    if (!skipLimit) {
+        const subscription = await ensureUserSubscription(accountId);
+        ensureActiveSubscription(subscription);
+        const limit = getPlanLimits(getEffectivePlan(subscription)).maxPointsOfSale;
+        if (limit !== null && limit !== undefined) {
+            const active = await prisma.pointOfSale.count({ where: { accountId, isActive: true } });
+            if (active + 1 > limit) {
+                throw new ApiError(403, `Tu plan permite hasta ${limit} ${limit === 1 ? "punto de venta activo" : "puntos de venta activos"}.`, [], "", "point_of_sale_limit");
+            }
+        }
+    }
+
+    const updated = await prisma.pointOfSale.update({ where: { id: pointOfSaleId }, data: { isActive: true } });
+    emitAccountEvent(accountId, "pointOfSale", "reactivated");
     publishPosScopeChange({ accountId }).catch(() => {});
     return updated;
 };

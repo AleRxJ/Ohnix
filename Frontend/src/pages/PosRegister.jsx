@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button, Drawer, Grid, Popover, Radio, Segmented, Select, Switch } from "antd";
-import { AppstoreOutlined, PrinterOutlined, ShopOutlined, ShoppingOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, FireOutlined, PrinterOutlined, ShopOutlined, ShoppingOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 
 import PosProductGrid from "../components/pos/PosProductGrid";
@@ -19,6 +19,7 @@ import { usePosTables } from "../hooks/pos/usePosTables";
 import { useTabCart } from "../hooks/pos/useTabCart";
 import { isFinalConsumer, usePosCatalog } from "../hooks/pos/usePosCatalog";
 import { usePosLocations } from "../hooks/pos/usePosLocations";
+import { useKitchenPrintStation } from "../hooks/pos/useKitchen";
 import { getConnectivityState, subscribeConnectivity } from "../offline/connectivity";
 import { queueCreate } from "../offline/entityQueue";
 import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
@@ -27,6 +28,7 @@ import { paymentProviderService } from "../services/paymentProviderService";
 import { financeService } from "../services/financeService";
 import { pickAccount } from "../components/pos/posPayments";
 import { buildLocalReceipt, buildPreBill, fetchReceipt, printKitchenTicket, printReceipt, readPrintSettings, writePrintSettings } from "../utils/posReceipt";
+import { buzz, playChime } from "../utils/posChime";
 
 const LOCATION_KEY = "ohnix.pos.pointOfSaleId";
 const MODE_KEY = "ohnix.pos.mode";
@@ -61,6 +63,10 @@ const PosRegister = () => {
     // "Preguntar en cada venta" (the default) - see Company.einvoiceIssueMode.
     const einvoiceAsk = einvoicing && user?.company?.einvoiceIssueMode !== "automatic";
     const canDeferEinvoice = hasCapability("deferEinvoice");
+    // "Cobrar en caja": without it (a waiter role) the Caja is tables-only -
+    // take orders, send to the kitchen, pre-bill - and the cashier charges.
+    const canChargePos = hasCapability("posCharge");
+    const me = useMemo(() => (user?.prismaId ? { id: user.prismaId, name: user.username } : null), [user?.prismaId, user?.username]);
 
     // --- Location --------------------------------------------------------
     // The Caja ALWAYS names its location explicitly. Leaving it to the server
@@ -102,7 +108,22 @@ const PosRegister = () => {
     // "counter" sells straight from the cart; "tables" works per-table tabs
     // (usePosTables) and the cart then IS the active table's tab.
     const canConfigureTables = hasPermission("orders", "admin");
-    const tables = usePosTables({ pointOfSaleId, enabled: locationReady });
+    const tables = usePosTables({
+        pointOfSaleId,
+        enabled: locationReady,
+        me,
+        // The kitchen marked one of MY tables ready -> go serve it.
+        onKitchenReady: (tab) => {
+            playChime();
+            buzz();
+            toast.success(t("tables.ready_toast", { table: tab.table_name }), { id: `ready-${tab._id}`, duration: 6000 });
+        },
+        onNewRequest: (request) => {
+            playChime({ urgent: request.type !== "order" });
+            buzz();
+            toast(t(`tables.request_toast_${request.type}`, { table: request.table_name }), { id: `request-${request._id}`, icon: "📲", duration: 6000 });
+        },
+    });
     const [mode, setMode] = useState(() => {
         try {
             return localStorage.getItem(MODE_KEY) === "tables" ? "tables" : "counter";
@@ -118,6 +139,9 @@ const PosRegister = () => {
             // Per-device convenience.
         }
     };
+    useEffect(() => {
+        if (!canChargePos && mode !== "tables") setMode("tables");
+    }, [canChargePos, mode]);
     const [activeTabId, setActiveTabId] = useState(null);
     const activeTab = mode === "tables" ? tables.tabs.find((tab) => tab._id === activeTabId) || null : null;
     const tabCart = useTabCart(activeTab, tables, catalog.products);
@@ -175,9 +199,11 @@ const PosRegister = () => {
     const idempotencyKey = useRef(null);
     const searchRef = useRef(null);
 
-    const canCharge = canSell && locationReady && !showTablesBoard && cart.lines.length > 0 && Boolean(customer);
+    const canCharge = canSell && canChargePos && locationReady && !showTablesBoard && cart.lines.length > 0 && Boolean(customer);
     const chargeHint = !canSell
         ? t("common.no_permission_to_edit")
+        : !canChargePos
+          ? t("pos.charged_at_register")
         : !customer && cart.lines.length > 0
           ? t("pos.pick_customer_first")
           : undefined;
@@ -258,6 +284,8 @@ const PosRegister = () => {
             gst,
             total,
             total_products: orderItems.length,
+            // Tells the server this sale comes from the Caja (posCharge check).
+            source: "pos",
             ...(saleTab ? { table_tab_id: saleTab._id } : {}),
             ...(payment ? { payment } : {}),
             ...(einvoiceDeferred ? { einvoice_deferred: true, einvoice_defer_reason: deferReason } : {}),
@@ -505,6 +533,9 @@ const PosRegister = () => {
 
     const locationName = locationOptions?.find((o) => o.id === pointOfSaleId)?.name || null;
 
+    // This device as the location's comanda printer (see useKitchen.js).
+    useKitchenPrintStation({ pointOfSaleId, enabled: locationReady && printSettings.kitchenStation, width: printSettings.width, companyName: user?.company?.name });
+
     // Mobile charge bar visible -> lift the floating helpers above it (pos.css).
     const showMobileBar = !isDesktop && !showTablesBoard && (cart.lines.length > 0 || Boolean(activeTab));
     useEffect(() => {
@@ -521,7 +552,26 @@ const PosRegister = () => {
         if (opened) setActiveTabId(opened._id);
     };
 
-    // Comanda: prints only what the kitchen has not seen yet, then marks it sent.
+    // Comanda on THIS device's printer - only when it's set to print on send
+    // (otherwise the kitchen screen / print station takes it from here).
+    const printComanda = (tab, items, round) => {
+        const table = tables.tables.find((x) => x._id === tab.table_id);
+        return printKitchenTicket({
+            companyName: user?.company?.name,
+            tableName: tab.table_name,
+            zone: table?.zone,
+            guests: tab.guests,
+            waiter: tab.waiter?.name || user?.username,
+            items,
+            round,
+            tabCode: tab._id.replace(/-/g, "").slice(-5).toUpperCase(),
+            openedAt: tab.opened_at,
+            width: printSettings.width,
+            t,
+        });
+    };
+
+    // Comanda: sends only what the kitchen has not seen yet.
     const sendKitchen = async () => {
         if (!activeTab) return;
         setSendingKitchen(true);
@@ -529,22 +579,11 @@ const PosRegister = () => {
             // Round = how many comandas this tab already sent + 1 (each send
             // stamps its lines with one sent_at), so a 2nd trip reads ADICIONAL.
             const round = new Set(activeTab.items.filter((i) => i.sent_at).map((i) => i.sent_at)).size + 1;
-            const table = tables.tables.find((x) => x._id === activeTab.table_id);
-            const items = await tables.sendToKitchen(activeTab._id);
+            const printHere = printSettings.printOnSend && !printSettings.kitchenStation;
+            const items = await tables.sendToKitchen(activeTab._id, { printed: printHere });
             if (items.length) {
-                await printKitchenTicket({
-                    companyName: user?.company?.name,
-                    tableName: activeTab.table_name,
-                    zone: table?.zone,
-                    guests: activeTab.guests,
-                    waiter: user?.username,
-                    items,
-                    round,
-                    tabCode: activeTab._id.replace(/-/g, "").slice(-5).toUpperCase(),
-                    openedAt: activeTab.opened_at,
-                    width: printSettings.width,
-                    t,
-                });
+                if (printHere) await printComanda(activeTab, items, round);
+                else toast.success(t("tables.sent_to_kitchen", { table: activeTab.table_name }), { id: "kitchen-sent" });
             }
         } catch (error) {
             console.error("Kitchen ticket failed:", error);
@@ -554,8 +593,20 @@ const PosRegister = () => {
         }
     };
 
+    const acceptRequest = async (request, options = {}) => {
+        const printHere = Boolean(options.sendToKitchen) && printSettings.printOnSend && !printSettings.kitchenStation;
+        const tab = await tables.acceptRequest(request, { ...options, printed: printHere });
+        if (request.type !== "order" || !tab) return;
+        if (printHere) {
+            const round = new Set(tab.items.filter((i) => i.sent_at).map((i) => i.sent_at)).size;
+            const items = (request.items || []).map((i) => ({ product_name: i.product_name, quantity: i.quantity, note: i.note }));
+            await printComanda(tab, items, round).catch(() => toast.error(t("pos.print_failed")));
+        }
+        toast.success(t(options.sendToKitchen ? "tables.request_accepted_kitchen" : "tables.request_accepted", { table: tab.table_name }), { id: `accepted-${request._id}` });
+    };
+
     const printPreBill = () =>
-        printReceipt(buildPreBill({ tab: activeTab, lines: tabCart.lines, totals: tabCart.totals, pointOfSale: locationName, cashier: user?.username }), {
+        printReceipt(buildPreBill({ tab: activeTab, lines: tabCart.lines, totals: tabCart.totals, pointOfSale: locationName, cashier: activeTab?.waiter?.name || user?.username }), {
             width: printSettings.width,
             t,
         }).catch(() => toast.error(t("pos.print_failed")));
@@ -566,6 +617,12 @@ const PosRegister = () => {
                 activeTab ? (
                     <TabHeader
                         tab={activeTab}
+                        me={me}
+                        requests={tables.requests.filter((r) => r.table_id === activeTab.table_id)}
+                        onTakeOver={() => tables.takeOver(activeTab._id)}
+                        onServed={() => tables.markServed(activeTab._id)}
+                        onAcceptRequest={acceptRequest}
+                        onRejectRequest={tables.rejectRequest}
                         onBack={() => setActiveTabId(null)}
                         onKitchen={sendKitchen}
                         onPreBill={printPreBill}
@@ -585,6 +642,7 @@ const PosRegister = () => {
             onCharge={openCheckout}
             canCharge={canCharge}
             chargeHint={chargeHint}
+            chargeElsewhere={!canChargePos}
             sheet={sheet}
         />
     );
@@ -605,7 +663,7 @@ const PosRegister = () => {
                             </div>
                         </div>
                     </div>
-                    {tablesAvailable && (
+                    {tablesAvailable && canChargePos && (
                         <Segmented
                             size="large"
                             value={mode}
@@ -644,17 +702,40 @@ const PosRegister = () => {
                                     {t("pos.auto_print")}
                                     <Switch size="small" checked={printSettings.autoPrint} onChange={(checked) => updatePrintSettings({ autoPrint: checked })} />
                                 </label>
+                                {tablesAvailable && (
+                                    <>
+                                        <div className="border-t border-[var(--ohnix-line-3)] pt-3 text-xs font-semibold uppercase tracking-wider text-[var(--ohnix-text-dim)]">{t("pos.kitchen_printing")}</div>
+                                        <label className="flex items-center justify-between gap-3 text-sm">
+                                            {t("pos.print_on_send")}
+                                            <Switch size="small" checked={printSettings.printOnSend} disabled={printSettings.kitchenStation} onChange={(checked) => updatePrintSettings({ printOnSend: checked })} />
+                                        </label>
+                                        <label className="flex items-center justify-between gap-3 text-sm">
+                                            {t("pos.kitchen_station")}
+                                            <Switch size="small" checked={printSettings.kitchenStation} onChange={(checked) => updatePrintSettings({ kitchenStation: checked })} />
+                                        </label>
+                                        <p className="m-0 text-xs text-[var(--ohnix-text-dim)]">{t("pos.kitchen_station_help")}</p>
+                                    </>
+                                )}
                                 <p className="m-0 text-xs text-[var(--ohnix-text-dim)]">{t("pos.print_help")}</p>
                             </div>
                         }
                     >
                         <Button size="large" icon={<PrinterOutlined />} aria-label={t("pos.print_settings")} />
                     </Popover>
-                    <Link to="/orders">
-                        <Button size="large" icon={<UnorderedListOutlined />}>
-                            <span className="hidden sm:inline">{t("pos.view_sales")}</span>
-                        </Button>
-                    </Link>
+                    {tablesAvailable && (
+                        <Link to="/kitchen">
+                            <Button size="large" icon={<FireOutlined />}>
+                                <span className="hidden sm:inline">{t("pos.kitchen_screen")}</span>
+                            </Button>
+                        </Link>
+                    )}
+                    {canChargePos && (
+                        <Link to="/orders">
+                            <Button size="large" icon={<UnorderedListOutlined />}>
+                                <span className="hidden sm:inline">{t("pos.view_sales")}</span>
+                            </Button>
+                        </Link>
+                    )}
                 </header>
 
                 <div className={`pos-layout ${showTablesBoard ? "is-full" : ""}`}>
@@ -662,6 +743,9 @@ const PosRegister = () => {
                         <TablesBoard
                             tables={tables.tables}
                             tabs={tables.tabs}
+                            requests={tables.requests}
+                            onAcceptRequest={acceptRequest}
+                            onRejectRequest={tables.rejectRequest}
                             loading={tables.loading}
                             canConfigure={canConfigureTables && online}
                             onSelect={selectTable}
@@ -689,9 +773,15 @@ const PosRegister = () => {
                         <span className="block text-xs text-[var(--ohnix-text-dim)]">{t("pos.units_in_cart", { count: cart.totals.units })}</span>
                         <span className="block text-xl font-bold tabular-nums">{formatCurrency(cart.totals.total, "COP")}</span>
                     </button>
-                    <button type="button" className="pos-charge" onClick={openCheckout} disabled={!canCharge}>
-                        {t("pos.charge")}
-                    </button>
+                    {canChargePos ? (
+                        <button type="button" className="pos-charge" onClick={openCheckout} disabled={!canCharge}>
+                            {t("pos.charge")}
+                        </button>
+                    ) : (
+                        <button type="button" className="pos-charge" onClick={() => setCartSheetOpen(true)}>
+                            {t("pos.view_tab")}
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -715,6 +805,9 @@ const PosRegister = () => {
                 tabs={tables.tabs}
                 onCreate={tables.createTables}
                 onUpdate={tables.updateTable}
+                onReload={tables.reload}
+                pointOfSaleId={pointOfSaleId}
+                restaurantName={user?.company?.name}
             />
             <MoveTabModal
                 open={moveOpen}

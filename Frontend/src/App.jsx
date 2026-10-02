@@ -142,6 +142,8 @@ const ProductionOrders = lazy(() => import("./pages/ProductionOrders"));
 const Payroll = lazy(() => import("./pages/Payroll"));
 const Orders = lazy(() => import("./pages/Orders"));
 const PosRegister = lazy(() => import("./pages/PosRegister"));
+const KitchenDisplay = lazy(() => import("./pages/KitchenDisplay"));
+const PublicMenu = lazy(() => import("./pages/PublicMenu"));
 const Purchase = lazy(() => import("./pages/Purchase"));
 const Warranties = lazy(() => import("./pages/Warranties"));
 const Quotations = lazy(() => import("./pages/Quotations"));
@@ -386,6 +388,9 @@ function App() {
                                 itself is the credential, no ProtectedRoute wrapper. */}
                             <Route path="/team/invite/:token" element={<AcceptInvitation />} />
                             <Route path="/public/sales-quotations/:token" element={<PublicSalesQuotation />} />
+                            {/* Restaurant QR menu - a customer scans the table's QR to
+                                see the menu and order; the token is the credential. */}
+                            <Route path="/m/:token" element={<PublicMenu />} />
                             {/* Public card enrollment for an external API client's
                                 automatic recurring billing - the token itself is the
                                 credential, no ProtectedRoute wrapper (the enrollee has
@@ -426,6 +431,7 @@ function App() {
                                 <Route path="payroll" element={<RequirePayrollAccess><Payroll /></RequirePayrollAccess>} />
                                 <Route path="orders" element={<RequireOrdersAccess><Orders /></RequireOrdersAccess>} />
                                 <Route path="pos" element={<RequireOrdersAccess><PosRegister /></RequireOrdersAccess>} />
+                                <Route path="kitchen" element={<RequireOrdersAccess><KitchenDisplay /></RequireOrdersAccess>} />
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
                                 <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />

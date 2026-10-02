@@ -1,0 +1,27 @@
+/* Customer QR menu (PublicMenu.jsx) - always the dark brand look, whatever
+   the visitor's app theme, so antd inputs/drawer are pinned to it here. */
+.public-menu-input.ant-input,
+.public-menu-input.ant-input-affix-wrapper,
+textarea.public-menu-input.ant-input {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+}
+
+.public-menu-input.ant-input::placeholder,
+textarea.public-menu-input.ant-input::placeholder {
+    color: #6b7280;
+}
+
+.public-menu-input.ant-input:hover,
+.public-menu-input.ant-input:focus,
+textarea.public-menu-input.ant-input:focus {
+    border-color: #29d8d5;
+    box-shadow: none;
+}
+
+.public-menu-sheet .ant-drawer-mask {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}

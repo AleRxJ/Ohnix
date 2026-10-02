@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { autoLinkEmployeeByEmail } from "./employeeLink.service.js";
 import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -714,6 +715,9 @@ export const acceptInvitation = async ({
             where: { id: invitation.id },
             data: { status: "accepted", acceptedAt: new Date() },
         });
+
+        // Their payroll record (same email) gets linked to the new login.
+        await autoLinkEmployeeByEmail(tx, { accountId: invitation.team.ownerId, email: invitation.email, userId: createdUser.id });
 
         await tx.teamActivityLog.create({
             data: {

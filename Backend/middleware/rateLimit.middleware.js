@@ -66,6 +66,13 @@ export const contactFormRateLimiter = makeLimiter(60, 5);
 // stored upload (up to 5MB) per request.
 export const demoRequestRateLimiter = makeLimiter(60, 5);
 
+// Restaurant QR menu (public /m/:token). Per IP, and a whole restaurant's
+// customers can share one Wi-Fi IP - so reads are generous (the status
+// screen polls) and sends are capped well above a real table's needs; the
+// per-table pending cap in publicMenu.service.js is the tighter guard.
+export const publicMenuReadRateLimiter = makeLimiter(10, 600);
+export const publicMenuSendRateLimiter = makeLimiter(10, 40);
+
 // Assistant chat: each message is a paid/rate-limited model call (Groq free
 // tier is shared across the whole app - see assistantModel.service.js), so
 // this protects that shared budget from a single account, not just abuse.

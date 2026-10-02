@@ -6,7 +6,7 @@ import PDFDocument from "pdfkit";
 import { prisma } from "../db/prisma.js";
 import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.middleware.js";
 import { resolveOrAssertPointOfSaleId, hasPosAccess } from "../middleware/pos.permissions.js";
-import { canAccessModule } from "../middleware/team.permissions.js";
+import { canAccessModule, getCapabilities } from "../middleware/team.permissions.js";
 import { getOrderPendingBalance, registerOrderPayment } from "../services/orderPayment.service.js";
 import { createIntent, mapIntent } from "../services/paymentIntent.service.js";
 import { closeTabWithOrder } from "../services/tableTab.service.js";
@@ -138,6 +138,16 @@ const findOrderByAnyId = async (id) =>
 const createOrder = asyncHandler(async (req, res, next) => {
     try {
         const payment = req.body?.payment;
+        // Sales charged from the Caja (counter or a table's tab) need
+        // "Cobrar en caja" - a waiter role works tables but the cashier
+        // collects. Other order flows (Ventas module, integrations) are
+        // unaffected.
+        if (req.body?.table_tab_id || req.body?.source === "pos") {
+            const capabilities = await getCapabilities(req.user);
+            if (!capabilities.posCharge) {
+                throw new ApiError(403, 'Tu rol no puede cobrar en la Caja ("Cobrar en caja").', [], "", "pos_charge_forbidden");
+            }
+        }
         if (payment) {
             if (!(await canAccessModule(req.user, "finance", "edit"))) {
                 throw new ApiError(403, 'Tu rol no tiene permiso para "editar" en finanzas.');

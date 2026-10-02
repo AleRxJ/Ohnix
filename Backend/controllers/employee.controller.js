@@ -5,6 +5,7 @@ import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { emitAccountEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
+import { assertLinkableUser, listLinkableUsers } from "../services/employeeLink.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -13,6 +14,18 @@ const WORKER_TYPES = ["normal", "pensionado", "aprendiz", "alto_riesgo"];
 const PAY_FREQUENCIES = ["monthly", "biweekly", "weekly"];
 const RISK_LEVELS = ["I", "II", "III", "IV", "V"];
 const STATUSES = ["active", "inactive", "terminated"];
+
+const EMPLOYEE_INCLUDE = { pointOfSale: { select: { id: true, name: true } }, user: { select: { id: true, username: true, email: true } } };
+
+// "" / null unlinks; anything else must be one of the account's own people.
+const resolveUserLink = async (accountId, value) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    await assertLinkableUser(accountId, String(value));
+    return String(value);
+};
+
+const linkConflict = () => new ApiError(409, "Ese usuario ya está vinculado a otro empleado.", [], "", "employee_user_taken");
 
 const mapEmployee = (employee, currentUser) => ({
     _id: toExternalId(employee),
@@ -49,6 +62,8 @@ const mapEmployee = (employee, currentUser) => ({
     bank_account_number: employee.bankAccountNumber,
     work_city: employee.workCity,
     point_of_sale_id: employee.pointOfSale ? { _id: employee.pointOfSale.id, name: employee.pointOfSale.name } : null,
+    // Their Ohnix login, if linked (see employeeLink.service.js).
+    user: employee.user ? { _id: employee.user.id, username: employee.user.username, email: employee.user.email } : null,
     status: employee.status,
     canEdit: currentUser ? currentUser.role === "admin" || employee.createdById === currentUser.prismaId : false,
     createdAt: employee.createdAt,
@@ -61,7 +76,7 @@ const mapEmployee = (employee, currentUser) => ({
 const findEmployeeByAnyId = async (id) =>
     prisma.employee.findUnique({
         where: { id },
-        include: { pointOfSale: { select: { id: true, name: true } } },
+        include: EMPLOYEE_INCLUDE,
     });
 
 const validateEnum = (value, allowed, fieldName) => {
@@ -98,6 +113,7 @@ const createEmployee = asyncHandler(async (req, res, next) => {
         bank_account_number,
         work_city,
         point_of_sale_id,
+        user_id,
     } = req.body || {};
 
     if (!document_number || !first_name || !last_name || !hire_date || base_salary === undefined) {
@@ -127,6 +143,7 @@ const createEmployee = asyncHandler(async (req, res, next) => {
         if (existing) {
             return next(new ApiError(409, "An employee with this document number already exists", [], "", "employee_document_exists"));
         }
+        const userId = await resolveUserLink(req.user.prismaId, user_id);
 
         const employee = await prisma.employee.create({
             data: {
@@ -156,16 +173,18 @@ const createEmployee = asyncHandler(async (req, res, next) => {
                 bankAccountNumber: bank_account_number?.trim() || null,
                 workCity: work_city?.trim() || null,
                 pointOfSaleId: point_of_sale_id || null,
+                userId: userId || null,
                 createdById: req.user.prismaId,
                 updatedById: req.user.prismaId,
             },
-            include: { pointOfSale: { select: { id: true, name: true } } },
+            include: EMPLOYEE_INCLUDE,
         });
 
         emitAccountEvent(req.user.prismaId, "employee", "created");
         return res.status(201).json(new ApiResponse(201, mapEmployee(employee, req.user), "Employee created successfully"));
     } catch (error) {
         if (error instanceof ApiError) return next(error);
+        if (error?.code === "P2002") return next(linkConflict());
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -179,7 +198,7 @@ const getEmployees = asyncHandler(async (req, res, next) => {
 
         const employees = await prisma.employee.findMany({
             where,
-            include: { pointOfSale: { select: { id: true, name: true } } },
+            include: EMPLOYEE_INCLUDE,
             orderBy: { createdAt: "desc" },
         });
 
@@ -220,6 +239,8 @@ const updateEmployee = asyncHandler(async (req, res, next) => {
         validateEnum(body.pay_frequency, PAY_FREQUENCIES, "pay_frequency");
         validateEnum(body.risk_level, RISK_LEVELS, "risk_level");
         validateEnum(body.status, STATUSES, "status");
+
+        const userId = await resolveUserLink(existingEmployee.createdById, body.user_id);
 
         if (body.base_salary !== undefined) {
             const baseSalaryNum = Number(body.base_salary);
@@ -262,9 +283,10 @@ const updateEmployee = asyncHandler(async (req, res, next) => {
                 ...(body.work_city !== undefined && { workCity: body.work_city?.trim() || null }),
                 ...(body.point_of_sale_id !== undefined && { pointOfSaleId: body.point_of_sale_id || null }),
                 ...(body.status !== undefined && { status: body.status }),
+                ...(userId !== undefined && { userId }),
                 updatedById: req.user.prismaId,
             },
-            include: { pointOfSale: { select: { id: true, name: true } } },
+            include: EMPLOYEE_INCLUDE,
             conflictMessage: "This employee was changed by someone else. Reload to see the latest version.",
         });
 
@@ -272,6 +294,7 @@ const updateEmployee = asyncHandler(async (req, res, next) => {
         return res.status(200).json(new ApiResponse(200, mapEmployee(employee, req.user), "Employee updated successfully"));
     } catch (error) {
         if (error instanceof ApiError) return next(error);
+        if (error?.code === "P2002") return next(linkConflict());
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -308,4 +331,9 @@ const deleteEmployee = asyncHandler(async (req, res, next) => {
     }
 });
 
-export { createEmployee, getEmployees, getEmployee, updateEmployee, deleteEmployee, mapEmployee, findEmployeeByAnyId };
+// For the employee form's "Usuario en Ohnix" picker.
+const getLinkableUsers = asyncHandler(async (req, res) =>
+    res.status(200).json(new ApiResponse(200, await listLinkableUsers(req.user.prismaId), "Linkable users fetched"))
+);
+
+export { createEmployee, getEmployees, getEmployee, updateEmployee, deleteEmployee, getLinkableUsers, mapEmployee, findEmployeeByAnyId };

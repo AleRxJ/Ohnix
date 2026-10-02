@@ -24,6 +24,7 @@ const FULL_CAPABILITIES = {
     processReturns: true,
     reportsExport: true,
     deferEinvoice: true,
+    posCharge: true,
 };
 
 // Last confirmed team/role per user, so a reload while offline renders the

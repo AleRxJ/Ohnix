@@ -11,11 +11,16 @@ import { formatCurrency } from "./currency";
 const SETTINGS_KEY = "ohnix.pos.printSettings";
 const HEADER_KEY = "ohnix.pos.receiptHeader";
 
+// kitchenStation: this device auto-prints every comanda of its location
+// (useKitchenPrintStation). printOnSend: "Enviar a cocina" also prints on
+// the sending device - the original behavior, off once a station exists.
+const DEFAULT_PRINT_SETTINGS = { width: 80, autoPrint: false, kitchenStation: false, printOnSend: true };
+
 export const readPrintSettings = () => {
     try {
-        return { width: 80, autoPrint: false, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}) };
+        return { ...DEFAULT_PRINT_SETTINGS, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}) };
     } catch {
-        return { width: 80, autoPrint: false };
+        return { ...DEFAULT_PRINT_SETTINGS };
     }
 };
 

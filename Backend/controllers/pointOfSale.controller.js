@@ -75,5 +75,14 @@ export const updatePointOfSale = asyncHandler(async (req, res, next) => {
         return res.status(200).json(new ApiResponse(200, updated, "Point of sale deactivated successfully"));
     }
 
-    return next(new ApiError(400, "Proporciona name para renombrar, o isActive: false para desactivar"));
+    if (isActive === true) {
+        const updated = await posService.reactivatePointOfSale({
+            accountId: req.user.prismaId,
+            pointOfSaleId: id,
+            skipLimit: req.user.role === "admin",
+        });
+        return res.status(200).json(new ApiResponse(200, updated, "Point of sale reactivated successfully"));
+    }
+
+    return next(new ApiError(400, "Proporciona name para renombrar, o isActive: true/false para activar o desactivar"));
 });
