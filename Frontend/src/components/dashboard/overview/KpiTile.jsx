@@ -26,7 +26,7 @@ const KpiTile = ({ label, value, icon, change = null, changeLabel, hint, invertC
                     </span>
                 )}
             </div>
-            <div className="mt-3 text-[clamp(22px,5.5vw,30px)] font-bold leading-tight tabular-nums text-[var(--ohnix-text-primary)] [overflow-wrap:anywhere]">
+            <div className="mt-3 whitespace-nowrap text-[26px] font-bold leading-tight tabular-nums text-[var(--ohnix-text-primary)] sm:text-[clamp(20px,1.65vw,28px)]">
                 {value}
             </div>
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-3 text-xs">

@@ -229,7 +229,9 @@ const PosRegister = () => {
         const onKey = (event) => {
             if (event.key === "F2") {
                 event.preventDefault();
+                // Focus AND select: the next search/scan replaces the last one.
                 searchRef.current?.focus();
+                searchRef.current?.select();
             } else if (event.key === "F9") {
                 event.preventDefault();
                 if (!checkoutOpen) openCheckout();

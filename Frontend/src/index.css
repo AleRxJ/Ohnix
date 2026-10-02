@@ -1031,6 +1031,129 @@ button, a, [role="button"] {
   }
 }
 
+/* Ohnix loading identity (components/common/OhnixLoader.jsx). The orbit
+   arc sweeps, the three cube faces light up in turn like boxes being
+   stacked, and the core node breathes. Also antd's default Spin indicator
+   (set in AntdConfigProvider.jsx), so every <Spin> carries the mark. */
+.ohnix-mark {
+  overflow: visible;
+}
+.ohnix-mark__track {
+  stroke: var(--ohnix-line-6);
+}
+.ohnix-mark__orbit {
+  transform-origin: 32px 32px;
+  animation: ohnixOrbit 1.6s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+}
+.ohnix-mark__arc {
+  stroke: #29d8d5;
+}
+.ohnix-mark__node {
+  fill: #44f3f0;
+  filter: drop-shadow(0 0 3px rgba(68, 243, 240, 0.8));
+}
+.ohnix-mark__face {
+  stroke: var(--ohnix-text-primary);
+  stroke-opacity: 0.55;
+  fill: #29d8d5;
+  fill-opacity: 0.06;
+  animation: ohnixFace 2.4s ease-in-out infinite;
+}
+.ohnix-mark__face--right {
+  animation-delay: 0.8s;
+}
+.ohnix-mark__face--left {
+  animation-delay: 1.6s;
+}
+.ohnix-mark__axis {
+  stroke: #29d8d5;
+  stroke-opacity: 0.55;
+}
+.ohnix-mark__axis-node {
+  fill: #29d8d5;
+  fill-opacity: 0.8;
+}
+.ohnix-mark__core {
+  fill: #44f3f0;
+  transform-origin: 32px 32px;
+  animation: ohnixCore 1.6s ease-in-out infinite;
+}
+.ohnix-loader--page {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(41, 216, 213, 0.1), transparent 34%),
+    var(--ohnix-bg);
+}
+.ohnix-loader__halo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(41, 216, 213, 0.14), transparent 70%);
+}
+.ohnix-loader__message {
+  animation: ohnixMessage 2.4s ease-in-out infinite;
+}
+/* antd Spin wraps the indicator in .ant-spin-dot (sized via font-size). */
+.ant-spin-dot.ohnix-mark {
+  width: 1em;
+  height: 1em;
+}
+.ant-spin-sm .ohnix-mark .ohnix-mark__cube,
+.ant-spin-sm .ohnix-mark .ohnix-mark__axis,
+.ant-spin-sm .ohnix-mark .ohnix-mark__axis-node {
+  display: none;
+}
+
+/* Content placeholders shaped like the real layout (see DashboardSkeleton). */
+.ohnix-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--ohnix-line-2);
+}
+.ohnix-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(41, 216, 213, 0.08), transparent);
+  animation: ohnixShimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes ohnixOrbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes ohnixFace {
+  0%, 100% { fill-opacity: 0.06; }
+  25% { fill-opacity: 0.55; }
+  50% { fill-opacity: 0.06; }
+}
+@keyframes ohnixCore {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.7); opacity: 0.7; }
+}
+@keyframes ohnixMessage {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@keyframes ohnixShimmer {
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ohnix-mark__orbit,
+  .ohnix-mark__face,
+  .ohnix-mark__core,
+  .ohnix-loader__message,
+  .ohnix-skeleton::after {
+    animation: none !important;
+  }
+  .ohnix-mark__face--top {
+    fill-opacity: 0.4;
+  }
+}
+
 /* Discovery Engine "signal card" - a type-tinted glow bleeding from the
    icon corner (set per-card via the --glow custom property), same lift-on-
    hover language as .reveal-card. See components/discoveries/. */

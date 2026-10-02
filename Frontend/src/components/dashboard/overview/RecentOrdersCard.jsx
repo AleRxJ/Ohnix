@@ -6,6 +6,7 @@ import OverviewCard from "./OverviewCard";
 
 const STATUS_COLORS = {
     completed: "success",
+    returned: "default",
     processing: "processing",
     pending: "warning",
     cancelled: "error",
@@ -52,7 +53,7 @@ const RecentOrdersCard = ({ recentOrders }) => {
                                     {formatCurrency(order.total)}
                                 </span>
                                 <Tag color={STATUS_COLORS[order.order_status] || "default"} className="m-0 text-[11px]">
-                                    {t(`common.${order.order_status}`)}
+                                    {t(`orders.${order.order_status}`)}
                                 </Tag>
                             </div>
                         </li>

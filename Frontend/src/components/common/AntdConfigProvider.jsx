@@ -1,7 +1,13 @@
 import React from "react";
-import { ConfigProvider, Empty, theme as antdTheme } from "antd";
+import { ConfigProvider, Empty, Spin, theme as antdTheme } from "antd";
 import useI18n from "../../hooks/useI18n";
 import { useTheme } from "../../context/ThemeContext";
+import { OhnixMark } from "./OhnixLoader";
+
+// Every <Spin> in the app (tables, drawers, page loaders) shows the Ohnix
+// mark instead of antd's generic four dots. Sized by antd through
+// .ant-spin-dot's font-size - see .ant-spin-dot.ohnix-mark in index.css.
+Spin.setDefaultIndicator(<OhnixMark />);
 
 // Ant Design's algorithm needs real, parseable colors to derive every
 // hover/active/disabled/shadow shade it computes internally (TinyColor can't

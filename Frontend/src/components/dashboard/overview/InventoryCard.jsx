@@ -22,7 +22,7 @@ const InventoryCard = ({ totalProducts, totalStock, outOfStockCount, lowStockPro
             linkLabel={t("dashboard.view_all")}
         >
             <div className="grid grid-cols-3 gap-2">
-                <MiniStat label={t("dashboard.total_products")} value={formatNumber(totalProducts)} />
+                <MiniStat label={t("dashboard.products_short")} value={formatNumber(totalProducts)} />
                 <MiniStat label={t("dashboard.units_in_stock")} value={formatNumber(totalStock)} />
                 <MiniStat
                     label={t("dashboard.out_of_stock")}

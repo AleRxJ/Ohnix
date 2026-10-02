@@ -48,7 +48,7 @@ const TopProductsCard = ({ topProducts, available }) => {
                                             style={{ width: `${Math.max((revenue / maxRevenue) * 100, 2)}%` }}
                                         />
                                     </div>
-                                    <span className="w-24 shrink-0 text-right text-[11px] tabular-nums text-[var(--ohnix-text-muted)]">
+                                    <span className="w-36 shrink-0 whitespace-nowrap text-right text-[11px] tabular-nums text-[var(--ohnix-text-muted)]">
                                         {t("dashboard.units_sold", { count: product.quantity_sold })}
                                     </span>
                                 </div>

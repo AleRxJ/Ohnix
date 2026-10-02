@@ -8,6 +8,18 @@ import { normalizeProductImage } from "../utils/productImage.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
+// Sales are grouped by the business's calendar day, not UTC - with
+// toISOString() every sale after 7pm in Colombia landed on the next day.
+// Same TIMEZONE convention the schedulers use; en-CA formats as YYYY-MM-DD.
+const REPORT_TIMEZONE = process.env.TIMEZONE || "America/Bogota";
+const reportDayFormat = new Intl.DateTimeFormat("en-CA", {
+    timeZone: REPORT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+});
+const reportDayKey = (date) => reportDayFormat.format(date);
+
 // Every report below reads Order/Purchase/StockMovement (all Point-of-Sale
 // scoped - see pos.permissions.js) alongside Product/Category/etc (still
 // global - there's no per-location stock split yet, so those stay
@@ -327,7 +339,7 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
         const byProductMap = new Map();
 
         for (const order of orders) {
-            const dateKey = order.orderDate.toISOString().slice(0, 10);
+            const dateKey = reportDayKey(order.orderDate);
             const currentDate = byDateMap.get(dateKey) || { _id: dateKey, total: 0, orders: 0 };
             currentDate.total += order.orderDetails.reduce((sum, detail) => {
                 const net = netFiscalDetail(detail);
@@ -363,6 +375,7 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
         const report = {
             salesByDate,
             salesByProduct,
+            timezone: REPORT_TIMEZONE,
             summary: {
                 totalSales: salesByDate.reduce((sum, item) => sum + item.total, 0),
                 totalOrders: salesByDate.reduce((sum, item) => sum + item.orders, 0),

@@ -13,6 +13,7 @@ import { DiscoveryProvider } from "./context/DiscoveryContext";
 import { InventoryTourProvider } from "./context/InventoryTourContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
 import OfflineGate from "./components/common/OfflineGate";
+import OhnixLoader from "./components/common/OhnixLoader";
 import { ELECTRONIC_INVOICING_ENABLED } from "./config/features";
 import { isPublicMarketingPath } from "./utils/publicPaths.js";
 import { waitForStylesheets } from "./utils/waitForStylesheets.js";
@@ -182,11 +183,7 @@ const Team = lazy(() => import("./pages/Team"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 const EnrollApiBilling = lazy(() => import("./pages/EnrollApiBilling"));
 
-const RouteLoadingFallback = () => (
-    <div className="min-h-screen bg-[var(--ohnix-bg)] flex items-center justify-center text-sm text-[var(--ohnix-text-muted)]">
-        Cargando pagina...
-    </div>
-);
+const RouteLoadingFallback = () => <OhnixLoader message="Cargando página…" />;
 
 const ColombiaInvoiceRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);

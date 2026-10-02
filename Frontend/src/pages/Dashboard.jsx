@@ -15,7 +15,7 @@ import {
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import DiscoveryDashboardHero from "../components/discoveries/DiscoveryDashboardHero";
-import LoadingSpinner from "../components/dashboard/LoadingSpinner";
+import DashboardSkeleton from "../components/dashboard/overview/DashboardSkeleton";
 import ErrorDisplay from "../components/dashboard/ErrorDisplay";
 import KpiTile from "../components/dashboard/overview/KpiTile";
 import SalesTrendCard from "../components/dashboard/overview/SalesTrendCard";
@@ -76,6 +76,10 @@ const Dashboard = () => {
         navigate(getFirstAccessibleRoute(hasPermission), { replace: true });
     }, [teamLoading, canSeeDashboard, hasPermission, navigate]);
     const [loading, setLoading] = useState(true);
+    // Skeleton only until the first successful load - later refreshes
+    // (manual, or another user's change via useDataInvalidation) keep the
+    // current numbers on screen and just spin the refresh icon.
+    const [hasLoaded, setHasLoaded] = useState(false);
     const [error, setError] = useState(null);
     const [dashboardData, setDashboardData] = useState({
         totalSales: 0,
@@ -231,6 +235,7 @@ const Dashboard = () => {
                 topProducts: topProductsResult.status === "fulfilled",
             });
             setError(null);
+            setHasLoaded(true);
         } catch (err) {
             console.error("Dashboard data fetch error:", err);
             const errorMessage =
@@ -246,13 +251,17 @@ const Dashboard = () => {
     const salesByDate = Array.isArray(dashboardData.salesData?.salesByDate)
         ? dashboardData.salesData.salesByDate
         : null;
-    const salesPeriod = useMemo(() => buildSalesPeriod(salesByDate || [], period), [salesByDate, period]);
+    const salesTimezone = dashboardData.salesData?.timezone;
+    const salesPeriod = useMemo(
+        () => buildSalesPeriod(salesByDate || [], period, salesTimezone ? { timezone: salesTimezone } : undefined),
+        [salesByDate, period, salesTimezone]
+    );
 
-    if (loading) {
-        return <LoadingSpinner tip={t("dashboard.loading_dashboard_data")} />;
+    if (!hasLoaded && !error) {
+        return <DashboardSkeleton />;
     }
 
-    if (error) {
+    if (error && !hasLoaded) {
         return <ErrorDisplay error={error} onRetry={fetchDashboardData} />;
     }
 
@@ -262,8 +271,8 @@ const Dashboard = () => {
     const today = new Date().toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
 
     const { current, previous } = salesPeriod;
-    const averageTicket = current.orders > 0 ? current.sales / current.orders : 0;
-    const previousAverageTicket = previous.orders > 0 ? previous.sales / previous.orders : 0;
+    const averageTicket = current.orders > 0 ? Math.round(current.sales / current.orders) : 0;
+    const previousAverageTicket = previous.orders > 0 ? Math.round(previous.sales / previous.orders) : 0;
     const vsLabel = t(`dashboard.vs_previous_${period}`);
     const activePlanRequest = requestSnapshot.find((request) =>
         ["open", "reviewing", "approved"].includes(request.status)
@@ -277,11 +286,19 @@ const Dashboard = () => {
         value: formatCurrency(dashboardData.inventoryValue),
         hint: t("dashboard.inventory_value_hint"),
     };
+    // /reports/dashboard's totalSales sums every non-cancelled order's total
+    // (pending ones included), while the chart and period KPIs count only
+    // completed sales net of returns. When the sales report is available, the
+    // lifetime figure uses that same definition so the page never shows two
+    // different "ventas" numbers for the same history.
+    const lifetimeSales = reportsAvailable.sales
+        ? Number(dashboardData.salesData?.summary?.totalSales) || 0
+        : dashboardData.totalSales;
     const lifetimeSalesKpi = {
         key: "lifetime",
         label: t("dashboard.lifetime_sales"),
         icon: <ShoppingCartOutlined />,
-        value: formatCurrency(dashboardData.totalSales),
+        value: formatCurrency(lifetimeSales),
         hint: t("dashboard.lifetime_hint"),
     };
 
@@ -327,7 +344,7 @@ const Dashboard = () => {
                   label: t("dashboard.total_products"),
                   icon: <InboxOutlined />,
                   value: formatNumber(dashboardData.totalProducts),
-                  hint: t("dashboard.units_in_stock_count", { count: dashboardData.totalStock }),
+                  hint: t("dashboard.units_in_stock_count", { count: dashboardData.totalStock, value: formatNumber(dashboardData.totalStock) }),
               },
           ].filter(Boolean);
 
@@ -364,7 +381,7 @@ const Dashboard = () => {
                                 </button>
                             </Tooltip>
                         )}
-                        <Button onClick={fetchDashboardData} icon={<ReloadOutlined />} className="rounded-full" title={t("common.refresh")}>
+                        <Button onClick={fetchDashboardData} icon={<ReloadOutlined spin={loading} />} disabled={loading} className="rounded-full" title={t("common.refresh")}>
                             <span className="hidden sm:inline">{t("common.refresh")}</span>
                         </Button>
                     </div>
@@ -427,15 +444,15 @@ const Dashboard = () => {
                             />
                         </div>
                     )}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         {kpis.map(({ key, ...kpi }) => (
                             <KpiTile key={key} changeLabel={vsLabel} {...kpi} />
                         ))}
                     </div>
                 </section>
 
-                <section className="mt-6 grid grid-cols-1 gap-6 animate-fade-up lg:grid-cols-3">
-                    <div className="min-w-0 lg:col-span-2">
+                <section className="mt-6 grid grid-cols-1 gap-6 animate-fade-up xl:grid-cols-3">
+                    <div className="min-w-0 xl:col-span-2">
                         <SalesTrendCard period={salesPeriod} available={reportsAvailable.sales} canUpgrade={canSeeBilling} />
                     </div>
                     <InventoryCard
@@ -457,7 +474,7 @@ const Dashboard = () => {
                         <span className="font-semibold uppercase tracking-wider">{t("dashboard.lifetime_title")}</span>
                         <span>
                             {t("dashboard.lifetime_sales")}:{" "}
-                            <strong className="tabular-nums text-[var(--ohnix-text-primary)]">{formatCurrency(dashboardData.totalSales)}</strong>
+                            <strong className="tabular-nums text-[var(--ohnix-text-primary)]">{formatCurrency(lifetimeSales)}</strong>
                         </span>
                         <span>
                             {t("dashboard.lifetime_purchases")}:{" "}
