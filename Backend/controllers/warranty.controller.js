@@ -131,7 +131,16 @@ export const lookupSaleForWarranty = asyncHandler(async (req, res) => {
 });
 
 export const createWarranty = asyncHandler(async (req, res) => {
-    const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
+    // A claim registered from a sale belongs where that sale happened - the
+    // drawer doesn't ask for a location, so without this a multi-location
+    // account couldn't register a warranty at all.
+    const saleOrder = req.body?.order_detail_id
+        ? (await prisma.orderDetail.findFirst({ where: { id: req.body.order_detail_id }, select: { order: { select: { pointOfSaleId: true, createdById: true } } } }))?.order
+        : req.body?.order_id
+          ? await prisma.order.findFirst({ where: { id: req.body.order_id }, select: { pointOfSaleId: true, createdById: true } })
+          : null;
+    const fallbackId = saleOrder?.createdById === req.user.prismaId ? saleOrder.pointOfSaleId : null;
+    const pointOfSaleId = await resolveOrAssertPointOfSaleId(req, { fallbackId });
     const warranty = await warrantyService.createWarranty({
         user: req.user,
         actorId: req.user.prismaId,

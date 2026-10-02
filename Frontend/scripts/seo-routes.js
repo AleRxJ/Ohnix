@@ -24,6 +24,7 @@ export const MARKETING_ROUTES = [
     "/comparativa/ohnix-vs-alegra",
     "/colaboracion-en-equipo",
     "/deteccion-riesgos-oportunidades-negocio",
+    "/restaurantes",
     "/integraciones",
     "/blog",
     ...BLOG_SLUGS.map((slug) => `/blog/${slug}`),
@@ -45,4 +46,8 @@ export const PRIVATE_ROUTE_PREFIXES = [
     "/signup",
     "/email-verify",
     "/reset-password",
+    "/pos",
+    "/kitchen",
+    // Per-table QR menus: each URL is one restaurant table's private link.
+    "/m/",
 ];

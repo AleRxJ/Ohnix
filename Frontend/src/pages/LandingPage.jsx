@@ -296,6 +296,9 @@ const LandingPage = () => {
             features: [
                 t("landing.pricing.plans.starter.features.limits"),
                 t("landing.pricing.plans.starter.features.core"),
+                { text: t("landing.pricing.plans.starter.features.pos"), highlight: true },
+                { text: t("landing.pricing.plans.starter.features.restaurant"), highlight: true },
+                ELECTRONIC_INVOICING_ENABLED && t("landing.pricing.plans.starter.features.payroll"),
                 t("landing.pricing.plans.starter.features.reports"),
                 t("landing.pricing.plans.starter.features.pdf"),
                 t("landing.pricing.plans.starter.features.alerts"),
@@ -314,6 +317,7 @@ const LandingPage = () => {
             features: [
                 t("landing.pricing.plans.growth.features.unlimited"),
                 t("landing.pricing.plans.growth.features.team"),
+                t("landing.pricing.plans.growth.features.restaurant_team"),
                 t("landing.pricing.plans.growth.features.presence"),
                 t("landing.pricing.plans.growth.features.limits"),
                 t("landing.pricing.plans.growth.features.reports"),

@@ -99,13 +99,24 @@ const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false, salesOnly 
     // empty made it reject the order with "pointOfSaleId es obligatorio".
     // Sending the single option explicitly is always correct.
     const onlyOptionId = !visible && options?.length === 1 ? options[0].id : null;
+    // Watched, not read once: forms call form.resetFields() on open/after
+    // submit (SalesQuotations, CreateProductionOrderModal, Customers...),
+    // which wiped the auto-picked id - and since onlyOptionId itself didn't
+    // change, nothing put it back, so every later submit went out without a
+    // location. Re-applying whenever the value goes empty covers that.
+    const currentValue = Form.useWatch(name, form);
     useEffect(() => {
-        if (onlyOptionId && form && !form.getFieldValue(name)) form.setFieldValue(name, onlyOptionId);
-    }, [onlyOptionId, form, name]);
+        if (onlyOptionId && form && !currentValue) form.setFieldValue(name, onlyOptionId);
+    }, [onlyOptionId, form, name, currentValue]);
 
     if (!visible) {
-        // Registers the field so the auto-picked value is actually submitted.
-        return onlyOptionId ? <Form.Item name={name} hidden noStyle><input type="hidden" /></Form.Item> : null;
+        // Registers the field so the auto-picked value is actually submitted;
+        // initialValue makes resetFields() restore it instead of clearing it.
+        return onlyOptionId ? (
+            <Form.Item name={name} hidden noStyle initialValue={onlyOptionId}>
+                <input type="hidden" />
+            </Form.Item>
+        ) : null;
     }
 
     return (

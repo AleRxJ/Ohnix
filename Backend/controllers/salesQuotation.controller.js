@@ -104,7 +104,8 @@ export const convertSalesQuotation = asyncHandler(async (req, res, next) => {
         if (!quotation) return next(new ApiError(404, "Sales quotation not found"));
         if (req.user.role !== "admin" && quotation.createdById !== req.user.prismaId) return next(new ApiError(403, "You do not have permission to convert this quotation"));
         if (quotation.status !== "accepted") return next(new ApiError(409, "Only an accepted quotation can become an order"));
-        const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
+        // The convert button sends no body - the order is sold where the quotation was made.
+        const pointOfSaleId = await resolveOrAssertPointOfSaleId(req, { fallbackId: quotation.pointOfSaleId });
         const order = await orderService.createOrder({
             customer_id: quotation.customerId,
             order_status: "pending",

@@ -5183,48 +5183,67 @@
   },
   "dashboard": {
     "loading_dashboard_data": "Loading dashboard data...",
-    "data_loaded_successfully": "Data loaded successfully",
     "failed_fetch_dashboard_data": "Failed to fetch dashboard data",
     "failed_load_data": "Failed to load data",
     "something_went_wrong_dashboard": "Something went wrong while fetching dashboard data",
-    "plan_overview": "Plan status",
     "current_plan": "Current plan",
     "request_in_progress": "Request in progress",
-    "no_active_plan_request": "You do not have active requests right now.",
     "manage_plan_cta": "Open billing",
     "dian_tip_badge": "Pending",
     "dian_tip_title": "Activate DIAN electronic invoicing",
     "dian_tip_description": "Your company isn't ready to issue electronic documents yet. The wizard only takes a few minutes and you don't need to contact support.",
     "dian_tip_cta": "Set up now",
     "total_sales": "Total Sales",
-    "total_purchases": "Total Purchases",
     "inventory_value": "Inventory Value",
     "total_products": "Total Products",
-    "total_stock": "Total Stock",
     "out_of_stock": "Out of Stock",
-    "analytics_insights": "Analytics & Insights",
-    "performance_metrics": "Performance metrics and trends",
-    "business_pulse": "Business pulse",
-    "business_pulse_description": "What a client would want to know at a glance",
-    "net_trade_delta": "Net trade delta",
-    "net_trade_delta_description": "Sales minus purchases over the current scope.",
-    "average_order_value": "Average order value",
-    "average_order_value_description": "Useful for pricing and basket-size decisions.",
-    "stock_risk": "Stock risk",
-    "stock_risk_description": "Items that need restocking attention now.",
-    "revenue_concentration": "Revenue concentration",
-    "revenue_concentration_description": "Share driven by the top product. Lower is safer.",
-    "quick_insights": "Quick Insights",
-    "key_product_highlights": "Key product highlights",
-    "top_performer": "Top Performer",
-    "most_profitable": "Most Profitable",
     "units_sold": "{{count}} units sold",
-    "revenue": "Revenue: {{value}}",
-    "reports_activity": "Reports & Activity",
-    "recent_transactions_and_alerts": "Recent transactions and alerts",
     "top_selling_products": "Top Selling Products",
-    "low_stock_alerts": "Low Stock Alerts",
-    "recent_orders": "Recent Orders"
+    "recent_orders": "Recent Orders",
+    "greeting": "Hi, {{name}}",
+    "greeting_subtitle": "Here's how your business is doing today.",
+    "plan_chip": "{{plan}} plan",
+    "summary": "Summary",
+    "period_7d": "7 days",
+    "period_30d": "30 days",
+    "period_90d": "90 days",
+    "period_12m": "12 months",
+    "vs_previous_7d": "vs. previous 7 days",
+    "vs_previous_30d": "vs. previous 30 days",
+    "vs_previous_90d": "vs. previous 90 days",
+    "vs_previous_12m": "vs. previous 12 months",
+    "kpi_sales": "Sales",
+    "kpi_orders": "Orders",
+    "average_order_value": "Average ticket",
+    "inventory_value_hint": "At cost, current stock",
+    "lifetime_title": "All time",
+    "lifetime_sales": "Lifetime sales",
+    "lifetime_purchases": "Lifetime purchases",
+    "lifetime_hint": "Since you started on Ohnix",
+    "units_in_stock_count_one": "{{count}} unit in stock",
+    "units_in_stock_count_other": "{{count}} units in stock",
+    "sales_trend": "Sales trend",
+    "sales_trend_daily": "Completed sales per day",
+    "sales_trend_monthly": "Completed sales per month",
+    "period_total": "Period total",
+    "sales_trend_locked": "The sales trend is available on higher plans.",
+    "see_plans": "See plans",
+    "no_sales_in_period": "No sales in this period",
+    "orders_count_one": "{{count}} order",
+    "orders_count_other": "{{count}} orders",
+    "inventory_title": "Inventory",
+    "inventory_subtitle": "What needs your attention",
+    "units_in_stock": "Units",
+    "needs_restock": "Needs restock",
+    "inventory_all_good": "All your inventory is above its minimum.",
+    "units_left_one": "{{count}} left",
+    "units_left_other": "{{count}} left",
+    "view_all": "View all",
+    "top_products_subtitle": "By units sold, all time",
+    "no_top_products": "No completed sales yet.",
+    "top_products_locked": "Product ranking is available on higher plans.",
+    "recent_orders_subtitle": "Latest activity",
+    "no_recent_orders": "No orders yet."
   },
   "validation": {
     "required_field": "This field is required",
@@ -5582,7 +5601,10 @@
             "reports": "Basic dashboard + stock report",
             "pdf": "Standard order PDF",
             "alerts": "Low-stock indicator in the dashboard (no automatic alerts)",
-            "support": "Email & WhatsApp support"
+            "support": "Email & WhatsApp support",
+            "pos": "Fast register: barcode scanning, thermal tickets and offline sales",
+            "restaurant": "Restaurant mode: tables, kitchen tickets, kitchen screen and QR ordering",
+            "payroll": "Payroll with DIAN electronic payroll"
           },
           "cta": "Start free trial"
         },
@@ -5604,7 +5626,8 @@
             "invoicing": "DIAN electronic invoicing included up to 300 orders/month",
             "sales_quotations": "Customer quotations with sending and order conversion",
             "discovery": "Automatic detection of risks and opportunities in your business (Discovery Engine)",
-            "support": "Priority email & WhatsApp support"
+            "support": "Priority email & WhatsApp support",
+            "restaurant_team": "Waiter, kitchen and cashier, each with their own login and role"
           },
           "cta": "Choose Business"
         },
@@ -5667,7 +5690,8 @@
         "standalone_invoicing": "Invoicing API",
         "certificates": "Digital certificate",
         "integrations": "Integrations",
-        "blog": "Blog"
+        "blog": "Blog",
+        "restaurants": "Restaurants"
       }
     },
     "seo": {
@@ -5737,6 +5761,26 @@
             "one": "Customers at risk of leaving, before they leave",
             "two": "Patterns you didn't know existed in your business",
             "three": "Every finding comes with its evidence, never a black box"
+          }
+        },
+        "restaurant": {
+          "label": "RESTAURANT",
+          "title": "Register & restaurant",
+          "description": "The waiter takes the order at the table from their phone, the kitchen gets it instantly on its screen and marks it ready, and the register charges. Customers can also order from their table's QR, and the waiter confirms it before it reaches the kitchen. It all keeps working offline.",
+          "highlights": {
+            "one": "Tables, tickets and kitchen screen",
+            "two": "QR ordering confirmed by the waiter",
+            "three": "Works offline"
+          }
+        },
+        "payroll": {
+          "label": "PAYROLL",
+          "title": "Payroll & electronic payroll",
+          "description": "Run payroll with benefits, social security and contract settlements, and issue electronic payroll to the DIAN. Each employee can be linked to their Ohnix login, so what they handle day to day is credited to them.",
+          "highlights": {
+            "one": "DIAN electronic payroll",
+            "two": "Benefits and settlements",
+            "three": "Employee linked to their login"
           }
         }
       }

@@ -1,7 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Form, InputNumber, Radio, Input, Button, DatePicker } from "antd";
 import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import PointOfSaleField from "../common/PointOfSaleField";
+import { api } from "../../api/api";
+import { getConnectivityState } from "../../offline/connectivity";
+import { readMirrorAll } from "../../offline/entityQueue";
 
 const { TextArea } = Input;
 
@@ -14,6 +18,11 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
     const [form] = Form.useForm();
     const direction = Form.useWatch("direction", form);
     const quantity = Form.useWatch("quantity", form);
+    const pointOfSaleId = Form.useWatch("pointOfSaleId", form);
+    // Stock is per location (product.controller.js#adjustProductStock claims/
+    // credits the chosen one), so with several locations the preview and the
+    // "out" limit must use that location's figure, not the product's total.
+    const [locationRows, setLocationRows] = useState([]);
 
     useEffect(() => {
         if (visible) {
@@ -21,10 +30,26 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
         }
     }, [visible, form]);
 
+    useEffect(() => {
+        if (!visible || !product?._id) return undefined;
+        let cancelled = false;
+        const load = getConnectivityState()
+            ? api.get(`/products/${product._id}/location-stock`).then((res) => res?.data?.data)
+            : readMirrorAll("locationStockSummaries").then((rows) => rows.find((row) => row._id === product._id)?.summary);
+        load
+            .then((summary) => !cancelled && setLocationRows(summary?.locations || []))
+            .catch(() => !cancelled && setLocationRows([]));
+        return () => {
+            cancelled = true;
+        };
+    }, [visible, product?._id]);
+
     if (!product) return null;
 
+    const locationRow = pointOfSaleId ? locationRows.find((row) => row.point_of_sale_id === pointOfSaleId) : null;
+    const currentStock = locationRow ? locationRow.available : product.stock;
     const delta = direction === "out" ? -(quantity || 0) : quantity || 0;
-    const resultingStock = product.stock + delta;
+    const resultingStock = currentStock + delta;
     const isNegative = resultingStock < 0;
 
     const handleOk = async () => {
@@ -33,6 +58,7 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
         await onSubmit(product._id, {
             delta: finalDelta,
             reason: values.reason.trim(),
+            ...(values.pointOfSaleId ? { pointOfSaleId: values.pointOfSaleId } : {}),
             ...(product.tracks_batches && values.direction === "in"
                 ? {
                       batchNumber: values.batch_number.trim(),
@@ -82,7 +108,7 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
                         {product.product_name}
                     </p>
                     <p className="text-xs text-[var(--ohnix-text-muted)] m-0 mt-0.5">
-                        {t("products.stock")}: {product.stock}
+                        {t("products.stock")}: {currentStock}
                     </p>
                 </div>
                 {quantity > 0 && (
@@ -102,6 +128,8 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
             </div>
 
             <Form form={form} layout="vertical">
+                <PointOfSaleField />
+
                 <Form.Item name="direction" label={fieldLabel(t("products.adjustment_direction"))}>
                     <Radio.Group buttonStyle="solid" className="w-full flex stock-direction-toggle">
                         <Radio.Button value="in" className="flex-1 text-center">
@@ -120,9 +148,9 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
                         { required: true, message: t("orders.enter_quantity_message") },
                         {
                             validator: (_, value) => {
-                                if (direction === "out" && value > product.stock) {
+                                if (direction === "out" && value > currentStock) {
                                     return Promise.reject(
-                                        t("orders.quantity_exceeds_stock", { stock: product.stock })
+                                        t("orders.quantity_exceeds_stock", { stock: currentStock })
                                     );
                                 }
                                 return Promise.resolve();

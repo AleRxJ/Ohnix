@@ -3,6 +3,7 @@ import { Modal, Form, Input, InputNumber, Button, AutoComplete, Descriptions, Di
 import { SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
+import PointOfSaleField from "../common/PointOfSaleField";
 
 const { TextArea } = Input;
 
@@ -91,6 +92,8 @@ const WarrantyForm = ({ open, onClose, onSubmit, submitting, lookupSale, prefill
         } else {
             payload.customer_id = values.customer_id;
             payload.product_id = values.product_id;
+            // Linked claims inherit the sale's location server-side; a manual one has to name it.
+            if (values.pointOfSaleId) payload.pointOfSaleId = values.pointOfSaleId;
         }
 
         const ok = await onSubmit(payload);
@@ -160,6 +163,7 @@ const WarrantyForm = ({ open, onClose, onSubmit, submitting, lookupSale, prefill
                         <Form.Item name="product_id" label={t("warranties.field_product")} rules={[{ required: true }]}>
                             <Input placeholder={t("warranties.product_id_placeholder")} />
                         </Form.Item>
+                        <PointOfSaleField />
                     </>
                 )}
                 <Form.Item name="serial_number" label={t("warranties.field_serial")}>

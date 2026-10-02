@@ -2128,6 +2128,47 @@ export const FeatureHubSection = ({ heading }) => {
             ),
         },
         {
+            title: t("landing.hub.features.restaurant.title"),
+            label: t("landing.hub.features.restaurant.label"),
+            description: t("landing.hub.features.restaurant.description"),
+            highlights: [
+                t("landing.hub.features.restaurant.highlights.one"),
+                t("landing.hub.features.restaurant.highlights.two"),
+                t("landing.hub.features.restaurant.highlights.three"),
+            ],
+            accent: "#44F3F0",
+            icon: (
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <path d="M5 20h22" />
+                    <path d="M7 20a9 9 0 0 1 18 0" />
+                    <path d="M16 11V9" />
+                    <circle cx="16" cy="8" r="1.2" fill="currentColor" stroke="none" />
+                    <path d="M4 24h24" />
+                    <rect x="21" y="3" width="7" height="7" rx="1.2" />
+                    <path d="M23 5.5h1M23 7.5h3" />
+                </svg>
+            ),
+        },
+        {
+            title: t("landing.hub.features.payroll.title"),
+            label: t("landing.hub.features.payroll.label"),
+            description: t("landing.hub.features.payroll.description"),
+            highlights: [
+                t("landing.hub.features.payroll.highlights.one"),
+                t("landing.hub.features.payroll.highlights.two"),
+                t("landing.hub.features.payroll.highlights.three"),
+            ],
+            accent: "#34D399",
+            icon: (
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <rect x="4" y="7" width="24" height="18" rx="3" />
+                    <circle cx="11" cy="14" r="3" />
+                    <path d="M6.5 22c0.8-2.4 2.5-3.6 4.5-3.6s3.7 1.2 4.5 3.6" />
+                    <path d="M19 12h6M19 16h6M19 20h4" />
+                </svg>
+            ),
+        },
+        {
             title: t("landing.hub.features.discovery.title"),
             label: t("landing.hub.features.discovery.label"),
             description: t("landing.hub.features.discovery.description"),

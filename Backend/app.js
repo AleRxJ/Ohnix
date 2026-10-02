@@ -11,6 +11,7 @@ import { receiveConnectorWebhook } from "./controllers/connectorWebhook.controll
 import { receiveProviderWebhook } from "./controllers/paymentProvider.controller.js";
 import { isOriginAllowed } from "./utils/allowedOrigins.js";
 import { getRedisHealth } from "./utils/redisClient.js";
+import { localizeApiResponseMessages } from "./utils/localizeErrorMessage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -144,6 +145,9 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());
+// Success toasts read ApiResponse.message verbatim too - same translation as
+// error.middleware.js applies to ApiError.
+app.use(localizeApiResponseMessages);
 
 //routes import
 import userRouter from "./routes/user.routes.js";

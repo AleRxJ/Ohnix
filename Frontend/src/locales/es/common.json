@@ -5178,48 +5178,67 @@
   },
   "dashboard": {
     "loading_dashboard_data": "Cargando datos del panel...",
-    "data_loaded_successfully": "Datos cargados con éxito",
     "failed_fetch_dashboard_data": "No se pudieron obtener los datos del panel",
     "failed_load_data": "No se pudo cargar la información",
     "something_went_wrong_dashboard": "Algo salió mal al obtener los datos del panel",
-    "plan_overview": "Estado de plan",
     "current_plan": "Plan actual",
     "request_in_progress": "Solicitud en proceso",
-    "no_active_plan_request": "No tienes solicitudes activas en este momento.",
-    "manage_plan_cta": "Ver facturacion",
+    "manage_plan_cta": "Ver facturación",
     "dian_tip_badge": "Pendiente",
     "dian_tip_title": "Activa la facturación electrónica DIAN",
     "dian_tip_description": "Tu empresa todavía no está lista para emitir documentos electrónicos. El proceso te toma unos minutos y no necesitas contactar a soporte.",
     "dian_tip_cta": "Configurar ahora",
     "total_sales": "Ventas totales",
-    "total_purchases": "Compras totales",
     "inventory_value": "Valor del inventario",
     "total_products": "Productos totales",
-    "total_stock": "Stock total",
     "out_of_stock": "Agotado",
-    "analytics_insights": "Analítica e insights",
-    "performance_metrics": "Métricas de rendimiento y tendencias",
-    "business_pulse": "Pulso del negocio",
-    "business_pulse_description": "Lo que un cliente querría ver de un vistazo",
-    "net_trade_delta": "Delta comercial neto",
-    "net_trade_delta_description": "Ventas menos compras en el alcance actual.",
-    "average_order_value": "Valor promedio por pedido",
-    "average_order_value_description": "Útil para decisiones de precio y tamaño de canasta.",
-    "stock_risk": "Riesgo de stock",
-    "stock_risk_description": "Artículos que requieren reposición inmediata.",
-    "revenue_concentration": "Concentración de ingresos",
-    "revenue_concentration_description": "Porcentaje impulsado por el producto principal. Menor es más seguro.",
-    "quick_insights": "Insights rápidos",
-    "key_product_highlights": "Puntos clave de productos",
-    "top_performer": "Mejor rendimiento",
-    "most_profitable": "Más rentable",
     "units_sold": "{{count}} unidades vendidas",
-    "revenue": "Ingresos: {{value}}",
-    "reports_activity": "Reportes y actividad",
-    "recent_transactions_and_alerts": "Transacciones recientes y alertas",
     "top_selling_products": "Productos más vendidos",
-    "low_stock_alerts": "Alertas de stock bajo",
-    "recent_orders": "Pedidos recientes"
+    "recent_orders": "Pedidos recientes",
+    "greeting": "Hola, {{name}}",
+    "greeting_subtitle": "Así va tu negocio hoy.",
+    "plan_chip": "Plan {{plan}}",
+    "summary": "Resumen",
+    "period_7d": "7 días",
+    "period_30d": "30 días",
+    "period_90d": "90 días",
+    "period_12m": "12 meses",
+    "vs_previous_7d": "vs. 7 días anteriores",
+    "vs_previous_30d": "vs. 30 días anteriores",
+    "vs_previous_90d": "vs. 90 días anteriores",
+    "vs_previous_12m": "vs. 12 meses anteriores",
+    "kpi_sales": "Ventas",
+    "kpi_orders": "Pedidos",
+    "average_order_value": "Ticket promedio",
+    "inventory_value_hint": "Al costo, stock actual",
+    "lifetime_title": "Acumulado histórico",
+    "lifetime_sales": "Ventas acumuladas",
+    "lifetime_purchases": "Compras acumuladas",
+    "lifetime_hint": "Desde que empezaste en Ohnix",
+    "units_in_stock_count_one": "{{count}} unidad en stock",
+    "units_in_stock_count_other": "{{count}} unidades en stock",
+    "sales_trend": "Tendencia de ventas",
+    "sales_trend_daily": "Ventas completadas por día",
+    "sales_trend_monthly": "Ventas completadas por mes",
+    "period_total": "Total del período",
+    "sales_trend_locked": "La tendencia de ventas está disponible en planes superiores.",
+    "see_plans": "Ver planes",
+    "no_sales_in_period": "Sin ventas en este período",
+    "orders_count_one": "{{count}} pedido",
+    "orders_count_other": "{{count}} pedidos",
+    "inventory_title": "Inventario",
+    "inventory_subtitle": "Lo que necesita tu atención",
+    "units_in_stock": "Unidades",
+    "needs_restock": "Por reponer",
+    "inventory_all_good": "Todo tu inventario está por encima del mínimo.",
+    "units_left_one": "Queda {{count}}",
+    "units_left_other": "Quedan {{count}}",
+    "view_all": "Ver todo",
+    "top_products_subtitle": "Por unidades vendidas, histórico",
+    "no_top_products": "Aún no hay ventas completadas.",
+    "top_products_locked": "El ranking de productos está disponible en planes superiores.",
+    "recent_orders_subtitle": "Últimos movimientos",
+    "no_recent_orders": "Aún no hay pedidos."
   },
   "validation": {
     "required_field": "Este campo es requerido",
@@ -5577,7 +5596,10 @@
             "reports": "Dashboard básico + reporte de stock",
             "pdf": "PDF de pedidos estándar",
             "alerts": "Indicador de stock bajo en el panel (sin alertas automáticas)",
-            "support": "Soporte por correo y WhatsApp"
+            "support": "Soporte por correo y WhatsApp",
+            "pos": "Caja rápida: lector de código de barras, ticket térmico y ventas sin conexión",
+            "restaurant": "Modo restaurante: mesas, comandas, pantalla de cocina y pedidos por QR",
+            "payroll": "Nómina con nómina electrónica DIAN"
           },
           "cta": "Empezar prueba gratis"
         },
@@ -5599,7 +5621,8 @@
             "invoicing": "Facturación electrónica DIAN incluida hasta 300 pedidos/mes",
             "sales_quotations": "Cotizaciones para clientes con envío y conversión a pedido",
             "discovery": "Detección automática de riesgos y oportunidades en tu negocio (Discovery Engine)",
-            "support": "Soporte prioritario por correo y WhatsApp"
+            "support": "Soporte prioritario por correo y WhatsApp",
+            "restaurant_team": "Mesero, cocina y caja con su propio usuario y rol"
           },
           "cta": "Elegir plan Negocio"
         },
@@ -5662,7 +5685,8 @@
         "standalone_invoicing": "API de facturacion",
         "certificates": "Certificado digital",
         "integrations": "Integraciones",
-        "blog": "Blog"
+        "blog": "Blog",
+        "restaurants": "Restaurantes"
       }
     },
     "seo": {
@@ -5732,6 +5756,26 @@
             "one": "Clientes en riesgo de irse, antes de que se vayan",
             "two": "Patrones que ni tú sabías que existían en tu negocio",
             "three": "Cada hallazgo con su evidencia, nunca una caja negra"
+          }
+        },
+        "restaurant": {
+          "label": "RESTAURANTE",
+          "title": "Caja y restaurante",
+          "description": "El mesero toma el pedido en la mesa desde su celular, la cocina lo recibe al instante en su pantalla y lo marca listo, y la caja cobra. El cliente también puede pedir desde el QR de su mesa, y el mesero lo confirma antes de que llegue a cocina. Todo sigue funcionando sin internet.",
+          "highlights": {
+            "one": "Mesas, comandas y pantalla de cocina",
+            "two": "Pedido por QR confirmado por el mesero",
+            "three": "Funciona sin conexión"
+          }
+        },
+        "payroll": {
+          "label": "NÓMINA",
+          "title": "Nómina y nómina electrónica",
+          "description": "Liquida la nómina de tus empleados con prestaciones, seguridad social y liquidación de contrato, y emite la nómina electrónica ante la DIAN. Cada empleado puede vincularse a su usuario en Ohnix, para que lo que atiende en el día a día quede a su nombre.",
+          "highlights": {
+            "one": "Nómina electrónica DIAN",
+            "two": "Prestaciones y liquidaciones",
+            "three": "Empleado vinculado a su usuario"
           }
         }
       }

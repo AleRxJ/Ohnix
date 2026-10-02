@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ensureDefaultPointOfSale } from "../services/pointOfSale.service.js";
+import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "./pricing.middleware.js";
 
 // Scope enforcement for Points of Sale - the "where" half of authorization,
 // orthogonal to team.permissions.js's "what" (module × level). Both must
@@ -106,7 +107,11 @@ export const resolveDefaultPointOfSaleId = async (accountId) => {
 // fall back to the account's single default location. Throws (never
 // silently multiplexes) if the account has more than one active location
 // and the request didn't say which - see resolveDefaultPointOfSaleId.
-export const resolveOrAssertPointOfSaleId = async (req) => {
+//
+// `fallbackId` is a location the record is naturally tied to (e.g. a
+// warranty's original sale) - used when the request didn't name one and the
+// actor can operate there, before falling back to the account-wide rules.
+export const resolveOrAssertPointOfSaleId = async (req, { fallbackId = null } = {}) => {
     const requested = req.body?.pointOfSaleId;
     if (requested) {
         assertPosAccess(req.user, requested);
@@ -114,32 +119,54 @@ export const resolveOrAssertPointOfSaleId = async (req) => {
         return requested;
     }
 
-    // No explicit pointOfSaleId - every current frontend form. Guessing is
-    // only safe when there's exactly one possibility from *this actor's*
-    // point of view, not the account's total: a restricted-scope member
-    // pinned to a single location has an unambiguous answer even on an
-    // Escala account with several locations (the account-wide count below
-    // would otherwise force them to specify one, which no client sends
-    // yet). A full-scope actor (owner, posScopeAll, admin) falls through to
-    // the account-wide count, since "all of them" has no single answer to
-    // pick from either.
-    if (req.user.role !== "admin" && !req.user.posScopeAll) {
-        const scopeIds = req.user.posScopeIds || [];
-        if (scopeIds.length === 1) {
-            await assertPointOfSaleExists(req.user.prismaId, scopeIds[0]);
-            return scopeIds[0];
-        }
-        if (scopeIds.length > 1) {
-            throw new ApiError(400, "pointOfSaleId es obligatorio: tienes acceso a más de un punto de venta.");
-        }
-        throw new ApiError(403, "No tienes acceso a ningún punto de venta.");
+    if (fallbackId && (req.user.role === "admin" || hasPosAccess(req.user, fallbackId))) {
+        const fallback = await prisma.pointOfSale.findFirst({
+            where: { id: fallbackId, accountId: req.user.prismaId, isActive: true },
+            select: { id: true },
+        });
+        if (fallback) return fallback.id;
     }
 
-    const activeCount = await prisma.pointOfSale.count({
-        where: { accountId: req.user.prismaId, isActive: true },
+    // No explicit pointOfSaleId. Guessing is only safe when there's exactly
+    // one possibility from *this actor's* point of view: the ACTIVE
+    // locations they can operate in (a restricted member's scope can still
+    // list a location that was deactivated later - counting it made a
+    // single-store member hit "obligatorio"). A full-scope actor (owner,
+    // posScopeAll, admin) sees every active location of the account.
+    const accountId = req.user.prismaId;
+    const fullScope = req.user.role === "admin" || req.user.posScopeAll;
+    const candidates = await prisma.pointOfSale.findMany({
+        where: { accountId, isActive: true, ...(fullScope ? {} : { id: { in: req.user.posScopeIds || [] } }) },
+        select: { id: true, isDefault: true },
     });
-    if (activeCount > 1) {
-        throw new ApiError(400, "pointOfSaleId es obligatorio: esta cuenta tiene más de un punto de venta.");
+
+    if (candidates.length === 0) {
+        if (!fullScope) throw new ApiError(403, "No tienes acceso a ningún punto de venta.");
+        return resolveDefaultPointOfSaleId(accountId);
     }
-    return resolveDefaultPointOfSaleId(req.user.prismaId);
+    if (candidates.length === 1) return candidates[0].id;
+
+    // Extra locations left over from a plan that no longer includes
+    // multi-sede (downgrade) are dormant: the UI hides every location
+    // selector in that case (PointOfSaleField/useSubscription's
+    // can("multiLocation")), so no client can name one - the default
+    // location is the only usable answer, not an ambiguity.
+    if (req.user.role !== "admin") {
+        const subscription = await ensureUserSubscription(accountId);
+        if (!getPlanFeatures(getEffectivePlan(subscription)).multiLocation) {
+            const defaultPos = candidates.find((pos) => pos.isDefault);
+            if (defaultPos) return defaultPos.id;
+            if (fullScope) return resolveDefaultPointOfSaleId(accountId);
+        }
+    }
+
+    throw new ApiError(
+        400,
+        fullScope
+            ? "Elige el punto de venta o bodega: tu cuenta tiene más de una ubicación activa."
+            : "Elige el punto de venta o bodega: tienes acceso a más de una ubicación.",
+        [],
+        "",
+        "point_of_sale_required"
+    );
 };

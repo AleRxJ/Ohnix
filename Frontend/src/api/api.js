@@ -33,6 +33,23 @@ export const api = axios.create({
     timeout: 30000,
 });
 
+// Backend error messages are English by default and get translated
+// server-side only when asked (Backend/utils/localizeErrorMessage.js) - most
+// call sites toast `error.response.data.message` as-is. Read straight from
+// the key i18n/config.js persists the chosen language under, instead of
+// importing i18n here; Spanish is the app's default there too.
+api.interceptors.request.use((config) => {
+    let language = "es";
+    try {
+        language = localStorage.getItem("language") || "es";
+    } catch {
+        // storage blocked - keep the Spanish default
+    }
+    config.headers = config.headers || {};
+    config.headers["Accept-Language"] = language;
+    return config;
+});
+
 // A request that fails with a real 401 almost always means the accessToken
 // (1-day lifetime, Backend/utils/authTokens.js) simply expired mid-session -
 // not that the session itself is over (the refresh token behind it lives 10

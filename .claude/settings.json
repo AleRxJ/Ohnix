@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node --env-file=.env \"C:/Users/User/AppData/Local/Temp/claude/c--Users-User-Documents-GitHub-Ohnix/97682bfd-c651-4dad-ac91-a6a3e267ee1f/scratchpad/restore_role_access.mjs\")"
+      "Bash(node --env-file=.env \"C:/Users/User/AppData/Local/Temp/claude/c--Users-User-Documents-GitHub-Ohnix/97682bfd-c651-4dad-ac91-a6a3e267ee1f/scratchpad/restore_role_access.mjs\")",
+      "Bash(awk -F: '{print $1\": \"tolower\\($3\\)}')",
+      "Bash(grep -n \"t\\(\\\\\"landing\\\\.\\\\|t\\('landing\\\\.\\\\|useI18n\\\\|from \\\\\"../../data\\\\|import .* from \\\\\"\\\\.\\\\./\\\\.\\\\./data\\\\|import .* from \\\\\"\\\\.\\\\./data\" components/landing/LandingPageSections.jsx pages/Precios.jsx pages/LandingPage.jsx)"
     ]
   }
 }

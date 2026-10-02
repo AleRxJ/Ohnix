@@ -89,6 +89,9 @@ const Footer = ({ clearMobileBars = false }) => {
                         <Link to="/colaboracion-en-equipo" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.team")}
                         </Link>
+                        <Link to="/restaurantes" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
+                            {t("landing.footer.links.restaurants")}
+                        </Link>
                         <Link to="/precios" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.pricing")}
                         </Link>

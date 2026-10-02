@@ -1,40 +1,29 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import {
-    Card,
-    Row,
-    Col,
-    Tag,
-    Divider,
-    Typography,
-    Button,
-    Badge,
-    Tooltip,
-    theme,
-} from "antd";
+import { Button, Segmented, Tooltip } from "antd";
 import {
     DollarOutlined,
     InboxOutlined,
     ShoppingCartOutlined,
     ShoppingOutlined,
-    WarningOutlined,
-    AreaChartOutlined,
-    PieChartOutlined,
-    InfoCircleOutlined,
     ReloadOutlined,
     SafetyCertificateOutlined,
     ArrowRightOutlined,
+    CrownOutlined,
+    FileTextOutlined,
+    TagOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
-import DashboardHeader from "../components/dashboard/DashboardHeader";
 import DiscoveryDashboardHero from "../components/discoveries/DiscoveryDashboardHero";
-import StatCard from "../components/dashboard/StatCard";
-import ProductDistribution from "../components/dashboard/ProductDistribution";
-import DataTable from "../components/dashboard/DataTable";
 import LoadingSpinner from "../components/dashboard/LoadingSpinner";
 import ErrorDisplay from "../components/dashboard/ErrorDisplay";
+import KpiTile from "../components/dashboard/overview/KpiTile";
+import SalesTrendCard from "../components/dashboard/overview/SalesTrendCard";
+import InventoryCard from "../components/dashboard/overview/InventoryCard";
+import TopProductsCard from "../components/dashboard/overview/TopProductsCard";
+import RecentOrdersCard from "../components/dashboard/overview/RecentOrdersCard";
+import { PERIODS, buildSalesPeriod, percentChange } from "../components/dashboard/overview/salesSeries";
 import { api } from "../api/api";
-import SalesChart from "../components/dashboard/SalesChart";
 import useI18n from "../hooks/useI18n";
 import { useCurrency } from "../context/CurrencyContext";
 import { subscriptionService } from "../services/subscriptionService";
@@ -44,13 +33,20 @@ import { useDataInvalidation } from "../hooks/useDataInvalidation";
 import AuthContext from "../context/AuthContext";
 import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
 
-const { useToken } = theme;
-const { Title, Text } = Typography;
+const PERIOD_STORAGE_KEY = "ohnix.dashboardPeriod";
+
+const readStoredPeriod = () => {
+    try {
+        const stored = localStorage.getItem(PERIOD_STORAGE_KEY);
+        return PERIODS.includes(stored) ? stored : "30d";
+    } catch {
+        return "30d";
+    }
+};
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const { token } = useToken();
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
     const location = useLocation();
     const { user } = useContext(AuthContext);
@@ -58,7 +54,6 @@ const Dashboard = () => {
     // Inventory value is cost data - stripped by the backend without
     // catalogViewCosts, so its card is dropped and the row re-balances.
     const canViewCosts = hasCapability("catalogViewCosts");
-    const topStatSpan = canViewCosts ? 8 : 12;
     const canSeeBilling = hasPermission("billing", "view");
     const canSeeDashboard = hasPermission("dashboard", "view");
     // Same gating useSubscription/getMenuItems use to decide whether this
@@ -94,7 +89,11 @@ const Dashboard = () => {
         salesData: [],
         topProducts: [],
     });
-    const [timeframe, setTimeframe] = useState("30days");
+    // Whether /reports/sales and /reports/top-products answered at all (they're
+    // plan-gated, see fetchDashboardData) - "locked" and "no sales yet" need
+    // different empty states.
+    const [reportsAvailable, setReportsAvailable] = useState({ sales: false, topProducts: false });
+    const [period, setPeriod] = useState(readStoredPeriod);
     const [subscriptionSnapshot, setSubscriptionSnapshot] = useState(null);
     const [requestSnapshot, setRequestSnapshot] = useState([]);
     const [isPolling, setIsPolling] = useState(false);
@@ -102,7 +101,16 @@ const Dashboard = () => {
     useEffect(() => {
         if (teamLoading || !canSeeDashboard) return;
         fetchDashboardData();
-    }, [timeframe, teamLoading, canSeeDashboard]);
+    }, [teamLoading, canSeeDashboard]);
+
+    const changePeriod = (value) => {
+        setPeriod(value);
+        try {
+            localStorage.setItem(PERIOD_STORAGE_KEY, value);
+        } catch {
+            // Remembering the period is a convenience only.
+        }
+    };
 
     // Another connected user creating/updating a product, order, or
     // purchase - the dashboard's totals/low-stock list/recent orders are all
@@ -189,7 +197,7 @@ const Dashboard = () => {
             // avoiding a race against useSubscription's own async plan
             // fetch) but a 403 from either just means "no data for this
             // section", not a page-wide error.
-            const dashboardResponse = await api.get("/reports/dashboard", { params: { timeframe } });
+            const dashboardResponse = await api.get("/reports/dashboard");
 
             if (!dashboardResponse.data.success) {
                 setError(t("dashboard.failed_fetch_dashboard_data"));
@@ -202,8 +210,8 @@ const Dashboard = () => {
             let salesReportData = {};
 
             const [topProductsResult, salesReportResult] = await Promise.allSettled([
-                api.get("/reports/top-products", { params: { timeframe } }),
-                api.get("/reports/sales", { params: { timeframe } }),
+                api.get("/reports/top-products"),
+                api.get("/reports/sales"),
             ]);
 
             if (topProductsResult.status === "fulfilled") {
@@ -218,8 +226,11 @@ const Dashboard = () => {
                 topProducts: topProductsData,
                 salesData: salesReportData,
             });
-
-            toast.success(t("dashboard.data_loaded_successfully"));
+            setReportsAvailable({
+                sales: salesReportResult.status === "fulfilled",
+                topProducts: topProductsResult.status === "fulfilled",
+            });
+            setError(null);
         } catch (err) {
             console.error("Dashboard data fetch error:", err);
             const errorMessage =
@@ -232,171 +243,10 @@ const Dashboard = () => {
         }
     };
 
-    const topProductsColumns = [
-        {
-            title: t("products.product"),
-            dataIndex: "product_name",
-            key: "product_name",
-            ellipsis: {
-                showTitle: false,
-            },
-            render: (text) => (
-                <Tooltip placement="topLeft" title={text}>
-                    <span className="text-sm font-medium text-[var(--ohnix-text-table-cell)] block max-w-[150px] sm:max-w-[200px] truncate">
-                        {text}
-                    </span>
-                </Tooltip>
-            ),
-        },
-        {
-            title: t("common.quantity"),
-            dataIndex: "quantity_sold",
-            key: "quantity_sold",
-            width: 80,
-            align: "center",
-            sorter: (a, b) => a.quantity_sold - b.quantity_sold,
-            render: (value) => (
-                <Badge
-                    count={value}
-                    className="font-medium"
-                    style={{
-                        backgroundColor: "#1890ff",
-                        fontSize: "11px",
-                    }}
-                />
-            ),
-        },
-        {
-            title: t("common.total"),
-            dataIndex: "total_sales",
-            key: "total_sales",
-            width: 100,
-            align: "right",
-            render: (value) => (
-                <span className="font-semibold text-green-600">
-                    ${value.toLocaleString()}
-                </span>
-            ),
-            sorter: (a, b) => a.total_sales - b.total_sales,
-        },
-    ];
-
-    const lowStockColumns = [
-        {
-            title: t("products.product"),
-            dataIndex: "product_name",
-            key: "product_name",
-            ellipsis: {
-                showTitle: false,
-            },
-            render: (text) => (
-                <Tooltip placement="topLeft" title={text}>
-                    <span className="text-sm font-medium text-[var(--ohnix-text-table-cell)] block max-w-[150px] sm:max-w-[200px] truncate">
-                        {text}
-                    </span>
-                </Tooltip>
-            ),
-        },
-        {
-            title: t("products.stock"),
-            dataIndex: "stock",
-            key: "stock",
-            width: 70,
-            align: "center",
-            render: (value) => (
-                <span
-                    className={`font-bold ${value === 0 ? "text-red-600" : "text-orange-600"}`}
-                >
-                    {value}
-                </span>
-            ),
-        },
-        {
-            title: t("common.status"),
-            key: "status",
-            width: 90,
-            align: "center",
-            render: (_, record) => (
-                <Tag
-                    color={record.stock === 0 ? "error" : "warning"}
-                    className="text-xs font-medium"
-                >
-                    {record.stock === 0 ? t("products.out_of_stock") : t("products.low_stock")}
-                </Tag>
-            ),
-        },
-    ];
-
-    const recentOrdersColumns = [
-        {
-            title: t("orders.invoice_number"),
-            dataIndex: "invoice_no",
-            key: "invoice_no",
-            width: 100,
-            render: (value) => (
-                <span className="font-mono text-blue-600 font-medium">
-                    #{value}
-                </span>
-            ),
-        },
-        {
-            title: t("customers.customer"),
-            key: "customer",
-            ellipsis: {
-                showTitle: false,
-            },
-            render: (_, record) => {
-                const customerName =
-                    record.customer_id?.name || t("customers.unknown_customer");
-                return (
-                    <Tooltip placement="topLeft" title={customerName}>
-                        <span className="text-sm font-medium text-[var(--ohnix-text-table-cell)] block max-w-[150px] sm:max-w-[200px] truncate">
-                            {customerName}
-                        </span>
-                    </Tooltip>
-                );
-            },
-        },
-        {
-            title: t("common.date"),
-            key: "date",
-            width: 100,
-            responsive: ["md"],
-            render: (_, record) => (
-                <span className="text-sm text-[var(--ohnix-text-muted)]">
-                    {new Date(record.createdAt).toLocaleDateString()}
-                </span>
-            ),
-        },
-        {
-            title: t("common.total"),
-            dataIndex: "total",
-            key: "total",
-            width: 100,
-            align: "right",
-            render: (value) => (
-                <span className="font-semibold text-green-600">
-                    ${value.toLocaleString()}
-                </span>
-            ),
-        },
-        {
-            title: t("common.status"),
-            dataIndex: "order_status",
-            key: "order_status",
-            width: 100,
-            align: "center",
-            render: (status) => {
-                let color = "default";
-                if (status === "completed") color = "success";
-                if (status === "processing") color = "processing";
-                if (status === "pending") color = "warning";
-                if (status === "cancelled") color = "error";
-
-                return <Tag color={color}>{t(`common.${status}`)}</Tag>;
-            },
-        },
-    ];
+    const salesByDate = Array.isArray(dashboardData.salesData?.salesByDate)
+        ? dashboardData.salesData.salesByDate
+        : null;
+    const salesPeriod = useMemo(() => buildSalesPeriod(salesByDate || [], period), [salesByDate, period]);
 
     if (loading) {
         return <LoadingSpinner tip={t("dashboard.loading_dashboard_data")} />;
@@ -406,30 +256,119 @@ const Dashboard = () => {
         return <ErrorDisplay error={error} onRetry={fetchDashboardData} />;
     }
 
-    const topPerformer = dashboardData.topProducts?.[0] || null;
-    const mostProfitableProduct = dashboardData.topProducts?.length
-        ? [...dashboardData.topProducts].sort((a, b) => b.total_sales - a.total_sales)[0]
-        : null;
-    const totalSales = Number(dashboardData.totalSales || 0);
-    const totalPurchase = Number(dashboardData.totalPurchase || 0);
-    const totalOrders = dashboardData.salesData?.summary?.totalOrders || 0;
-    const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-    const topProductShare =
-        totalSales > 0 && topPerformer?.total_sales
-            ? (Number(topPerformer.total_sales) / totalSales) * 100
-            : 0;
-    const stockRiskCount =
-        (dashboardData.lowStockProducts?.length || 0) +
-        (dashboardData.outOfStockCount || 0);
-    const netTradeDelta = totalSales - totalPurchase;
+    const locale = currentLanguage === "es" ? "es-CO" : "en-US";
+    const numberFormat = new Intl.NumberFormat(locale);
+    const formatNumber = (value) => numberFormat.format(Number(value) || 0);
+    const today = new Date().toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
+
+    const { current, previous } = salesPeriod;
+    const averageTicket = current.orders > 0 ? current.sales / current.orders : 0;
+    const previousAverageTicket = previous.orders > 0 ? previous.sales / previous.orders : 0;
+    const vsLabel = t(`dashboard.vs_previous_${period}`);
     const activePlanRequest = requestSnapshot.find((request) =>
         ["open", "reviewing", "approved"].includes(request.status)
     );
+    const displayName = user?.username || user?.company?.name || "";
+
+    const inventoryKpi = {
+        key: "inventory",
+        label: t("dashboard.inventory_value"),
+        icon: <DollarOutlined />,
+        value: formatCurrency(dashboardData.inventoryValue),
+        hint: t("dashboard.inventory_value_hint"),
+    };
+    const lifetimeSalesKpi = {
+        key: "lifetime",
+        label: t("dashboard.lifetime_sales"),
+        icon: <ShoppingCartOutlined />,
+        value: formatCurrency(dashboardData.totalSales),
+        hint: t("dashboard.lifetime_hint"),
+    };
+
+    // With the sales report (Negocio+) the headline row is about the selected
+    // period; without it, only the all-time /reports/dashboard totals exist.
+    const kpis = reportsAvailable.sales
+        ? [
+              {
+                  key: "sales",
+                  label: t("dashboard.kpi_sales"),
+                  icon: <ShoppingCartOutlined />,
+                  value: formatCurrency(current.sales),
+                  change: percentChange(current.sales, previous.sales),
+              },
+              {
+                  key: "orders",
+                  label: t("dashboard.kpi_orders"),
+                  icon: <FileTextOutlined />,
+                  value: formatNumber(current.orders),
+                  change: percentChange(current.orders, previous.orders),
+              },
+              {
+                  key: "ticket",
+                  label: t("dashboard.average_order_value"),
+                  icon: <TagOutlined />,
+                  value: formatCurrency(averageTicket),
+                  change: percentChange(averageTicket, previousAverageTicket),
+              },
+              canViewCosts ? inventoryKpi : lifetimeSalesKpi,
+          ]
+        : [
+              lifetimeSalesKpi,
+              {
+                  key: "purchases",
+                  label: t("dashboard.lifetime_purchases"),
+                  icon: <ShoppingOutlined />,
+                  value: formatCurrency(dashboardData.totalPurchase),
+                  hint: t("dashboard.lifetime_hint"),
+              },
+              canViewCosts && inventoryKpi,
+              {
+                  key: "products",
+                  label: t("dashboard.total_products"),
+                  icon: <InboxOutlined />,
+                  value: formatNumber(dashboardData.totalProducts),
+                  hint: t("dashboard.units_in_stock_count", { count: dashboardData.totalStock }),
+              },
+          ].filter(Boolean);
 
     return (
         <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,var(--ohnix-bg-alt)_0%,var(--ohnix-bg)_100%)] text-[var(--ohnix-text-primary)]">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <DashboardHeader onRefresh={fetchDashboardData} />
+            <div className="mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6 lg:px-8">
+                <header className="flex flex-col gap-4 animate-fade-up sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                        <p className="m-0 text-sm text-[var(--ohnix-text-muted)] first-letter:uppercase">{today}</p>
+                        <h1 className="m-0 mt-1 truncate text-2xl font-bold text-[var(--ohnix-text-primary)] sm:text-3xl">
+                            {displayName ? t("dashboard.greeting", { name: displayName }) : t("common.dashboard")}
+                        </h1>
+                        <p className="m-0 mt-1 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.greeting_subtitle")}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {canSeeBilling && (
+                            <Tooltip
+                                title={
+                                    activePlanRequest
+                                        ? `${t("dashboard.request_in_progress")}: ${t(`profile.subscription.request_status_${activePlanRequest.status}`)}`
+                                        : t("dashboard.manage_plan_cta")
+                                }
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => navigate("/billing")}
+                                    className="inline-flex h-8 items-center gap-2 rounded-full border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-3 text-xs font-semibold text-[var(--ohnix-text-primary)] transition-colors hover:border-[#29D8D5]/60"
+                                >
+                                    <CrownOutlined className="text-[#44F3F0]" />
+                                    {t("dashboard.plan_chip", {
+                                        plan: t(`profile.subscription.plan_${subscriptionSnapshot?.plan || "starter"}`),
+                                    })}
+                                    {activePlanRequest && <ReloadOutlined spin={isPolling} className="text-[#FFCF70]" />}
+                                </button>
+                            </Tooltip>
+                        )}
+                        <Button onClick={fetchDashboardData} icon={<ReloadOutlined />} className="rounded-full" title={t("common.refresh")}>
+                            <span className="hidden sm:inline">{t("common.refresh")}</span>
+                        </Button>
+                    </div>
+                </header>
 
                 <DiscoveryDashboardHero />
 
@@ -476,336 +415,56 @@ const Dashboard = () => {
                 )}
 
                 <section className="mt-6 animate-fade-up-delay">
-                    <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)] p-6 backdrop-blur-md">
-                        {canSeeBilling && (
-                        <div className="mb-5 rounded-xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <Text className="text-xs uppercase tracking-[0.16em] text-[var(--ohnix-text-muted)]">
-                                        {t("dashboard.plan_overview")}
-                                    </Text>
-                                    <div className="mt-1 text-sm text-[var(--ohnix-text-primary)]">
-                                        {t("dashboard.current_plan")}: {" "}
-                                        {t(`profile.subscription.plan_${subscriptionSnapshot?.plan || "starter"}`)}
-                                    </div>
-                                    {activePlanRequest ? (
-                                        <div className="mt-1 text-xs text-[#CFE8E8]">
-                                            {t("dashboard.request_in_progress")}: {" "}
-                                            {t(`profile.subscription.request_status_${activePlanRequest.status}`)}
-                                        </div>
-                                    ) : (
-                                        <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
-                                            {t("dashboard.no_active_plan_request")}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-2">
-                                    <Button
-                                        type="default"
-                                        icon={<ReloadOutlined spin={isPolling} />}
-                                        onClick={fetchSubscriptionSnapshot}
-                                        title={t("common.refresh")}
-                                        className="rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] text-[var(--ohnix-text-primary)] hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
-                                    />
-                                    <Button
-                                        type="default"
-                                        onClick={() => navigate("/billing")}
-                                        className="rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] text-[var(--ohnix-text-primary)] hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
-                                    >
-                                        {t("dashboard.manage_plan_cta")}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                        )}
-
-                        <Row gutter={[16, 16]}>
-                            <Col xs={24} sm={12} lg={topStatSpan}>
-                                <StatCard
-                                    title={t("dashboard.total_sales")}
-                                    value={dashboardData.totalSales}
-                                    prefix={<ShoppingCartOutlined />}
-                                    valueStyle={{ color: "#34D399" }}
-                                    icon={
-                                        <ShoppingCartOutlined className="text-2xl text-success" />
-                                    }
-                                    formatter={(value) =>
-                                        formatCurrency(value)
-                                    }
-                                />
-                            </Col>
-                            <Col xs={24} sm={12} lg={topStatSpan}>
-                                <StatCard
-                                    title={t("dashboard.total_purchases")}
-                                    value={dashboardData.totalPurchase}
-                                    prefix={<ShoppingOutlined />}
-                                    valueStyle={{ color: "#60A5FA" }}
-                                    icon={
-                                        <ShoppingOutlined className="text-2xl text-primary" />
-                                    }
-                                    formatter={(value) =>
-                                        formatCurrency(value)
-                                    }
-                                />
-                            </Col>
-                            {canViewCosts && (
-                            <Col xs={24} sm={24} lg={8}>
-                                <StatCard
-                                    title={t("dashboard.inventory_value")}
-                                    value={dashboardData.inventoryValue}
-                                    prefix={<DollarOutlined />}
-                                    valueStyle={{ color: "#A78BFA" }}
-                                    icon={
-                                        <DollarOutlined className="text-2xl text-purple" />
-                                    }
-                                    formatter={(value) =>
-                                        formatCurrency(value)
-                                    }
-                                    precision={2}
-                                />
-                            </Col>
-                            )}
-                            <Col xs={24} sm={8}>
-                                <StatCard
-                                    title={t("dashboard.total_products")}
-                                    value={dashboardData.totalProducts}
-                                    icon={
-                                        <InboxOutlined className="text-2xl text-blue" />
-                                    }
-                                />
-                            </Col>
-                            <Col xs={24} sm={8}>
-                                <StatCard
-                                    title={t("dashboard.total_stock")}
-                                    value={dashboardData.totalStock}
-                                    icon={
-                                        <ShoppingOutlined className="text-2xl text-cyan" />
-                                    }
-                                />
-                            </Col>
-                            <Col xs={24} sm={8}>
-                                <StatCard
-                                    title={t("dashboard.out_of_stock")}
-                                    value={dashboardData.outOfStockCount}
-                                    icon={
-                                        <WarningOutlined className="text-2xl" />
-                                    }
-                                    valueStyle={{
-                                        color:
-                                            dashboardData.outOfStockCount > 0
-                                                ? token.colorError
-                                                : token.colorSuccess,
-                                    }}
-                                />
-                            </Col>
-                        </Row>
-                    </div>
-                </section>
-
-                <section className="mt-8 animate-fade-up">
-                    <Divider className="flex items-center gap-3 mb-6">
-                        <div>
-                            <h2 className="text-xl font-bold text-[var(--ohnix-text-primary)] m-0 leading-tight">
-                                {t("dashboard.analytics_insights")}
+                    {reportsAvailable.sales && (
+                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <h2 className="m-0 text-xs font-semibold uppercase tracking-wider text-[var(--ohnix-text-muted)]">
+                                {t("dashboard.summary")}
                             </h2>
-                            <p className="text-sm text-[var(--ohnix-text-muted)] m-0">
-                                {t("dashboard.performance_metrics")}
-                            </p>
-                        </div>
-                    </Divider>
-
-                    <div className="space-y-6">
-                        <SalesChart salesData={dashboardData.salesData} />
-
-                        <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)] p-6 backdrop-blur-md">
-                            <div className="flex items-center justify-between gap-4 mb-5">
-                                <div>
-                                    <h3 className="text-lg font-bold text-[var(--ohnix-text-primary)] m-0 leading-tight">
-                                        {t("dashboard.business_pulse")}
-                                    </h3>
-                                    <p className="text-sm text-[var(--ohnix-text-muted)] m-0">
-                                        {t("dashboard.business_pulse_description")}
-                                    </p>
-                                </div>
-                                <Badge
-                                    count={stockRiskCount}
-                                    style={{
-                                        backgroundColor:
-                                            stockRiskCount > 0
-                                                ? "rgba(250,173,20,0.18)"
-                                                : "rgba(41,216,213,0.16)",
-                                        color:
-                                            stockRiskCount > 0
-                                                ? "#FFCF70"
-                                                : "#44F3F0",
-                                        fontWeight: 700,
-                                        boxShadow: "none",
-                                    }}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[var(--ohnix-text-muted)]">{t("dashboard.net_trade_delta")}</div>
-                                    <div className={`mt-2 text-2xl font-semibold ${netTradeDelta >= 0 ? "text-[#44F3F0]" : "text-[#F28B82]"}`}>
-                                        {formatCurrency(netTradeDelta)}
-                                    </div>
-                                    <div className="mt-2 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.net_trade_delta_description")}</div>
-                                </div>
-
-                                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[var(--ohnix-text-muted)]">{t("dashboard.average_order_value")}</div>
-                                    <div className="mt-2 text-2xl font-semibold text-[var(--ohnix-text-primary)]">{formatCurrency(averageOrderValue)}</div>
-                                    <div className="mt-2 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.average_order_value_description")}</div>
-                                </div>
-
-                                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[var(--ohnix-text-muted)]">{t("dashboard.stock_risk")}</div>
-                                    <div className="mt-2 text-2xl font-semibold text-[var(--ohnix-text-primary)]">{stockRiskCount}</div>
-                                    <div className="mt-2 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.stock_risk_description")}</div>
-                                </div>
-
-                                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[var(--ohnix-text-muted)]">{t("dashboard.revenue_concentration")}</div>
-                                    <div className="mt-2 text-2xl font-semibold text-[var(--ohnix-text-primary)]">{topProductShare.toFixed(1)}%</div>
-                                    <div className="mt-2 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.revenue_concentration_description")}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <ProductDistribution
-                            topProducts={dashboardData.topProducts}
-                        />
-
-                        {dashboardData.topProducts &&
-                            dashboardData.topProducts.length > 0 && (
-                                <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)] p-6 backdrop-blur-md">
-                                    <div className="flex items-center gap-3 mb-5">
-                                        <div className="w-10 h-10 rounded-lg bg-[linear-gradient(135deg,rgba(41,216,213,0.2),rgba(68,243,240,0.1))] border border-[#29D8D5]/25 flex items-center justify-center">
-                                            <InfoCircleOutlined className="text-lg text-[#44F3F0]" />
-                                        </div>
-                                        <div>
-                                                <h3 className="text-lg font-bold text-[var(--ohnix-text-primary)] m-0 leading-tight">
-                                                    {t("dashboard.quick_insights")}
-                                            </h3>
-                                                <p className="text-sm text-[var(--ohnix-text-muted)] m-0">
-                                                    {t("dashboard.key_product_highlights")}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="p-5 bg-[linear-gradient(145deg,rgba(41,216,213,0.16),rgba(41,216,213,0.04))] rounded-xl border border-[#29D8D5]/30">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <Text className="text-[#44F3F0] text-xs font-bold uppercase tracking-wider block">
-                                                    {t("dashboard.top_performer")}
-                                                </Text>
-                                                <div className="w-8 h-8 rounded-lg bg-[#29D8D5]/15 border border-[#29D8D5]/35 flex items-center justify-center">
-                                                    🏆
-                                                </div>
-                                            </div>
-                                            <Text className="text-base font-bold text-[var(--ohnix-text-primary)] block mb-2">
-                                                {topPerformer?.product_name}
-                                            </Text>
-                                            <Badge
-                                                count={t("dashboard.units_sold", {
-                                                    count: topPerformer?.quantity_sold,
-                                                })}
-                                                style={{
-                                                    backgroundColor: "rgba(41,216,213,0.22)",
-                                                    color: "#44F3F0",
-                                                    fontSize: "11px",
-                                                    fontWeight: 600,
-                                                }}
-                                            />
-                                        </div>
-
-                                        <div className="p-5 bg-[linear-gradient(145deg,rgba(68,243,240,0.14),rgba(68,243,240,0.03))] rounded-xl border border-[#44F3F0]/28">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <Text className="text-[#8CECEC] text-xs font-bold uppercase tracking-wider block">
-                                                    {t("dashboard.most_profitable")}
-                                                </Text>
-                                                <div className="w-8 h-8 rounded-lg bg-[#44F3F0]/12 border border-[#44F3F0]/30 flex items-center justify-center">
-                                                    💰
-                                                </div>
-                                            </div>
-                                            <Text className="text-base font-bold text-[var(--ohnix-text-primary)] block mb-2">
-                                                {mostProfitableProduct?.product_name}
-                                            </Text>
-                                            <Badge
-                                                count={t("dashboard.revenue", {
-                                                    value: mostProfitableProduct?.total_sales?.toLocaleString(),
-                                                })}
-                                                style={{
-                                                    backgroundColor: "rgba(68,243,240,0.2)",
-                                                    color: "#8CECEC",
-                                                    fontSize: "11px",
-                                                    fontWeight: 600,
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                    </div>
-                </section>
-
-                <section className="mt-8 pb-8 animate-fade-up">
-                    <Divider className="flex items-center gap-3 mb-6">
-                        <div>
-                            <h2 className="text-xl font-bold text-[var(--ohnix-text-primary)] m-0 leading-tight">
-                                {t("dashboard.reports_activity")}
-                            </h2>
-                            <p className="text-sm text-[var(--ohnix-text-muted)] m-0">
-                                {t("dashboard.recent_transactions_and_alerts")}
-                            </p>
-                        </div>
-                    </Divider>
-
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)]">
-                                <DataTable
-                                    title={t("dashboard.top_selling_products")}
-                                    columns={topProductsColumns}
-                                    dataSource={dashboardData.topProducts.slice(
-                                        0,
-                                        5
-                                    )}
-                                    viewAllLink="/reports/top-products"
-                                    pagination={{ pageSize: 5, size: "small" }}
-                                />
-                            </div>
-
-                            <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)]">
-                                <DataTable
-                                    title={t("dashboard.low_stock_alerts")}
-                                    columns={lowStockColumns}
-                                    dataSource={dashboardData.lowStockProducts.slice(
-                                        0,
-                                        5
-                                    )}
-                                    viewAllLink="/reports/low-stock-alerts"
-                                    pagination={{ pageSize: 5, size: "small" }}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)]">
-                            <DataTable
-                                title={t("dashboard.recent_orders")}
-                                columns={recentOrdersColumns}
-                                dataSource={dashboardData.recentOrders.slice(
-                                    0,
-                                    8
-                                )}
-                                viewAllLink="/orders"
-                                pagination={{ pageSize: 8, size: "small" }}
+                            <Segmented
+                                value={period}
+                                onChange={changePeriod}
+                                options={PERIODS.map((value) => ({ value, label: t(`dashboard.period_${value}`) }))}
                             />
                         </div>
+                    )}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {kpis.map(({ key, ...kpi }) => (
+                            <KpiTile key={key} changeLabel={vsLabel} {...kpi} />
+                        ))}
                     </div>
                 </section>
+
+                <section className="mt-6 grid grid-cols-1 gap-6 animate-fade-up lg:grid-cols-3">
+                    <div className="min-w-0 lg:col-span-2">
+                        <SalesTrendCard period={salesPeriod} available={reportsAvailable.sales} canUpgrade={canSeeBilling} />
+                    </div>
+                    <InventoryCard
+                        totalProducts={dashboardData.totalProducts}
+                        totalStock={dashboardData.totalStock}
+                        outOfStockCount={dashboardData.outOfStockCount}
+                        lowStockProducts={dashboardData.lowStockProducts || []}
+                        formatNumber={formatNumber}
+                    />
+                </section>
+
+                <section className="mt-6 grid grid-cols-1 gap-6 animate-fade-up lg:grid-cols-2">
+                    <TopProductsCard topProducts={dashboardData.topProducts || []} available={reportsAvailable.topProducts} />
+                    <RecentOrdersCard recentOrders={dashboardData.recentOrders || []} />
+                </section>
+
+                {reportsAvailable.sales && (
+                    <footer className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-5 py-3 text-xs text-[var(--ohnix-text-muted)]">
+                        <span className="font-semibold uppercase tracking-wider">{t("dashboard.lifetime_title")}</span>
+                        <span>
+                            {t("dashboard.lifetime_sales")}:{" "}
+                            <strong className="tabular-nums text-[var(--ohnix-text-primary)]">{formatCurrency(dashboardData.totalSales)}</strong>
+                        </span>
+                        <span>
+                            {t("dashboard.lifetime_purchases")}:{" "}
+                            <strong className="tabular-nums text-[var(--ohnix-text-primary)]">{formatCurrency(dashboardData.totalPurchase)}</strong>
+                        </span>
+                    </footer>
+                )}
             </div>
         </main>
     );

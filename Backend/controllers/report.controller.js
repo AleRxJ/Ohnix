@@ -331,7 +331,7 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
             const currentDate = byDateMap.get(dateKey) || { _id: dateKey, total: 0, orders: 0 };
             currentDate.total += order.orderDetails.reduce((sum, detail) => {
                 const net = netFiscalDetail(detail);
-                return sum + net.base + net.tax;
+                return sum + net.base + net.taxAmount;
             }, 0);
             currentDate.orders += 1;
             byDateMap.set(dateKey, currentDate);
