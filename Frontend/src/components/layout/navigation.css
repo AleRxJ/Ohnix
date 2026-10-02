@@ -43,6 +43,8 @@
 .ant-layout-sider-collapsed .ohnix-nav__rail { border-right: 0; }
 .ohnix-nav__logo { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; }
 .ohnix-nav__logo img { width: 44px; height: 44px; border-radius: 999px; object-fit: contain; transition: transform .25s ease, filter .25s ease; }
+.ohnix-nav__logo .ohnix-app-icon { width: 44px; height: 44px; transition: transform .25s ease, filter .25s ease; }
+.ohnix-nav__logo:hover .ohnix-app-icon { transform: scale(1.08) rotate(-4deg); filter: drop-shadow(0 0 12px rgba(41, 216, 213, 0.45)); }
 .ohnix-nav__logo:hover img { transform: scale(1.08) rotate(-4deg); filter: drop-shadow(0 0 12px rgba(41, 216, 213, 0.45)); }
 .ohnix-nav__rail-groups {
   flex: 1; min-height: 0; width: 100%; overflow-y: auto; overflow-x: hidden;
@@ -218,6 +220,7 @@
   background: linear-gradient(90deg, transparent, #29d8d5, transparent);
 }
 .ohnix-mobile-nav__head { display: flex; align-items: center; gap: 10px; }
+.ohnix-mobile-nav__head .ohnix-app-icon { flex: 0 0 36px; width: 36px; height: 36px; }
 .ohnix-mobile-nav__head img { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 999px; object-fit: contain; }
 .ohnix-mobile-nav__head .ohnix-nav__search { flex: 1; min-width: 0; height: 40px; }
 .ohnix-mobile-nav__close {
@@ -350,6 +353,7 @@ body:has(.ohnix-palette) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventor
   .ohnix-topbar__left, .ohnix-topbar__right { min-width: 0; }
 }
 .ohnix-topbar__mobile-logo { align-items: center; gap: 8px; }
+.ohnix-topbar__mobile-logo .ohnix-app-icon { width: 36px; height: 36px; }
 .ohnix-topbar__mobile-logo img { width: 36px; height: 36px; border-radius: 999px; object-fit: contain; }
 @media (max-width: 420px) { .ohnix-topbar__mobile-logo span { display: none; } }
 .ohnix-topbar__mobile-logo span { font-size: 13px; font-weight: 700; letter-spacing: .18em; color: var(--ohnix-text-primary); }
@@ -455,3 +459,14 @@ body:has(.ohnix-palette) :is(.assistant-fab-wrap, .discovery-fab-wrap, .inventor
 @media (prefers-reduced-motion: reduce) {
   .ohnix-nav *, .ohnix-nav *::before, .ohnix-nav *::after, .ohnix-palette, .ohnix-palette *, .ohnix-topbar *, .ohnix-topbar *::after { animation: none !important; transition: none !important; }
 }
+
+/* Light-theme app icon: vector logo on a light badge (see OhnixAppIcon.jsx). */
+.ohnix-app-icon {
+  display: grid; place-items: center; flex-shrink: 0; border-radius: 999px; padding: 3px;
+}
+.ohnix-app-icon--lite {
+  background: radial-gradient(circle at 50% 35%, #ffffff 0%, #eafbfb 70%, #d9f5f4 100%);
+  border: 1px solid rgba(41, 216, 213, 0.45);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08), inset 0 0 0 2px rgba(255, 255, 255, 0.7);
+}
+.ohnix-app-icon svg { display: block; width: 100%; height: 100%; }

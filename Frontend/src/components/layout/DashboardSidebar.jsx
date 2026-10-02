@@ -16,6 +16,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { openCommandPalette, COMMAND_PALETTE_SHORTCUT } from "./commandPaletteEvents";
 import { NAV_GROUP_ICONS } from "./navGroupIcons";
 import "./navigation.css";
+import OhnixAppIcon from "../common/OhnixAppIcon";
 
 const { Sider } = Layout;
 
@@ -87,7 +88,7 @@ const DashboardSidebar = ({ collapsed, currentPage }) => {
                     <Link to="/dashboard" className="ohnix-nav__logo" aria-label="Ohnix">
                         {/* The round app icon, not Ohnix_Icon_Transparent.png: that one bakes the
                             "OHNIX" wordmark into the raster, which turns to mush at rail size. */}
-                        <img src={isLite ? "/Ohnix_Icon_Lite.png" : "/ohnix-icon-v2-192.png"} alt="" />
+                        <OhnixAppIcon />
                     </Link>
 
                     <div className="ohnix-nav__rail-groups ohnix-scrollbar-thin">

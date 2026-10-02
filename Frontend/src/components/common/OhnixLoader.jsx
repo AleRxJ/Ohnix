@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import OhnixLogo from "./OhnixLogo";
 
 // Ohnix's loading identity: the brand mark (isometric stack of boxes inside
 // an orbit, crossed by the diagonal node line) redrawn as a few SVG strokes -
@@ -46,6 +47,9 @@ export const OhnixMark = ({ size = 64, className = "" }) => (
     </svg>
 );
 
+// OhnixMark above is the compact spinner (antd <Spin>, inline status);
+// the full-size loaders below run the animated OhnixLogo instead.
+//
 // variant "page": fills the viewport (route/auth gates). "section": fills a
 // region of an already-rendered page (default 60vh tall).
 const OhnixLoader = ({ variant = "page", message = "Cargando…", height, slowHint = false }) => {
@@ -67,7 +71,7 @@ const OhnixLoader = ({ variant = "page", message = "Cargando…", height, slowHi
             style={{ minHeight: height || (isPage ? "100vh" : "60vh") }}
         >
             <div className="ohnix-loader__halo">
-                <OhnixMark size={isPage ? 76 : 60} />
+                <OhnixLogo animated size={isPage ? 132 : 104} />
             </div>
             <div className="flex flex-col items-center gap-1.5">
                 {isPage && (

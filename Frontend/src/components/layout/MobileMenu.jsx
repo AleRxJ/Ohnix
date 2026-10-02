@@ -5,12 +5,12 @@ import { CloseOutlined, SearchOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import useNavItems, { NAV_GROUPS } from "../../hooks/useNavItems";
 import useNavSignals, { TONE_RANK } from "../../hooks/useNavSignals";
-import { useTheme } from "../../context/ThemeContext";
 import useScrollLock from "../../hooks/useScrollLock";
 import { GroupPanel, BusinessPulse } from "./DashboardSidebar";
 import { NAV_GROUP_ICONS } from "./navGroupIcons";
 import { openCommandPalette } from "./commandPaletteEvents";
 import "./navigation.css";
+import OhnixAppIcon from "../common/OhnixAppIcon";
 
 const topTone = (signals) => (signals.length ? [...signals].sort((a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone])[0].tone : null);
 
@@ -19,7 +19,6 @@ const topTone = (signals) => (signals.length ? [...signals].sort((a, b) => TONE_
 // sheet - areas become a swipeable chip row instead of a vertical rail.
 const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
     const { t } = useI18n();
-    const { isLite } = useTheme();
     const { items, loading, can, needsFiscalSetup, openDiscoveriesCount } = useNavItems();
     const signals = useNavSignals({ items, can, needsFiscalSetup, openDiscoveriesCount });
     const panelRef = useRef(null);
@@ -112,7 +111,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                 onClick={handleLinkClick}
             >
                 <div className="ohnix-mobile-nav__head">
-                    <img src={isLite ? "/Ohnix_Icon_Lite.png" : "/ohnix-icon-v2-192.png"} alt="" aria-hidden="true" />
+                    <OhnixAppIcon />
                     <button type="button" className="ohnix-nav__search" onClick={handleSearch}>
                         <SearchOutlined />
                         <span className="ohnix-nav__search-text">{t("nav.search_placeholder")}</span>

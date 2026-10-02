@@ -1105,6 +1105,168 @@ button, a, [role="button"] {
   display: none;
 }
 
+/* The vector Ohnix logo (components/common/OhnixLogo.jsx). Static by
+   default; .ohnix-logo--animated runs the 3.6s "assembly" loop used by the
+   page/section loaders. Every timed piece shares that one cycle so the
+   sequence stays in sync: orbit draws -> boxes drop (staggered by --i) ->
+   axis fires -> core flash + shockwave -> stack lifts away. */
+.ohnix-logo {
+  overflow: visible;
+  --ohnix-logo-cycle: 3.6s;
+}
+.ohnix-logo__orbit {
+  fill: none;
+  stroke: #29d8d5;
+  stroke-width: 1.6;
+  stroke-opacity: 0.7;
+  stroke-dasharray: 100;
+}
+.ohnix-logo__ring {
+  fill: none;
+  stroke: var(--ohnix-text-primary);
+  stroke-opacity: 0.22;
+  stroke-width: 1;
+  stroke-dasharray: 1.5 5;
+  transform-box: view-box;
+  transform-origin: 60px 60px;
+}
+.ohnix-logo__satellite {
+  transform-box: view-box;
+  transform-origin: 60px 60px;
+  transform: rotate(38deg);
+}
+.ohnix-logo__node {
+  fill: #44f3f0;
+  filter: drop-shadow(0 0 4px rgba(68, 243, 240, 0.9));
+}
+.ohnix-logo__face {
+  stroke: var(--ohnix-text-primary);
+  stroke-opacity: 0.78;
+  stroke-width: 1.15;
+}
+/* Opaque (cyan mixed into the theme background, not alpha) so each box
+   hides the ones behind it - translucent faces read as a wireframe grid. */
+.ohnix-logo__face--top {
+  fill: color-mix(in srgb, #29d8d5 34%, var(--ohnix-bg));
+}
+.ohnix-logo__face--left {
+  fill: color-mix(in srgb, #29d8d5 16%, var(--ohnix-bg));
+}
+.ohnix-logo__face--right {
+  fill: color-mix(in srgb, #29d8d5 7%, var(--ohnix-bg));
+}
+.ohnix-logo__label {
+  stroke: #29d8d5;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-opacity: 0.8;
+}
+.ohnix-logo__axis {
+  stroke: #29d8d5;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  filter: drop-shadow(0 0 3px rgba(41, 216, 213, 0.7));
+}
+.ohnix-logo__axis-node {
+  fill: #29d8d5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ohnix-logo__core {
+  fill: #44f3f0;
+  stroke: var(--ohnix-bg);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: drop-shadow(0 0 6px rgba(68, 243, 240, 0.95));
+}
+.ohnix-logo__shockwave {
+  fill: none;
+  stroke: #44f3f0;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ohnix-logo__box {
+  transform-box: view-box;
+}
+
+.ohnix-logo--animated .ohnix-logo__orbit {
+  animation: ohnixLogoOrbit var(--ohnix-logo-cycle) cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.ohnix-logo--animated .ohnix-logo__ring {
+  animation: ohnixLogoSpin 9s linear infinite reverse;
+}
+.ohnix-logo--animated .ohnix-logo__satellite {
+  animation: ohnixLogoSpin 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+.ohnix-logo--animated .ohnix-logo__box {
+  animation: ohnixLogoBox var(--ohnix-logo-cycle) cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+  animation-delay: calc(var(--i) * 90ms);
+}
+.ohnix-logo--animated .ohnix-logo__axis {
+  animation: ohnixLogoAxis var(--ohnix-logo-cycle) cubic-bezier(0.7, 0, 0.3, 1) infinite;
+}
+.ohnix-logo--animated .ohnix-logo__axis-node {
+  animation: ohnixLogoPop var(--ohnix-logo-cycle) ease-out infinite;
+}
+.ohnix-logo--animated .ohnix-logo__axis-node--end {
+  animation-delay: 120ms;
+}
+.ohnix-logo--animated .ohnix-logo__core {
+  animation: ohnixLogoCore var(--ohnix-logo-cycle) ease-out infinite;
+}
+.ohnix-logo--animated .ohnix-logo__shockwave {
+  animation: ohnixLogoShock var(--ohnix-logo-cycle) ease-out infinite;
+}
+
+@keyframes ohnixLogoSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes ohnixLogoOrbit {
+  0% { stroke-dashoffset: 100; }
+  24%, 80% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -100; }
+}
+@keyframes ohnixLogoBox {
+  0% { transform: translateY(-34px); opacity: 0; }
+  12% { transform: translateY(0); opacity: 1; }
+  64% { transform: translateY(0); opacity: 1; }
+  76%, 100% { transform: translateY(-26px); opacity: 0; }
+}
+@keyframes ohnixLogoAxis {
+  0%, 34% { stroke-dashoffset: 100; }
+  44%, 70% { stroke-dashoffset: 0; }
+  82%, 100% { stroke-dashoffset: -100; }
+}
+@keyframes ohnixLogoPop {
+  0%, 40% { transform: scale(0); }
+  46% { transform: scale(1.7); }
+  52%, 70% { transform: scale(1); }
+  80%, 100% { transform: scale(0); }
+}
+@keyframes ohnixLogoCore {
+  0%, 40% { transform: scale(0.3); opacity: 0.35; }
+  45% { transform: scale(2); opacity: 1; }
+  52%, 72% { transform: scale(1); opacity: 1; }
+  84%, 100% { transform: scale(0.3); opacity: 0.35; }
+}
+@keyframes ohnixLogoShock {
+  0%, 44% { transform: scale(1); opacity: 0; }
+  45% { transform: scale(1); opacity: 0.9; }
+  66%, 100% { transform: scale(7); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ohnix-logo--animated * {
+    animation: none !important;
+  }
+}
+
 /* Content placeholders shaped like the real layout (see DashboardSkeleton). */
 .ohnix-skeleton {
   position: relative;

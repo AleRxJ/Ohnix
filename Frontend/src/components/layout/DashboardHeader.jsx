@@ -29,6 +29,7 @@ import { useTeam } from "../../context/TeamContext";
 import { useTheme } from "../../context/ThemeContext";
 import { getConnectivityState, subscribeConnectivity } from "../../offline/connectivity";
 import "./navigation.css";
+import OhnixAppIcon from "../common/OhnixAppIcon";
 
 // Same visual language as the sectioned sidebar (DashboardSidebar.jsx):
 // breadcrumb "Área › Módulo" with the module's live signal on the left, the
@@ -98,7 +99,7 @@ const DashboardHeader = ({ collapsed, setCollapsed, currentPage, pageTitle }) =>
             <div className="ohnix-topbar__left">
                 {/* Mobile: logo + hamburger (the sidebar is hidden below md). */}
                 <Link to="/dashboard" className="ohnix-topbar__mobile-logo ohnix-topbar__mobile-only" aria-label="Ohnix">
-                    <img src={isLite ? "/Ohnix_Icon_Lite.png" : "/ohnix-icon-v2-192.png"} alt="" />
+                    <OhnixAppIcon />
                     <span>OHNIX</span>
                 </Link>
                 <button
